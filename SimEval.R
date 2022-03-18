@@ -48,7 +48,7 @@
 con <- dbConnect(odbc(),
                  Driver = "SQL Server",
                  Server = "192.168.0.139,49172",
-                 Database = "Mar_14_2022",
+                 Database = "Mar_16_2022",
                  UID = "admin",
                  PWD = "SOB704910",
                  Port = 49172)
@@ -232,7 +232,7 @@ Week1 <- function(year, month, day, case) {
   # Set the theme for the plot
     theme_bw() +
     theme(panel.grid = element_blank(),
-          legend.position = "bottom",
+          legend.position = "right",
           ) +
     scale_y_continuous(expand=c(0,0), limits = c(NA,ylimit)) +
 #    ylim(NA,ylimit) +
@@ -465,6 +465,6 @@ Eval4 <- function(month,day,case) {
                         PrOut(Yr4,month,day,case)+theme(legend.position ="none"),
                         ncol=4),
             g_legend(Week1(Yr1,month,day,case)),
-            nrow = 2, heights=c(12,1))
+            ncol = 2, widths=c(7,1))
 }
 }
