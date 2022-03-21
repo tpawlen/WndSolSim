@@ -48,7 +48,7 @@
 con <- dbConnect(odbc(),
                  Driver = "SQL Server",
                  Server = "192.168.0.139,49172",
-                 Database = "Mar_16_2022",
+                 Database = "Mar_18_2022",
                  UID = "admin",
                  PWD = "SOB704910",
                  Port = 49172)
