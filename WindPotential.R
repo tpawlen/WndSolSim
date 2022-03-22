@@ -8,8 +8,9 @@
 library(XML)
 library(raster)
 
+{
 # Set the resolution that will be used
-res <- 0.1
+res <- 0.05
 
 # Set out the basic structure for the webpage address
 cons1 <- "http://www.windatlas.ca/rose-en.php?field=E1&height=80&season=ANU&no=41&lat="
@@ -19,6 +20,7 @@ cons2 <- "&lon="
 wind_pot <- data.frame(matrix(ncol = 2, nrow = 0))
 x <- c('Latitude', 'Longitude')
 colnames(wind_pot) <- x
+}
 
 # Create variables to define limits of data
 {
@@ -82,7 +84,8 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
     wind <- readHTMLTable(url,which=1)
     wind_prof[i,3] <- as.numeric(substr(wind[1,2], 1, 4))
     
-    print(paste((i/nrow(wind_prof)*100),"%", sep = ""))
+    perc <- format(round((i/nrow(wind_prof)*100), 2), nsmall = 2)
+    print(paste(perc,"%", sep = ""))
     #print(paste(wind_prof[i,1],wind_prof[i,2],sep = ","))
   }
 
