@@ -8,7 +8,7 @@
 library(XML)
 
 # Set the resolution that will be used
-res <- 0.5
+res <- 0.05
 
 # Set out the basic structure for the webpage address
 cons1 <- "http://www.windatlas.ca/rose-en.php?field=E1&height=80&season=ANU&no=41&lat="
