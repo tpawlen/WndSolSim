@@ -22,6 +22,10 @@
   library(odbc)
   library(DBI)
   library("readxl")
+  library("ggsci")
+  library(rgdal)
+  library(raster)
+#  library("viridis")
 #  library(nasapower)
   #To get the solar insolation and other meteorological data 
   library(scales)
@@ -32,7 +36,10 @@
 setwd("D:/Documents/Education/Masters Degree/Datasets/Wind Data")
 getwd()
 
-wind_profile <- read_excel("Wind Energy Alberta.xlsx")
+wind_profile <- readRDS("WindAtlas_Data_0.5")
+colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
+
+wind_profile1 <- read_excel("Wind Energy Alberta.xlsx")
 
 turb_location <- read_excel("Wind_Turbine_Database_FGP.xlsx")
 turb_AB <- turb_location %>%
@@ -61,29 +68,36 @@ alberta_ellipsoid1 =
 #alberta_ellipsoid = 
 #  canada_level2_ellipsoid[which(canada_level2_ellipsoid$NAME_1 == "Alberta"),]
 
+inout = over(
+  SpatialPoints(wind_profile[,c("Longitude","Latitude")],proj4string=CRS(projection(alberta_ellipsoid1))),
+  as(alberta_ellipsoid1,"SpatialPolygons")
+)
+
 # Map of Alberta
 ggplot() + 
+  geom_tile(data = wind_profile[!is.na(inout),], 
+            aes(x = Longitude, y = Latitude, fill = Wind)) +
   geom_polygon(data = alberta_ellipsoid1, 
                aes(x = long, y = lat, group = group), 
-               fill = "lightgoldenrod", color = "black") +
-  geom_hex(data = wind_profile, 
-             aes(x = Long, y = Lat)) +#, color = as.factor(Wind_Speed_80m))) +
-  geom_point(data = turb_pot, 
-             aes(x = Longitude, y = Latitude, size = Capacity, color = "deepskyblue"),
-             shape = 18) +
-  geom_point(data = plant, 
-             aes(x = Longitude, y = Latitude, size = Capacity, color = "forestgreen"), 
-             shape = 16) + 
-  scale_color_continuous(name = "Average Wind Speed at 80m",
-                         guide = legend)
-  scale_shape_identity(name = "Status",
-                       breaks = c(18, 16),
-                       labels = c("AESO Planning", "Active"),
-                       guide = "legend") +
-  scale_color_identity(name = "Status",
-                       breaks = c("deepskyblue", "forestgreen"),
-                       labels = c("AESO Planning", "Active"),
-                       guide = "legend") +
+               fill = "transparent", colour = "black") +
+  scale_fill_gradientn(colors = rev(hcl.colors(20, "RdYlGn"))) +
+#  geom_point(data = turb_pot, 
+#             aes(x = Longitude, y = Latitude, size = Capacity, shape = 18), 
+#             color = "orangered") +
+#  geom_point(data = plant, 
+#             aes(x = Longitude, y = Latitude, size = Capacity, shape = 16),
+#             color = "limegreen") + 
+#  scale_y_continuous(limits = c(49, 60.1)) +
+#  scale_color_continuous(name = "Average Wind Speed at 80m",
+#                         guide = legend)
+#  scale_shape_identity(name = "Status",
+#                       breaks = c(18, 16),
+#                       labels = c("AESO Planning", "Active"),
+#                       guide = "legend") +
+#  scale_color_identity(name = "Status",
+#                       breaks = c("orangered", "limegreen"),
+#                       labels = c("AESO Planning", "Active"),
+#                       guide = "legend") +
   theme(panel.background = element_rect(fill = "transparent"),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -95,6 +109,8 @@ ggplot() +
         legend.box.background = element_rect(fill = "transparent")) 
 
 ggsave("windfarmlocations.png", AB, bg = "transparent")
+
+
 
 # Map of Canada
 ggplot() + 
