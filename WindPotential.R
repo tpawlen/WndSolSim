@@ -6,33 +6,68 @@
 # March 2022; Last revision: March 21, 2022
 
 library(XML)
+library(raster)
 
 # Set the resolution that will be used
-res <- 0.05
+res <- 0.1
 
 # Set out the basic structure for the webpage address
 cons1 <- "http://www.windatlas.ca/rose-en.php?field=E1&height=80&season=ANU&no=41&lat="
 cons2 <- "&lon="
 
 # Create blank dataframe with headers
-{
-Wind_pot <- data.frame(matrix(ncol = 3, nrow = 0))
-
-x <- c('Latitude', 'Longitude', 'Mean Wind Speed (m/s)')
-
-colnames(Wind_pot) <- x
-}
+wind_pot <- data.frame(matrix(ncol = 2, nrow = 0))
+x <- c('Latitude', 'Longitude')
+colnames(wind_pot) <- x
 
 # Create variables to define limits of data
 {
-maxLat <- 60
-maxLon <- -120
+  maxLat <- 60
+  maxLon <- -120
+  minLat <- 49
+  minLon <- -110
+  
+  totLat <- maxLat-minLat
+  totLon <- abs(maxLon-minLon)
+  
+  stepLat <- totLat/res
+  stepLon <- totLon/res
+}
 
-totLat <- maxLat - 49
-totLon <- maxLon - (-110)
+for(i in 0:stepLat) {
+  for(j in 0:stepLon) {
+    Lon <- (minLon - (j*res))
+    Lat <- (minLat + (i*res))
+    
+    wind_pot[nrow(wind_pot)+1,] <- c(Lat, Lon)
+  }
+}
 
-stepLat <- totLat/res
-stepLon <- abs(totLon/res)
+{
+# Get province shape
+can_level1 = getData("GADM", country = "CA", level = 1)
+
+WGS84 <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+canada_level1_ellipsoid = spTransform(can_level1, WGS84)
+
+alberta_ellipsoid =
+  canada_level1_ellipsoid[which(canada_level1_ellipsoid$NAME_1 == "Alberta"),]
+}
+
+{
+# Excludes any points outside the province
+inout = over(
+  SpatialPoints(wind_pot[,c("Longitude","Latitude")], proj4string=CRS(projection(alberta_ellipsoid))),
+  as(alberta_ellipsoid,"SpatialPolygons")
+)
+
+wind_prof <- wind_pot[!is.na(inout),]
+wind_prof[,3] <- 0
+
+x <- c('Latitude', 'Longitude', 'Mean Wind Speed (m/s)')
+
+colnames(wind_prof) <- x
+row.names(wind_prof) <- 1:nrow(wind_prof)
 }
 
 # Run for loop to enter a series of coordinates in Canada's Wind Atlas and save
@@ -42,25 +77,14 @@ stepLon <- abs(totLon/res)
   # Note the start time
   old <- Sys.time()
   
-for(i in 0:stepLat) {                                             
-  for(j in 0:stepLon) {   
-    # Creates latitude and longitude to be entered into the WindAtlas
-    Lon <- (-110 - (j*res))
-    Lat <- (49 + (i*res))
-    url <- paste(cons1, Lat, cons2, Lon, sep="")
-    
-    # Loads the website for the latitude and longitude and reads the annual 
-    # mean wind speed.
+  for(i in 1:nrow(wind_prof)) {
+    url <- paste(cons1, wind_prof[i,1], cons2, wind_prof[i,2], sep = "")
     wind <- readHTMLTable(url,which=1)
-    wnd <- wind[1,2]
+    wind_prof[i,3] <- as.numeric(substr(wind[1,2], 1, 4))
     
-    # Saves the latitude, longitude, and annual mean wind speed to the dataframe
-    Wind_pot[nrow(Wind_pot)+1,] <- c(Lat, Lon, as.numeric(substr(wnd, 1, 4)))
-    
-    # Print progress
-    print(paste(Lat, Lon, sep = ","))
+    print(paste((i/nrow(wind_prof)*100),"%", sep = ""))
+    #print(paste(wind_prof[i,1],wind_prof[i,2],sep = ","))
   }
-}
 
   # Creates an RDS file with the entire dataset.
   saveRDS(Wind_pot, file = paste("WindAtlas_Data", res, sep = "_"))
