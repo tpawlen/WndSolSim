@@ -39,7 +39,7 @@ getwd()
 wind_profile <- readRDS("WindAtlas_Data_0.5")
 colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
 
-wind_profile1 <- read_excel("Wind Energy Alberta.xlsx")
+#wind_profile1 <- read_excel("Wind Energy Alberta.xlsx")
 
 turb_location <- read_excel("Wind_Turbine_Database_FGP.xlsx")
 turb_AB <- turb_location %>%
@@ -68,6 +68,7 @@ alberta_ellipsoid1 =
 #alberta_ellipsoid = 
 #  canada_level2_ellipsoid[which(canada_level2_ellipsoid$NAME_1 == "Alberta"),]
 
+# Excludes any points outside the province
 inout = over(
   SpatialPoints(wind_profile[,c("Longitude","Latitude")],proj4string=CRS(projection(alberta_ellipsoid1))),
   as(alberta_ellipsoid1,"SpatialPolygons")
