@@ -43,12 +43,13 @@
   }
 
 {
+  DB <- "Mar_18_2022"
 # Connect to SQL database
 ################################################################################
 con <- dbConnect(odbc(),
                  Driver = "SQL Server",
                  Server = "192.168.0.139,49172",
-                 Database = "Mar_18_2022",
+                 Database = DB,
                  UID = "admin",
                  PWD = "SOB704910",
                  Port = 49172)
@@ -402,11 +403,11 @@ Slack <- function(case, Fuel) {
 ################################################################################
 
 Week4 <- function(month,day,case) {
-  ggarrange(Week1(Yr1,month,day,case),Week1(Yr2,month,day,case),
+  ggdraw(add_sub(ggarrange(Week1(Yr1,month,day,case),Week1(Yr2,month,day,case),
             Week1(Yr3,month,day,case),Week1(Yr4,month,day,case),
             labels = c(Yr1,Yr2),#,Yr3,Yr4),
             common.legend = TRUE, legend = "right",
-            ncol = 2, nrow = 2)
+            ncol = 2, nrow = 2), DB))
 }
 
 ################################################################################
