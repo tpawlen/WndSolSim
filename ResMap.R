@@ -33,13 +33,11 @@
   #on the images we create
 }
 
-setwd("D:/Documents/Education/Masters Degree/Datasets/Wind Data")
+setwd("D:/Documents/GitHub/AuroraEval")
 getwd()
 
 wind_profile <- readRDS("WindAtlas_Data_0.5")
 colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
-
-#wind_profile1 <- read_excel("Wind Energy Alberta.xlsx")
 
 turb_location <- read_excel("Wind_Turbine_Database_FGP.xlsx")
 turb_AB <- turb_location %>%
