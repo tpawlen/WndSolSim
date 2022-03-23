@@ -54,6 +54,7 @@ con <- dbConnect(odbc(),
                  PWD = "SOB704910",
                  Port = 49172)
 
+  {
 # Write data to environment and set variables
 ################################################################################
 data_raw_Hour <- dbReadTable(con,'ResourceGroupHour1')
@@ -70,11 +71,11 @@ Year  <- data_raw_Year
 Build <- data_raw_Build
 ZoneHour <- data_ZoneHour
 LTRes <- data_LTResValue
-
+}
 
  # Set variables to identify the case studies
 ################################################################################
-
+{
 Yr1 <- 2020
 Yr2 <- 2021
 Yr3 <- 2030
@@ -97,11 +98,11 @@ colours1 = c("darkslateblue", "grey", "darkslategrey", "coral4", "goldenrod4",
 colours2 = c("grey", "darkslategrey", "coral4", "goldenrod4", 
             "dodgerblue", "forestgreen", "gold", "cyan")
 colours3 = c("forestgreen", "gold", "coral4", "goldenrod4", "cyan", "dodgerblue")
-
+}
 
 # Converts the date and time and identifies the week when applicable
 ################################################################################
-
+{
 Hour$date        <- ymd_h(gsub(" Hr ", "_",Hour$Time_Period))
 Month$Time_Period <- ym(Month$Time_Period)
 Year$Time_Period  <- as.Date(as.character(Year$Time_Period), 
@@ -136,6 +137,7 @@ Export <- ZH %>%
 Export$Output_MWH <- Export$Output_MWH * -1
 
 ImEx <- rbind(Import, Export)
+}
 }
 
 ################################################################################
@@ -302,6 +304,7 @@ week_price <- function(year, month, day,case) {
     labs(y = "$/MWh", fill = "Resource") +
     scale_x_datetime(expand=c(0,0)) +
     scale_y_continuous(expand=c(0,0), 
+                       limits= c(0,90),
                        labels = label_number(accuracy = 1))
   #, limits = c(NA, prlimit)) 
 }
@@ -425,9 +428,11 @@ PrOut <- function(year,month,day,case) {
 ################################################################################
 
 EvalOut <- function(input,case) {
-  plot_grid(Eval(input,case) + theme(legend.position="top"), 
+  p1 <- plot_grid(Eval(input,case) + theme(legend.position="top"), 
             Built(case)+theme(legend.position ="none"), 
             ncol = 1, align="v", axis = "l",rel_heights = c(3,1))
+  
+  ggdraw(add_sub(p1,paste("Simulation: ",DB, sep = "")))
 }
 
 ################################################################################
@@ -435,10 +440,12 @@ EvalOut <- function(input,case) {
 ################################################################################
 
 BuildUnits <- function(case, Fuel) {
-  plot_grid(Units(case,Fuel)+theme(axis.title.x = element_blank(),
+  p1 <- plot_grid(Units(case,Fuel)+theme(axis.title.x = element_blank(),
                                    axis.text.x = element_blank()),
             Slack(case,Fuel), 
             ncol = 1, align="v", axis = "l",rel_heights = c(1,1))
+  
+  ggdraw(add_sub(p1,paste("Simulation: ",DB, sep = "")))
 }
   
 ################################################################################
@@ -465,7 +472,9 @@ Eval4 <- function(month,day,case) {
                         PrOut(Yr3,month,day,case)+theme(legend.position ="none"),
                         PrOut(Yr4,month,day,case)+theme(legend.position ="none"),
                         ncol=4),
-            g_legend(Week1(Yr1,month,day,case)),
+            ggdraw(
+            add_sub(g_legend(Week1(Yr1,month,day,case)), 
+                    paste("Simulation: \n",DB, sep = ""))),
             ncol = 2, widths=c(7,1))
 }
 }
