@@ -108,31 +108,15 @@ df4<-tibble(Year=seq(2010,2016),Plant_Type="SOLAR",capture=0)%>%mutate(Year=as_f
 df2<-df2 %>% bind_rows(df4)
 
 
-my_palette<-c("black",colors_tableau10()[8],colors_tableau10_medium()[4],colors_tableau10()[4],colors_tableau10_light()[4],colors_tableau10()[7],colors_tableau10()[1],colors_tableau10()[3],colors_tableau10()[2],colors_tableau10()[9],colors_tableau10_light()[9])
-my_palette<-c("black",grey.colors(10,start=0.2,end = .95))
+#my_palette<-c("black",colors_tableau10()[8],colors_tableau10_medium()[4],colors_tableau10()[4],colors_tableau10_light()[4],colors_tableau10()[7],colors_tableau10()[1],colors_tableau10()[3],colors_tableau10()[2],colors_tableau10()[9],colors_tableau10_light()[9])
+my_palette<-c("black","grey81","coral4","goldenrod4","tan","slategray1",
+              "dodgerblue","forestgreen","gold","indianred1","darkkhaki")
+#my_palette<-c("black",grey.colors(10,start=0.2,end = .95))
 
-plot_a<-ggplot(df2,aes(Year,capture,fill=Plant_Type))+
-  geom_col(aes(Year,capture,fill=Plant_Type),position = position_dodge(width = .9),width = .6,color="black",size=.5)+
-  #geom_col(aes(Year,p_mean),position = "identity",fill=NA,color="black")+
-  #geom_line(dataaes(Year,capture,fill=Plant_Type),position = position_dodge(width = .9),width = .6,color="black",size=.5)+
-  #geom_text(aes(y=-10,label=Plant_Type),angle=90,size=2)+
-  #  scale_color_viridis("Plant Type",discrete=TRUE)+
-  #  scale_fill_viridis("Plant Type",discrete=TRUE)+
-  #scale_color_manual("",values=colors_tableau10())+
-  #scale_fill_manual("",values=colors_tableau10())+
-  scale_color_manual("",values=my_palette)+
-  scale_fill_manual("",values=my_palette)+
-  blake_theme()+theme(plot.margin =unit(c(1,1,1,1),"cm"),
-                      legend.position = "bottom")+
-  guides(fill=guide_legend(nrow = 1,label.position = "bottom",keywidth = 5))+
-  labs(x="",y="Average Revenue ($/MWh)",
-       #title="Energy Price Capture ($/MWh, 2010-2021)",
-       #caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach"
-  )
-plot_a
-
-plot_a<-ggplot(filter(df2,as.character(Year)>=2014),aes(Year,capture,colour=Plant_Type,fill=Plant_Type),alpha=0.5)+
-  geom_col(aes(Year,capture,colour=Plant_Type,fill=Plant_Type),size=1.5,position = position_dodge(width = .9),width = .6)+
+plot_a <- ggplot(filter(df2,as.character(Year)>=2014),
+               aes(Year,capture,colour=Plant_Type,fill=Plant_Type),alpha=0.5)+
+  geom_col(aes(Year,capture,colour=Plant_Type,fill=Plant_Type),
+           size=0.8,position = position_dodge(width = .9),width = .6, alpha=0.9)+
   #  scale_color_viridis("Plant Type",discrete=TRUE)+
   #  scale_fill_viridis("Plant Type",discrete=TRUE)+
   #scale_color_manual("",values=colors_tableau10())+
@@ -141,4 +125,18 @@ plot_a<-ggplot(filter(df2,as.character(Year)>=2014),aes(Year,capture,colour=Plan
   scale_fill_manual("",values=my_palette)+
   slide_theme()+
   labs(x="Year",y="Average Revenue ($/MWh)",
-       title="Energy Price Capture ($/MWh, 2007-2019)")
+       title="Energy Price Capture ($/MWh, 2014-2021)")+
+  theme(panel.background = element_rect(fill = "transparent"),
+#        panel.grid.major = element_blank(),
+#        panel.grid.minor = element_blank(),
+        plot.background = element_rect(fill = "transparent", color = NA),
+#        axis.title = element_blank(),
+#        axis.text = element_blank(),
+#        axis.ticks = element_blank(),
+        legend.background = element_rect(fill = "transparent"),
+#        legend.box = NULL,
+        legend.box.background = element_rect(fill = "transparent", color = "transparent")) 
+
+plot_a
+
+ggsave(path = "images", filename = "windfarmlocations.png", bg = "transparent")
