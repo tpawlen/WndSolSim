@@ -25,6 +25,7 @@
   library("ggsci")
   library(rgdal)
   library(raster)
+  library(rasterVis)
 #  library("viridis")
 #  library(nasapower)
   #To get the solar insolation and other meteorological data 
@@ -36,7 +37,7 @@
 setwd("D:/Documents/GitHub/AuroraEval")
 getwd()
 
-wind_profile <- readRDS("WindAtlas_Data_0.5")
+wind_profile <- readRDS("WindAtlas_Data_0.05")
 colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
 
 turb_location <- read_excel("Wind_Turbine_Database_FGP.xlsx")
@@ -119,3 +120,40 @@ ggplot() +
   geom_point(data = turb_location, 
              aes(x = Longitude, y = Latitude), color = "forestgreen", size = 1) + 
   theme_void()
+
+
+# Map of Alberta
+gplot(wind_profile) + 
+  geom_tile(aes(fill = Wind)) +
+  geom_polygon(data = alberta_ellipsoid1, 
+               aes(x = long, y = lat, group = group), 
+               fill = "transparent", colour = "black") +
+  scale_fill_gradientn(colors = rev(hcl.colors(20, "RdYlGn"))) +
+  #  geom_point(data = turb_pot, 
+  #             aes(x = Longitude, y = Latitude, size = Capacity, shape = 18), 
+  #             color = "orangered") +
+  #  geom_point(data = plant, 
+  #             aes(x = Longitude, y = Latitude, size = Capacity, shape = 16),
+  #             color = "limegreen") + 
+  #  scale_y_continuous(limits = c(49, 60.1)) +
+  #  scale_color_continuous(name = "Average Wind Speed at 80m",
+  #                         guide = legend)
+  #  scale_shape_identity(name = "Status",
+  #                       breaks = c(18, 16),
+#                       labels = c("AESO Planning", "Active"),
+#                       guide = "legend") +
+#  scale_color_identity(name = "Status",
+#                       breaks = c("orangered", "limegreen"),
+#                       labels = c("AESO Planning", "Active"),
+#                       guide = "legend") +
+theme(panel.background = element_rect(fill = "transparent"),
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      plot.background = element_rect(fill = "transparent", color = NA),
+      axis.title = element_blank(),
+      axis.text = element_blank(),
+      axis.ticks = element_blank(),
+      legend.background = element_rect(fill = "transparent"),
+      legend.box.background = element_rect(fill = "transparent")) 
+
+ggsave("windfarmlocations.png", AB, bg = "transparent")
