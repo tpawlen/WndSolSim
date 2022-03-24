@@ -78,11 +78,11 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
 # Run for loop to enter a series of coordinates in Canada's Wind Atlas and save
 # the Annual Mean Wind Speed. THIS TAKES A LONG TIME AND A LOT OF PROCESSING 
 # POWER. At the end, data will be saved to a RDS in a location printed on screen
-{
+
   # Note the start time
   old <- Sys.time()
-  
-  for(i in 5618:nrow(wind_prof)) {
+  {  
+  for(i in 28437:nrow(wind_prof)) {
     url <- paste(cons1, wind_prof[i,1], cons2, wind_prof[i,2], sep = "")
     wind <- readHTMLTable(url,which=1)
     wind_prof[i,3] <- as.numeric(substr(wind[1,2], 1, 4))
@@ -102,4 +102,4 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
   New <- Sys.time() - old
   print(New)
 }
-    
+     
