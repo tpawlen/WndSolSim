@@ -68,14 +68,14 @@ alberta_ellipsoid1 =
 #  canada_level2_ellipsoid[which(canada_level2_ellipsoid$NAME_1 == "Alberta"),]
 
 # Excludes any points outside the province
-inout = over(
-  SpatialPoints(wind_profile[,c("Longitude","Latitude")],proj4string=CRS(projection(alberta_ellipsoid1))),
-  as(alberta_ellipsoid1,"SpatialPolygons")
-)
+#inout = over(
+#  SpatialPoints(wind_profile[,c("Longitude","Latitude")],proj4string=CRS(projection(alberta_ellipsoid1))),
+#  as(alberta_ellipsoid1,"SpatialPolygons")
+#)
 
 # Map of Alberta
 ggplot() + 
-  geom_tile(data = wind_profile[!is.na(inout),], 
+  geom_tile(data = wind_profile,#[!is.na(inout),], 
             aes(x = Longitude, y = Latitude, fill = Wind)) +
   geom_polygon(data = alberta_ellipsoid1, 
                aes(x = long, y = lat, group = group), 
