@@ -60,15 +60,15 @@ df2$Plant_Type<-fct_relevel(df2$Plant_Type, "SOLAR",after=Inf)
 df2$Plant_Type<-fct_relevel(df2$Plant_Type, "IMPORT",after=Inf)
 df2$Plant_Type<-fct_relevel(df2$Plant_Type, "EXPORT",after=Inf)
 
-df2 <-df2 %>% 
-  mutate(ei=deemed_ei(Plant_Type,as.character(Year)), 
-         oba=oba_type(Plant_Type,as.character(Year)), 
-         ctax=ctax_year(as.character(Year)),
-         ctax_net=(deemed_ei(Plant_Type,as.character(Year))-
-                     oba_type(Plant_Type,as.character(Year)))*
-           ctax_year(as.character(Year)),
-                     ctax_net_rev=avg_rev-ctax_net,
-                     policy=ifelse(as.character(Year)>="2018","CCIR","SGER"))
+#df2 <-df2 %>% 
+#  mutate(ei=deemed_ei(Plant_Type,as.character(Year)), 
+#         oba=oba_type(Plant_Type,as.character(Year)), 
+#         ctax=ctax_year(as.character(Year)),
+#         ctax_net=(deemed_ei(Plant_Type,as.character(Year))-
+#                     oba_type(Plant_Type,as.character(Year)))*
+#           ctax_year(as.character(Year)),
+#                     ctax_net_rev=avg_rev-ctax_net,
+#                     policy=ifelse(as.character(Year)>="2018","CCIR","SGER"))
 
 ###set_png(file="images/price_capture_avg.png", width = 1400, height = 750)
 my_palette<-c(colors_tableau10()[8],

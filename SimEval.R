@@ -3,6 +3,8 @@
 # The entire code can be run once per session, then just the functions can be 
 # used for each iteration.
 #
+# AESOcomp(year,month,day,case) plots a week worth of the simulation data 
+# against the AESO data
 # Eval4(month, day, case) plots the output of a single specified week over 4 
 #    years for a specified case study with storage separate on top, price in the  
 #    middle, and output on the bottom. Basically 4 PrOuts.
@@ -43,7 +45,7 @@
   }
 
 {
-  DB <- "Mar_24_2022"
+  DB <- "Mar_18_2022"
 # Connect to SQL database
 ################################################################################
 con <- dbConnect(odbc(),
