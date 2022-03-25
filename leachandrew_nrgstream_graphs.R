@@ -56,7 +56,7 @@ df2$Plant_Type<-fct_relevel(df2$Plant_Type, "OTHER",after=Inf)
 df2$Plant_Type<-fct_relevel(df2$Plant_Type, "HYDRO",after=Inf)
 df2$Plant_Type<-fct_relevel(df2$Plant_Type, "WIND",after=Inf)
 df2$Plant_Type<-fct_relevel(df2$Plant_Type, "SOLAR",after=Inf)
-df2$Plant_Type<-fct_relevel(df2$Plant_Type, "TRADE",after=Inf)
+#df2$Plant_Type<-fct_relevel(df2$Plant_Type, "TRADE",after=Inf)
 df2$Plant_Type<-fct_relevel(df2$Plant_Type, "IMPORT",after=Inf)
 df2$Plant_Type<-fct_relevel(df2$Plant_Type, "EXPORT",after=Inf)
 
@@ -81,6 +81,30 @@ my_palette<-c(colors_tableau10()[8],
               colors_tableau10()[2],
               colors_tableau10()[9],
               colors_tableau10_light()[9])
+
+slide_theme<-function(){
+  return( theme(panel.border = element_blank(),
+                panel.grid = element_blank(),
+                panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
+                axis.line.x = element_line(color = "gray"),
+                axis.line.y = element_line(color = "gray"),
+                axis.text = element_text(size = 16),
+                axis.text.x = element_text(margin = margin(t = 10)),
+                axis.title = element_text(size = 16),
+                #axis.label.x = element_text(size=20,vjust=+5),
+                plot.subtitle = element_text(size = 12,hjust=0.5),
+                plot.caption = element_text(face="italic",size = 12,hjust=0),
+                legend.key.width=unit(2,"line"),
+                legend.position = "bottom",
+                #legend.direction = "horizontal",
+                #legend.box = "horizontal",
+                legend.title = element_text(size = 16),
+                legend.text = element_text(size = 16),
+                plot.title = element_text(hjust=0.5,size = 20),
+                plot.margin=unit(c(1,1,1.5,1.2),"cm")
+  )
+  )
+}
 
 df6 <- df2 %>%
   #  filter(Plant_Type != "MARKET") %>%
@@ -169,5 +193,7 @@ cp_plot <- annotate_figure(cp_plot2,
                            fig.lab.pos = "bottom.right", 
                            fig.lab.face = "italic", 
                            fig.lab.size = 10)
+
+cp_plot
 
 ggsave(path = "images", filename = "captureprice.png", bg = "transparent")

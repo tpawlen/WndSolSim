@@ -85,6 +85,9 @@ alberta_ellipsoid1 =
 #  as(alberta_ellipsoid1,"SpatialPolygons")
 #)
 
+active <- wind_farm %>%
+  filter(Status == "Active")
+
 # Map of Alberta
 AB <- ggplot() + 
   geom_tile(data = wind_profile, 
@@ -104,16 +107,44 @@ AB <- ggplot() +
         legend.background = element_rect(fill = "transparent"),
         legend.box.background = element_rect(fill = "transparent", color = "transparent")) 
 
-AB + geom_point(data = wind_farm,
+Act <- AB + geom_point(data = active,
+                aes(x= Longitude, y = Latitude, size = Capacity), 
+                shape = 16, color = "black") +
+  ggtitle("Active Wind Farms") +
+  theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5))
+
+All <- AB + geom_point(data = wind_farm,
                 aes(x= Longitude, y = Latitude, size = Capacity, shape = Status, color = Status)) + 
   scale_shape_manual(values = c(16,18), labels = c("Active","AESO Planning")) +
   scale_color_manual(values = c("black", "grey39"), 
                      labels = c("Active","AESO Planning")) +
-  guides(shape = guide_legend(override.aes = list(size = 5)))
+  guides(shape = guide_legend(override.aes = list(size = 5))) +
+  ggtitle("Active and Planned Wind Farms") +
+  theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5))
 
 ggsave(path = "images", filename = "windfarmlocations.png", bg = "transparent")
 
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
 
+wnd_plot2 <- ggarrange(ggarrange(Act + theme(legend.position = "none"),
+                                NULL,
+                                All + theme(legend.position = "none"),
+                                nrow=1, widths = c(1,0,1)),
+                      g_legend(All), 
+                      ncol=2, widths=c(6,1))
+
+wnd_plot <- annotate_figure(wnd_plot2, 
+                           fig.lab = "Source: Canada Wind Atlas, Canada Wind Turbine Database, AESO Data 
+                           Graph by Taylor Pawlenchuk",
+                           fig.lab.pos = "bottom.right", 
+                           fig.lab.face = "italic", 
+                           fig.lab.size = 8)
+
+ggsave(path = "images", filename = "windfarmlocationsdouble.png", bg = "transparent")
 
 # Map of Canada
 ggplot() + 

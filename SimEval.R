@@ -304,7 +304,7 @@ week_price <- function(year, month, day,case) {
     labs(y = "$/MWh", fill = "Resource") +
     scale_x_datetime(expand=c(0,0)) +
     scale_y_continuous(expand=c(0,0), 
-                       limits= c(0,90),
+                       limits= c(0,130),
                        labels = label_number(accuracy = 1))
   #, limits = c(NA, prlimit)) 
 }
@@ -359,7 +359,8 @@ Built <- function(case) {
     aes(Time_Period, Units, fill = Fuel_Type, group = Fuel_Type) +
     geom_area(alpha=0.6, size=.5, colour="black") +
     theme_bw() +
-    theme(panel.grid = element_blank(), 
+    theme(panel.grid = element_blank(),
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
           legend.justification = c(0,0.5)) +
     labs(x = "Date", y = "# of Units Built", fill = "Fuel Type") +
     scale_y_continuous(expand=c(0,0)) +
