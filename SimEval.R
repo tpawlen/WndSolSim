@@ -43,7 +43,7 @@
   }
 
 {
-  DB <- "Mar_18_2022"
+  DB <- "Mar_24_2022"
 # Connect to SQL database
 ################################################################################
 con <- dbConnect(odbc(),
@@ -55,6 +55,9 @@ con <- dbConnect(odbc(),
                  Port = 49172)
 
   {
+setwd("D:/Documents/GitHub/AuroraEval")
+AESO_gen <- readRDS("AESO_generation_data.rds")    
+    
 # Write data to environment and set variables
 ################################################################################
 data_raw_Hour <- dbReadTable(con,'ResourceGroupHour1')
@@ -152,27 +155,42 @@ sim_filt <- function(inputdata) {
   # Filter the data by resource
   {Coal <- inputdata %>%
     filter(ID=="LTO_Coal")
+  Coal$ID <- "Coal"
+  
   Coal2Gas  <- inputdata %>%
     filter(ID=="LTO_Coal2Gas")
+  Coal2Gas$ID <- "Coal2Gas"
+  
   Cogen  <- inputdata %>%
     filter(ID=="LTO_Cogen")
+  Cogen$ID <- "Cogen"
+  
   NatGas <- inputdata %>%
     filter(ID=="LTO_NatGas")
+  NatGas$ID <- "NatGas"
+  
   Other <- inputdata %>%
     filter(ID=="LTO_Other")
+  Other$ID <- "Other"
+  
   Solar <- inputdata %>%
     filter(ID=="LTO_Solar")
+  Solar$ID <- "Solar"
+  
   Storage <- inputdata %>%    
     filter(ID=="LTO_Storage")
+  Storage$ID <- "Storage"
+  
   Wind <- inputdata %>%
     filter(ID=="LTO_Wind")
+  Wind$ID <- "Wind"
   }
   
   # Combine the grouped data
   {case <- rbind(Coal, Coal2Gas, Cogen, NatGas, Solar, Wind, Storage, Other)
-    case$ID <- factor(case$ID, levels=c("LTO_Coal", "LTO_Coal2Gas", "LTO_Cogen", 
-                                        "LTO_NatGas", "LTO_Other", "LTO_Wind", 
-                                        "LTO_Solar", "LTO_Storage"))
+    case$ID <- factor(case$ID, levels=c("Coal", "Coal2Gas", "Cogen", 
+                                        "NatGas", "Other", "Wind", 
+                                        "Solar", "Storage"))
   }
   return(case)
 }
@@ -213,10 +231,7 @@ Week1 <- function(year, month, day, case) {
     rbind(.,Import) %>%
     filter(Run_ID == case)
   
-  data$ID <- factor(data$ID, levels=c("Import", "LTO_Coal", 
-                                      "LTO_Coal2Gas", "LTO_Cogen", "LTO_NatGas", 
-                                      "LTO_Other", "LTO_Wind", "LTO_Solar", 
-                                      "LTO_Storage"))
+  data$ID <- fct_relevel(data$ID, "Import", after=0)
   
   # Select only a single week
     WK <- HrTime(data,year,month,day)
@@ -478,4 +493,75 @@ Eval4 <- function(month,day,case) {
                     paste("Simulation: \n",DB, sep = ""))),
             ncol = 2, widths=c(7,1))
 }
+}
+
+################################################################################
+# Function to plot actual AESO data
+################################################################################
+Week_act <- function(year,month,day) {
+  
+  colours = c("grey", "darkslategrey", "black", "coral4", "darkolivegreen3", "goldenrod4", 
+              "darkcyan", "dodgerblue", "forestgreen", "gold", "cyan")
+  
+  wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
+  wk_end <- as.POSIXct(paste(day+7,month,year, sep = "/"), format="%d/%m/%Y")
+  
+  # Select only a single week
+  ################################################################################
+  WK <- AESO_gen %>%
+    filter(date >= wk_st & date <= wk_end)
+  
+  WK$ID<-fct_relevel(WK$ID, "Coal", after = Inf)
+  WK$ID<-fct_relevel(WK$ID, "Duel", after = Inf)
+  WK$ID<-fct_relevel(WK$ID, "Comb", after = Inf)
+  WK$ID<-fct_relevel(WK$ID, "Cogen", after = Inf)
+  WK$ID<-fct_relevel(WK$ID, "Gas", after = Inf)
+  WK$ID<-fct_relevel(WK$ID, "Simple", after = Inf)
+  WK$ID<-fct_relevel(WK$ID, "Hydro", after = Inf)
+  WK$ID<-fct_relevel(WK$ID, "Other", after = Inf)
+  WK$ID<-fct_relevel(WK$ID, "Wind", after = Inf)
+  WK$ID<-fct_relevel(WK$ID, "Solar", after = Inf)
+  WK$ID<-fct_relevel(WK$ID, "Storage", after = Inf)
+  
+  # Plot the data    
+  ################################################################################
+  ggplot() +
+    geom_area(data = WK, aes(x = date, y = Utilized, fill = ID), 
+              alpha=0.6, size=.5, colour="black") +
+    
+    scale_x_datetime(expand=c(0,0)) +
+    
+    # Set the theme for the plot
+    ################################################################################
+  theme_bw() +
+    theme(panel.grid = element_blank(),
+          legend.position = "right",
+    ) +
+    scale_y_continuous(expand=c(0,0), limits = c(0,ylimit)) +
+    labs(x = "Date", y = "Output (MWh)", fill = "Resource") +
+    scale_fill_manual(values = colours)
+}
+
+################################################################################
+################################################################################
+# Function to plot actual AESO data against simulation data
+################################################################################
+################################################################################
+
+AESOcomp <- function(year,month,day,case) {
+  ggarrange(arrangeGrob(Week1(year,month,day,case)+
+                          ggtitle(paste("Simulation: ",DB, sep = ""))+
+                          theme(legend.position ="none",
+                                plot.title = element_text(hjust = 0.5)),
+                          
+                        Week_act(year,month,day)+
+                          ggtitle("AESO Data")+
+                          theme(legend.position ="none",
+                                plot.title = element_text(hjust = 0.5)),
+                          
+                        ncol=2),
+            arrangeGrob(g_legend(Week1(year,month,day,case)), 
+                        g_legend(Week_act(year,month,day)),
+                        nrow = 2),
+            ncol = 2, widths=c(7,1))
 }
