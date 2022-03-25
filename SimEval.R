@@ -391,10 +391,18 @@ Units <- function(case, Fuel) {
     filter(Run_ID == case & LT_Iteration == max(LT_Iteration) & 
              Time_Period == "Study" & Fuel_Type == Fuel) 
   
+  data$Sim <- ifelse(grepl("Potential", data$Name), "yes", "no")
+  
+  
   data %>%
     ggplot() +
-    aes(Name, Units_Built) + 
-    geom_col() +
+    geom_col(aes(Name, Units_Built, fill = Sim)) +
+    scale_fill_manual(
+      values = c("no" = "grey",
+                 "yes" = "firebrick1"),
+      labels = c("no" = "AESO Queue",
+                 "yes" = "Simulated Location")
+    ) +
     labs(x = "Plant Name", y = "Units Built") +
     theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1)) 
 }
