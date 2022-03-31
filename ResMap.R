@@ -6,24 +6,24 @@
 # January 2022; Last revision: January 18, 2022
 
 {library(rgeos)
-  library(maptools)
-  library(ggmap) 
+#  library(maptools)
+#  library(ggmap) 
   library(ggplot2)
+  library(ggpubr)
 #  library(reshape2)
-#  library(cowplot)
+  library(cowplot)
 #  library(patchwork)
-  library(sp)
-  library(rgdal)
+#  library(sp)
+#  library(rgdal)
   library(raster)
   library(tidyverse)
-#  library(ggplot2)
   library(dplyr)
 #  library(plotly) # For interactive charts
 #  library(odbc)
 #  library(DBI)
   library("readxl")
-  library("ggsci")
-  library(rgdal)
+#  library("ggsci")
+#  library(rgdal)
   library(raster)
 #  library(rasterVis)
   library(colorRamps)
@@ -144,15 +144,17 @@ Act_wind <- AB + geom_point(data = active,
 
 ################################################################################
 ################################################################################
-# Map of Alberta with active and planned wind farms
+# Map of Alberta with active and queued wind farms
 ################################################################################
 ################################################################################
 
+labs1 <- c("Active","AESO Queue")
+
 AESO_wind <- AB + geom_point(data = wind_farm,
                 aes(x= Longitude, y = Latitude, size = Capacity, shape = Status, color = Status)) + 
-  scale_shape_manual(values = c(16,18), labels = c("Active","AESO Planning")) +
+  scale_shape_manual(values = c(16,18), labels = labs1) +
   scale_color_manual(values = c("black", "grey39"), 
-                     labels = c("Active","AESO Planning")) +
+                     labels = labs1) +
   guides(shape = guide_legend(override.aes = list(size = 5))) +
   ggtitle("Active and Planned Wind Farms") +
   theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5))
@@ -165,17 +167,20 @@ ggsave(path = "images", filename = "windfarmlocations.png", bg = "transparent")
 
 ################################################################################
 ################################################################################
-# Map of Alberta with active and planned wind farms
+# Map of Alberta with active and queued wind farms with selected locations for
+# simulation
 ################################################################################
 ################################################################################
 
+labs2 <- c("Active","AESO Queue","Simulated")
+
 Sim_wind <- AB + geom_point(data = wind_sim,
                              aes(x= Longitude, y = Latitude, size = Capacity, shape = Status, color = Status)) + 
-  scale_shape_manual(values = c(16,18,17), labels = c("Active","AESO Planning","Simulated")) +
+  scale_shape_manual(values = c(16,18,17), labels = labs2) +
   scale_color_manual(values = c("black", "grey39","red4"), 
-                     labels = c("Active","AESO Planning","Simulated")) +
+                     labels = labs2) +
   guides(shape = guide_legend(override.aes = list(size = 5))) +
-  ggtitle("Active, Planned, & Potential \nWind Farms") +
+  ggtitle("Active, Queued, & Potential \nWind Farms") +
   theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5))
 
 ################################################################################
