@@ -43,8 +43,12 @@ getwd()
 # Wind Speed data from Canada Wind Atlas 
 # http://www.windatlas.ca/nav-en.php?no=46&field=EU&height=80&season=ANU
 ################################################################################
-wind_profile <- readRDS("WindAtlas_Data_0.05")
-colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile1 <- readRDS("WindAtlas_Data_0.05")
+colnames(wind_profile1) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile2 <- readRDS("WindAtlas_Data2_0.05")
+colnames(wind_profile2) <- c('Latitude', 'Longitude', 'Wind')
+
+wind_profile <- rbind(wind_profile1, wind_profile2)
 
 ################################################################################
 # Location of operational wind turbines, from Canadian Wind Turbine Database
