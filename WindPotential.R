@@ -82,7 +82,7 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
   # Note the start time
   old <- Sys.time()
   {  
-  for(i in 1:nrow(wind_prof)) {
+  for(i in 32010:nrow(wind_prof)) {
     url <- paste(cons1, wind_prof[i,1], cons2, wind_prof[i,2], sep = "")
     wind <- readHTMLTable(url,which=1)
     wind_prof[i,3] <- as.numeric(substr(wind[1,2], 1, 4))
@@ -92,8 +92,8 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
     #print(paste(wind_prof[i,1],wind_prof[i,2],sep = ","))
   }
 
-  # Creates an RDS file with the entire dataset.
-  saveRDS(wind_prof, file = paste("WindAtlas_Data", res, sep = "_"))
+    # Creates an RDS file with the entire dataset.
+  saveRDS(wind_prof, file = paste("WindAtlas_Data2", res, sep = "_"))
   
   # Prints the location of the file.
   getwd()
@@ -102,4 +102,4 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
   New <- Sys.time() - old
   print(New)
 }
-     
+               
