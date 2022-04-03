@@ -20,6 +20,7 @@ setwd("D:/Documents/GitHub/AuroraEval")
 # Load Generation data
 ################################################################################
 ################################################################################
+{
 headergen <- read.csv('AESO_GenTable.csv', nrows = 2, header = FALSE, 
                       stringsAsFactors = FALSE)
 
@@ -32,13 +33,13 @@ numeric_columns <- sapply(num_gen,function(x){mean(as.numeric(is.na(x)))<0.5})
 act_gen <- data.frame(num_gen[,numeric_columns], char_gen[,!numeric_columns])
 
 colnames(act_gen) <- headergen[2,]
-
+}
 ################################################################################
 ################################################################################
 # Load Price data
 ################################################################################
 ################################################################################
-
+{
 headerprice <- read.csv('AESOPoolPrice.csv', nrows = 1, header = FALSE, 
                         stringsAsFactors = FALSE)
 
@@ -59,14 +60,14 @@ act_price$date <- char_price[,1]
 # date time conversions doesn't work for all dates right now...
 ################################################################################
 act_price$date <- as.POSIXct(act_price$date, format="%m/%d/%Y %H")
-
+}
 ################################################################################
 ################################################################################
 # Segregate data according to generation type
 ################################################################################
 ################################################################################
 {
-date <- as.POSIXct(char_data[,1], format="%m/%d/%Y %I:%M:%S %p")
+date <- as.POSIXct(char_gen[,1], format="%m/%d/%Y %I:%M:%S %p")
 Coal <- act_gen[,2:7]
 Coal$date <- date
 Coal$ID <- "Coal"
@@ -105,7 +106,7 @@ Wind$ID <- "Wind"
 ################################################################################
 # Combine generation into one data frame
 ################################################################################
-gen_table1 <- rbind(Coal, Cogen, Comb, Duel, Gas, Hydro, Other, Simple, Solar, 
+gen_table <- rbind(Coal, Cogen, Comb, Duel, Gas, Hydro, Other, Simple, Solar, 
                    Stor, Wind)
 
 ################################################################################
@@ -151,7 +152,7 @@ Week_act <- function(year,month,day) {
   
   # Select only a single week
   ################################################################################
-  WK <- AESO_gen %>%
+  WK <- gen_table %>%
     filter(date >= wk_st & date <= wk_end)
   
   WK$ID<-fct_relevel(WK$ID, "Coal", after = Inf)

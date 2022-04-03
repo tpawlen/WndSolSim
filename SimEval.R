@@ -40,10 +40,11 @@
   library(lubridate)
   library(cowplot)
   library(scales)
+  library(dplyr)
   }
 
 {
-  DB <- "Mar_18_2022"
+  DB <- "Mar_31_2022"
 # Connect to SQL database
 ################################################################################
 con <- dbConnect(odbc(),
@@ -77,7 +78,7 @@ LTRes <- data_LTResValue
 ################################################################################
 {
 Yr1 <- 2020
-Yr2 <- 2021
+Yr2 <- 2025
 Yr3 <- 2030
 Yr4 <- 2035
   
@@ -173,6 +174,8 @@ sim_filt <- function(inputdata) {
     case$ID <- factor(case$ID, levels=c("LTO_Coal", "LTO_Coal2Gas", "LTO_Cogen", 
                                         "LTO_NatGas", "LTO_Other", "LTO_Wind", 
                                         "LTO_Solar", "LTO_Storage"))
+    levels(case$ID) <- c("Coal", "Coal2Gas", "Cogen", "NatGas", "Other", "Wind",
+                         "Solar", "Storage")
   }
   return(case)
 }
@@ -213,10 +216,9 @@ Week1 <- function(year, month, day, case) {
     rbind(.,Import) %>%
     filter(Run_ID == case)
   
-  data$ID <- factor(data$ID, levels=c("Import", "LTO_Coal", 
-                                      "LTO_Coal2Gas", "LTO_Cogen", "LTO_NatGas", 
-                                      "LTO_Other", "LTO_Wind", "LTO_Solar", 
-                                      "LTO_Storage"))
+  data$ID <- factor(data$ID, levels=c("Import", "Coal", "Coal2Gas", "Cogen", 
+                                      "NatGas", "Other", "Wind", "Solar", 
+                                      "Storage"))
   
   # Select only a single week
     WK <- HrTime(data,year,month,day)
@@ -237,9 +239,17 @@ Week1 <- function(year, month, day, case) {
     theme(panel.grid = element_blank(),
           legend.position = "right",
           ) +
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent")
+    ) +
     scale_y_continuous(expand=c(0,0), limits = c(NA,ylimit)) +
 #    ylim(NA,ylimit) +
-    labs(x = "Date", y = "Output (MWh)", fill = "Resource") +
+    labs(x = "Date", y = "Output (MWh)", fill = "Simulated Data: \nResource") +
     scale_fill_manual(values = colours1)
 }
 
@@ -360,7 +370,8 @@ Built <- function(case) {
     geom_area(alpha=0.6, size=.5, colour="black") +
     theme_bw() +
     theme(panel.grid = element_blank(), 
-          legend.justification = c(0,0.5)) +
+          legend.justification = c(0,0.5),
+          ) +
     labs(x = "Date", y = "# of Units Built", fill = "Fuel Type") +
     scale_y_continuous(expand=c(0,0)) +
     scale_x_discrete(expand=c(0,0)) +
@@ -378,7 +389,17 @@ Units <- function(case, Fuel) {
     aes(Name, Units_Built) + 
     geom_col() +
     labs(x = "Plant Name", y = "Units Built") +
-    theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1)) 
+    scale_y_continuous(expand = c(0,0),
+                       limits = c(0,(max(data$Units_Built)+1))) +
+    theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          panel.border = element_rect(colour = "black", fill = "transparent")) 
 }
    
 # Unit specific bar chart showing availability not built 
@@ -392,7 +413,17 @@ Slack <- function(case, Fuel) {
     aes(Name, Max_Limit_Slack) + 
     geom_col() +
     labs(x = "Plant Name", y = "Units Available") +
-    theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1))
+    scale_y_continuous(expand = c(0,0),
+                       limits = c(0,(max(data$Max_Limit_Slack)+1))) +
+    theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          panel.border = element_rect(colour = "black", fill = "transparent"))
 }
 
 ################################################################################
@@ -477,4 +508,8 @@ Eval4 <- function(month,day,case) {
                     paste("Simulation: \n",DB, sep = ""))),
             ncol = 2, widths=c(7,1))
 }
+}
+
+imsave <- function(name) {
+  ggsave(path = "images", filename = paste(name,".png", sep = ""), bg = "transparent")
 }

@@ -22,7 +22,7 @@
 }
 
 # Define variables
-{location <- "la56724lo240504.csv"  # The location lat and long as it appears on file.
+{location <- "la53082lo245821.csv"  # The location lat and long as it appears on file.
   hbht <- 100   #Hubheight of wind turbine in meters
   cutin <- 3    #Cut in wind speed (m/s)
   rated <- 12   #Wind speed at maximum capacity (m/s)
@@ -59,6 +59,7 @@ getSeasonPOSIXct <- function(DATES) {
                   ifelse (d >= SS & d < FE, "Summer", "Fall")))
 }
 
+{
 # Open the data file
 # Identify the location of the downloaded csv file
 setwd("D:/Documents/Education/Masters Degree/Datasets/Wind Data/Wind Atlas Data")
@@ -84,6 +85,7 @@ TWF$DateTime <- TWF$DateTime.DateHeure %>%
 TWF<-TWF %>%  mutate(year=year(DateTime), month=month(DateTime), 
                      week=week(DateTime), day=day(DateTime), hour=hour(DateTime),
                      season=getSeason(as.Date(DateTime)), julian=yday(DateTime))
+}
 
 #FIXING THE BLIP, copied and adapted from Natalia's code. 
 # Code identifies the applicable hour(s), then the months it applys to, and 
@@ -92,7 +94,6 @@ TWF<-TWF %>%  mutate(year=year(DateTime), month=month(DateTime),
   imax=nrow(TWF)
   #Fixed <- sprintf("FixedWindSpeed_%sm", hbht)
   TWF["FixedWindSpeed_100"]=NA
-}
 
 for(i in 1:imax){
   if (TWF$hour[i] == 7 && 
@@ -119,13 +120,14 @@ for(i in 1:imax){
 # Check if there are any NAs on the file
 colSums(is.na(TWF))
 
+
 # Simulate Output as a percentage of maximum capacity
 
-{i=as.integer()
+  i=as.integer()
   j=as.integer()
   imax <- nrow(TWF)
   maxOutput <- 345
-}
+
 
 # Create the output column with all zeros.
 TWF$output<-TWF$FixedWindSpeed_100*0
@@ -151,7 +153,7 @@ TWF$output<-TWF$FixedWindSpeed_100*0
                                 (-2111.135*TWF$FixedWindSpeed_100[i])+
                                 1827.68))}
   }
-}
+
 
 
 for (j in 1:imax){
@@ -183,6 +185,7 @@ for (n in 1:imax){
     TWF$Air[n]<-0
   }
 }
+}
 
 # Calculate the percentage of capacity being used
 TWF$percentage <- TWF$Air/maxOutput
@@ -190,11 +193,13 @@ TWF$percentage <- TWF$Air/maxOutput
 # Calculate the outage percentage. 
 TWF$Outage <- (1-TWF$percentage)*100
 
+
 # Summarize the output to enter into Aurora
 Aurora <- TWF %>%
   filter(year==2009) %>%
   group_by(year, month, day, hour) %>%
   summarise(Outage=mean(Outage, na.rm = TRUE), .groups="keep")
+}
 
 #SAVE FILE (To save the processed data) This is to be entered into Aurora.
 write.csv(Aurora, file=paste(location,"_Output.csv"))

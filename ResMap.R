@@ -43,12 +43,19 @@ getwd()
 # Wind Speed data from Canada Wind Atlas 
 # http://www.windatlas.ca/nav-en.php?no=46&field=EU&height=80&season=ANU
 ################################################################################
+wind_profile <- readRDS("WindAtlas_Data_0.05")
+colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
+
+{
 wind_profile1 <- readRDS("WindAtlas_Data_0.05")
 colnames(wind_profile1) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile2 <- readRDS("WindAtlas_Data2_0.05")
 colnames(wind_profile2) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile3 <- readRDS("WindAtlas_Data3_0.05")
+colnames(wind_profile3) <- c('Latitude', 'Longitude', 'Wind')
 
-wind_profile <- rbind(wind_profile1, wind_profile2)
+wind_profile <- rbind(wind_profile1, wind_profile2, wind_profile3)
+}
 
 ################################################################################
 # Location of operational wind turbines, from Canadian Wind Turbine Database
@@ -151,7 +158,7 @@ Act_wind <- AB + geom_point(data = active,
 # Map of Alberta with active and queued wind farms
 ################################################################################
 ################################################################################
-
+{
 labs1 <- c("Active","AESO Queue")
 
 AESO_wind <- AB + geom_point(data = wind_farm,
@@ -162,7 +169,7 @@ AESO_wind <- AB + geom_point(data = wind_farm,
   guides(shape = guide_legend(override.aes = list(size = 5))) +
   ggtitle("Active and Planned Wind Farms") +
   theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5))
-
+}
 ################################################################################
 # Save map as png
 ################################################################################
@@ -175,7 +182,7 @@ ggsave(path = "images", filename = "windfarmlocations.png", bg = "transparent")
 # simulation
 ################################################################################
 ################################################################################
-
+{
 labs2 <- c("Active","AESO Queue","Simulated")
 
 Sim_wind <- AB + geom_point(data = wind_sim,
@@ -186,7 +193,7 @@ Sim_wind <- AB + geom_point(data = wind_sim,
   guides(shape = guide_legend(override.aes = list(size = 5))) +
   ggtitle("Active, Queued, & Potential \nWind Farms") +
   theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5))
-
+}
 ################################################################################
 # Save map as png
 ################################################################################
