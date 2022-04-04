@@ -260,7 +260,8 @@ plot_c <- ggplot(wndVSmrk,
         plot.background = element_rect(fill = "transparent", color = NA),
         legend.position = "right",
         legend.background = element_rect(fill = "transparent"),
-        legend.box.background = element_rect(fill = "transparent", color = "transparent"))
+        legend.box.background = element_rect(fill = "transparent", color = "transparent"),
+        text = element_text(size= 15))
 
 plot_c
 
@@ -340,7 +341,8 @@ Week_act <- function(year,month,day) {
           plot.background = element_rect(fill = "transparent", color = NA),
           legend.key = element_rect(colour = "transparent", fill = "transparent"),
           legend.background = element_rect(fill='transparent'),
-          legend.box.background = element_rect(fill='transparent', colour = "transparent")
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          text = element_text(size= 15)
     ) +
     scale_y_continuous(expand=c(0,0), limits = c(0,ylimit)) +
     labs(x = "Date", y = "Output (MWh)", fill = "AESO Data: \nResource") +

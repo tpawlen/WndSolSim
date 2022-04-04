@@ -209,10 +209,11 @@ wkWind <- function(year,month,day) {
     theme(panel.background = element_rect(fill = "transparent"),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
-          plot.background = element_rect(fill = "transparent", color = NA)
+          plot.background = element_rect(fill = "transparent", color = NA),
+          text = element_text(size= 15)
     ) +
     scale_y_continuous(expand=c(0,0)) +
-    labs(x = "Date", y = "Output (MWh)")
+    labs(x = "Date", y = "Wind Output (MWh)")
 }
 
 ################################################################################
@@ -238,7 +239,8 @@ wkPrice <- function(year,month,day) {
     theme(panel.background = element_rect(fill = "transparent"),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
-          plot.background = element_rect(fill = "transparent", color = NA)
+          plot.background = element_rect(fill = "transparent", color = NA),
+          text = element_text(size= 15)
     ) +
     scale_y_continuous(expand=c(0,0)) +
     labs(x = "Date", y = "Pool Price ($)")
