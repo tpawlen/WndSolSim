@@ -350,6 +350,42 @@ Eval <- function(input,case) {
 }
 
 ################################################################################
+# Function for plotting month/year profiles as a percentage of total
+################################################################################
+
+EvalPerc <- function(input,case) {
+  # Filters for the desired case study
+  data <- input %>%
+    filter(Run_ID == case & Condition == "Average")# %>%
+#    group_by(Time_Period, ID) %>%
+#    summarise(n = sum(Output_MWH)) %>%
+#    mutate(Percentage = n / sum(n))
+  
+  # Filter the data by resource
+  case_Time <- sim_filt(data)
+  
+  # Remove negative generation (Storage)
+  case_Time$Output_MWH[case_Time$Output_MWH < 0] <- NA
+  
+  case_Time %>%
+    ggplot() +
+    aes(Time_Period, Output_MWH, fill = ID) +
+    geom_area(position = "fill", alpha=0.6, size=.5, colour="black") +
+    #    facet_wrap(~ Condition, nrow = 1) +
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          plot.title = element_text(hjust = 0.5),
+          plot.subtitle = element_text(hjust = 0.5), 
+          legend.justification = c(0,0.5)) +
+    scale_x_date(expand=c(0,0)) +
+    scale_y_continuous(expand=c(0,0),
+                       labels = scales::percent) +
+    scale_fill_manual(values = colours2) +
+    labs(x = "Date", y = "Percentage of Generation", fill = "Resource") 
+}
+
+################################################################################
 # Function for plotting the resources built
 ################################################################################
 
@@ -426,6 +462,66 @@ Slack <- function(case, Fuel) {
           panel.border = element_rect(colour = "black", fill = "transparent"))
 }
 
+# Unit specific bar chart showing builds with potential builds highlighted
+Units2 <- function(case, Fuel) {
+  data <- Build %>%
+    filter(Run_ID == case & LT_Iteration == max(LT_Iteration) & 
+             Time_Period == "Study" & Fuel_Type == Fuel) %>%
+    mutate(Potential = ifelse(grepl("Potential", Name, fixed = TRUE), 
+                              "Hypothetical", "AESO Queue"))
+  
+  data %>%
+    ggplot() +
+    aes(Name, Units_Built, fill = Potential) + 
+    geom_col() +
+    labs(x = "Plant Name", y = "Units Built") +
+    scale_fill_manual(
+      values = c("Hypothetical"="forestgreen", "AESO Queue"="gray"),
+      guide = "none") +
+    scale_y_continuous(expand = c(0,0),
+                       limits = c(0,(max(data$Units_Built)+1))) +
+    theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          panel.border = element_rect(colour = "black", fill = "transparent")) 
+}
+
+# Unit specific bar chart showing availability not built with potential sites 
+# highlighted
+Slack2 <- function(case, Fuel) {
+  data <- Build %>%
+    filter(Run_ID == case & LT_Iteration == max(LT_Iteration) & 
+             Time_Period == "Study" & Fuel_Type == Fuel) %>%
+    mutate(Potential = ifelse(grepl("Potential", Name, fixed = TRUE), 
+                              "Hypothetical", "AESO Queue")) 
+  
+  data %>%
+    ggplot() +
+    aes(Name, Max_Limit_Slack, fill = Potential) + 
+    geom_col() +
+    labs(x = "Plant Name", y = "Units Available") +
+    scale_fill_manual(
+      values = c("Hypothetical"="forestgreen", "AESO Queue"="gray"),
+      guide = "none") +
+    scale_y_continuous(expand = c(0,0),
+                       limits = c(0,(max(data$Max_Limit_Slack)+1)),
+                       breaks = c(8,16)) +
+    theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          panel.border = element_rect(colour = "black", fill = "transparent"))
+}
+
 ################################################################################
 ################################################################################
 # Combination plotting functions defined
@@ -475,6 +571,16 @@ BuildUnits <- function(case, Fuel) {
                                    axis.text.x = element_blank()),
             Slack(case,Fuel), 
             ncol = 1, align="v", axis = "l",rel_heights = c(1,1))
+  
+  ggdraw(add_sub(p1,paste("Simulation: ",DB, sep = "")))
+}
+
+BuildUnits2 <- function(case, Fuel) {
+  p1 <- plot_grid(Units2(case,Fuel)+theme(axis.title.x = element_blank(),
+                                         axis.text.x = element_blank(),
+                                         text = element_text(size= 15)),
+                  Slack2(case,Fuel)+theme(text = element_text(size= 15)),
+                  ncol = 1, align="v", axis = "l",rel_heights = c(1,1))
   
   ggdraw(add_sub(p1,paste("Simulation: ",DB, sep = "")))
 }
