@@ -237,8 +237,7 @@ wkPrice <- function(year,month,day) {
     scale_x_datetime(expand=c(0,0)) +
     theme_bw() +
     theme(panel.background = element_rect(fill = "transparent"),
-          panel.grid.major.x = element_blank(),
-          panel.grid.minor.x = element_blank(),
+          panel.grid = element_blank(),
           plot.background = element_rect(fill = "transparent", color = NA),
           text = element_text(size= 15)
     ) +

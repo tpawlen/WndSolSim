@@ -6,25 +6,46 @@
 # Eval4(month, day, case) plots the output of a single specified week over 4 
 #    years for a specified case study with storage separate on top, price in the  
 #    middle, and output on the bottom. Basically 4 PrOuts.
+# Eval2(month, day, case) plots the output of a single specified week over 2 
+#    years for a specified case study with storage separate on top, price in the  
+#    middle, and output on the bottom. Basically 2 PrOuts.
+
 # EvalOut(input, case) plots the output averaged over the specified time period 
 #    (month, year) on top with the resources built on the bottom.
+# EvalPerc(input, case) plots the output of each generation type as a percentage
+#     of total generation
 # BuildUnits(case,Fuel) plots the units built for a fuel type along with the 
 #     available units not built.
+# BuildUnits2(case,Fuel) same as BuildUnits, with hypothetical sites highlighted
 # PrOut(year, month, day, case) plots the output of a single specified week for
 #    a specified case study with storage separate on top, price in the middle, 
 #    and output on the bottom.
+# PrOut4(year, month, day, case) same as PrOut with limits set for 4 year 
+#    comparison
+# PrOt(year, month, day, case) same as PrOut minus the storage plot
 #
 # Week1(year, month, day, case) plots the output of a single specified week for
 #    a specified case study.
+# Week14(year, month, day, case) same as Week1 with limits set for 4 year
+#    comparison
 # Stor1(year, month, day, case) plots the storage output of a single specified 
 #    week for a specified case study.
-# Week4(month, day, case) plots the output of a single specified week for 2020,
-#    2025, 2030, & 2035 for a specified case study.
+# Stor14(year, month, day, case) same as Stor1 with limits set for 4 year
+#    comparison
+# Week4(month, day, case) plots the output of a single specified week for 
+#    specified years for a specified case study.
 # week_price(year, month, day, case) plots the price of electricity for a single 
 #    specified week for a specified case study.
+# week_price4(year, month, day, case) same as week_price with limits set for 4 
+#    year comparison
 # Eval(input, case) plots the output averaged over the specified time period 
 #    (month, year)
 # Built(case) plots the resources built over the time span of the study.
+# Units(case, Fuel) plots the units of a particular resource the simulation built
+# Slack(case, Fuel) plots the units available to build in the simulation that 
+#     were not built
+#
+# imsave("name") Saves the image of the plot to directory
 #
 # Author: Taylor Pawlenchuk
 # email: pawlench@ualberta.ca
@@ -44,7 +65,7 @@
   }
 
 {
-  DB <- "Mar_31_2022"
+  DB <- "Apr_1_2022"
 # Connect to SQL database
 ################################################################################
 con <- dbConnect(odbc(),
@@ -77,15 +98,15 @@ LTRes <- data_LTResValue
  # Set variables to identify the case studies
 ################################################################################
 {
-Yr1 <- 2020
-Yr2 <- 2025
-Yr3 <- 2030
-Yr4 <- 2035
-  
+  Yr4Sp <- list(2020,2030,2035,2040)
+  Yr2Sp <- list(2020,2021)
+
 BC <- "Base Case"
 MS  <- "Minimum Solar Constraint"
 LCT <- "Low Carbon Tax"
+HS <- "Hypothetical Sites"
 
+setwd("D:/Documents/GitHub/AuroraEval")
 
 # Set limits for plots to be consistent
 ylimit <- max(Hour$Output_MWH) + max(ZoneHour$Imports)
@@ -135,7 +156,7 @@ Export <- ZH %>%
   'colnames<-'(c("date", "Output_MWH", "Run_ID")) %>%
   add_column(ID = "Export")
 
-Export$Output_MWH <- Export$Output_MWH * -1
+#Export$Output_MWH <- Export$Output_MWH * -1
 
 ImEx <- rbind(Import, Export)
 }
@@ -180,14 +201,6 @@ sim_filt <- function(inputdata) {
   return(case)
 }
 
-# Filters for storage data
-stor_filt <- function(inputdata) {
-  # Filter the data by resource
-  stor <- inputdata %>%
-    filter(ID=="LTO_Storage")
-  return(stor)
-}
-
 # Function to convert the date time for plotting
 HrTime <- function(data, year, month, day) {
     subset(data,
@@ -205,8 +218,66 @@ HrTime <- function(data, year, month, day) {
 ################################################################################
 # Functions for weekly evaluation
 ################################################################################
+  Week1 <- function(year, month, day, case) {
+    # Add imports and exports to data
+    
+    
+    # Filters for the desired case study
+    data <- Hour_pl %>%
+      sim_filt(.) %>%
+      rbind(.,Import) %>%
+      filter(Run_ID == case)
+    
+    data$ID <- factor(data$ID, levels=c("Import", "Coal", "Coal2Gas", "Cogen", 
+                                        "NatGas", "Other", "Wind", "Solar", 
+                                        "Storage"))
+    
+    # Select only a single week
+    WK <- HrTime(data,year,month,day)
+    ZPrice <- HrTime(ZH,year,month,day)
+    Expo <- HrTime(Export,year,month,day)
+    WK$MX <- ZPrice$Demand + Expo$Output_MWH
+    
+    # Set the max and min for the plot
+    MX <- plyr::round_any(max(abs(WK$MX)), 100, f = ceiling)
+    MN <- plyr::round_any(min(WK$Output_MWH), 100, f = floor)
 
-Week1 <- function(year, month, day, case) {
+    # Plot the data    
+    ggplot() +
+      geom_area(data = WK, aes(x = date, y = Output_MWH, fill = ID), 
+                alpha=0.6, size=.5, colour="black") +
+      
+      # Add hourly load line
+      geom_line(data = ZPrice, 
+                aes(x = date, y = Demand), size=2, colour = "black") +
+      scale_x_datetime(expand=c(0,0)) +
+      
+      # Set the theme for the plot
+      theme_bw() +
+      theme(panel.grid = element_blank(),
+            legend.position = "right",
+      ) +
+      theme(axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+            panel.background = element_rect(fill = "transparent"),
+            panel.grid.major.x = element_blank(),
+            panel.grid.minor.x = element_blank(),
+            plot.background = element_rect(fill = "transparent", color = NA),
+            legend.key = element_rect(colour = "transparent", fill = "transparent"),
+            legend.background = element_rect(fill='transparent'),
+            legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+            text = element_text(size= 15)
+      ) +
+      scale_y_continuous(expand=c(0,0), limits = c(MN,MX), 
+                         breaks = seq(MN, MX, by = MX/4)) +
+      labs(x = "Date", y = "Output (MWh)", fill = "Simulated Data: \nResource") +
+      scale_fill_manual(values = colours1)
+  }
+  
+################################################################################
+# Functions for weekly evaluation over four years
+################################################################################  
+  
+Week14 <- function(year, month, day, case) {
   # Add imports and exports to data
   
   
@@ -223,6 +294,18 @@ Week1 <- function(year, month, day, case) {
   # Select only a single week
     WK <- HrTime(data,year,month,day)
     ZPrice <- HrTime(ZH,year,month,day)
+    Expo <- HrTime(Export,year,month,day)
+    data$MX <- ZH$Demand + Export$Output_MWH
+    
+    # Set the max and min for the plot
+    MX1 <- HrTime(data,Yr4Sp[[1]],month,day)
+    MX2 <- HrTime(data,Yr4Sp[[2]],month,day)
+    MX3 <- HrTime(data,Yr4Sp[[3]],month,day)
+    MX4 <- HrTime(data,Yr4Sp[[4]],month,day)
+    MXtime <- rbind(MX1, MX2, MX3, MX4)
+    
+    MX <- plyr::round_any(max(abs(MXtime$MX)), 100, f = ceiling)
+    MN <- plyr::round_any(min(MXtime$Output_MWH), 100, f = floor)
   
   # Plot the data    
   ggplot() +
@@ -239,16 +322,18 @@ Week1 <- function(year, month, day, case) {
     theme(panel.grid = element_blank(),
           legend.position = "right",
           ) +
-    theme(panel.background = element_rect(fill = "transparent"),
+    theme(axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
           plot.background = element_rect(fill = "transparent", color = NA),
           legend.key = element_rect(colour = "transparent", fill = "transparent"),
           legend.background = element_rect(fill='transparent'),
-          legend.box.background = element_rect(fill='transparent', colour = "transparent")
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          text = element_text(size= 10)
     ) +
-    scale_y_continuous(expand=c(0,0), limits = c(NA,ylimit)) +
-#    ylim(NA,ylimit) +
+    scale_y_continuous(expand=c(0,0), limits = c(MN,MX), 
+                       breaks = seq(MN, MX, by = MX/4)) +
     labs(x = "Date", y = "Output (MWh)", fill = "Simulated Data: \nResource") +
     scale_fill_manual(values = colours1)
 }
@@ -261,13 +346,58 @@ Stor1 <- function(year, month, day, case) {
   
   # Filters for the desired case study
   data <- Hour_pl %>%
-    stor_filt(.) %>%
+    filter(ID=="LTO_Storage") %>%
+    filter(Run_ID == case)
+  
+  
+  # Select only a single week
+  WK <- HrTime(data,year,month,day)
+  
+  # Set the max and min for the plot
+  MX <- plyr::round_any(max(abs(WK$Output_MWH)), 10, f = ceiling)
+  
+  # Plot the data    
+  ggplot() +
+    geom_area(data = WK, aes(x = date, y = Output_MWH), 
+              alpha=0.6, size=.5, colour="black") +
+    ggtitle(year)+
+    
+    # Set the theme for the plot
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          plot.title = element_text(hjust = 0.5)
+    ) +
+    scale_x_datetime(expand=c(0,0)) +
+    scale_y_continuous(breaks = seq(-MX, MX, by = MX), 
+                       limits = c(-MX-1,MX+1),
+                       labels = label_number(accuracy = 1)) +
+    labs(x = "Date", y = "Storage\n(MWh)", fill = "Resource") +
+    scale_fill_manual(values = "cyan")
+}
+
+Stor14 <- function(year, month, day, case) {
+  # Add imports and exports to data
+  
+  
+  # Filters for the desired case study
+  data <- Hour_pl %>%
+    filter(ID=="LTO_Storage") %>%
     filter(Run_ID == case)
 
   
   # Select only a single week
   WK <- HrTime(data,year,month,day)
-  MX <- max(WK$Output_MWH)
+  
+  # Set the max and min for the plot
+  MX1 <- HrTime(data,Yr4Sp[[1]],month,day)
+  MX2 <- HrTime(data,Yr4Sp[[2]],month,day)
+  MX3 <- HrTime(data,Yr4Sp[[3]],month,day)
+  MX4 <- HrTime(data,Yr4Sp[[4]],month,day)
+  MXtime <- rbind(MX1, MX2, MX3, MX4)
+  
+  MX <- plyr::round_any(max(abs(MXtime$Output_MWH)), 10, f = ceiling)
   
   # Plot the data    
   ggplot() +
@@ -284,6 +414,7 @@ Stor1 <- function(year, month, day, case) {
     ) +
     scale_x_datetime(expand=c(0,0)) +
     scale_y_continuous(breaks = seq(-MX, MX, by = MX), 
+                       limits = c(-MX-1,MX+1),
                        labels = label_number(accuracy = 1)) +
     labs(x = "Date", y = "Storage\n(MWh)", fill = "Resource") +
     scale_fill_manual(values = "cyan")
@@ -301,6 +432,48 @@ week_price <- function(year, month, day,case) {
   # Select only a single week using function HrTime
   ZPrice <- HrTime(data,year,month,day)
   
+  # Set the max and min for the plot
+  MX <- plyr::round_any(max(abs(ZPrice$Price)), 10, f = ceiling)
+  MN <- plyr::round_any(min(abs(ZPrice$Price)), 10, f = floor)
+  
+  # Plot the data    
+  ggplot() +
+    geom_line(data = ZPrice, 
+              aes(x = date, y = Price), 
+              size = 1.5, colour = "red") +
+    theme_bw() +
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          text = element_text(size= 15)
+    ) +
+    labs(y = "Pool Price \n$/MWh", fill = "Resource") +
+    scale_x_datetime(expand=c(0,0)) +
+    scale_y_continuous(expand=c(0,0), 
+                       limits= c(MN,MX),
+                       #                       labels = label_number(accuracy = 1),
+                       breaks = seq(MN, MX, by = MX/4)
+    )
+}
+
+week_price4 <- function(year, month, day,case) {
+  # Filters for the desired case study
+  data <- ZH %>%
+    filter(Run_ID == case)
+  
+  # Select only a single week using function HrTime
+  ZPrice <- HrTime(data,year,month,day)
+
+  # Set the max and min for the plot
+  MX1 <- HrTime(data,Yr4Sp[[1]],month,day)
+  MX2 <- HrTime(data,Yr4Sp[[2]],month,day)
+  MX3 <- HrTime(data,Yr4Sp[[3]],month,day)
+  MX4 <- HrTime(data,Yr4Sp[[4]],month,day)
+  MXtime <- rbind(MX1, MX2, MX3, MX4)
+  
+  MX <- plyr::round_any(max(abs(MXtime$Price)), 10, f = ceiling)
+  MN <- plyr::round_any(min(abs(MXtime$Price)), 10, f = floor)
+  
   # Plot the data    
   ggplot() +
     geom_line(data = ZPrice, 
@@ -314,9 +487,10 @@ week_price <- function(year, month, day,case) {
     labs(y = "$/MWh", fill = "Resource") +
     scale_x_datetime(expand=c(0,0)) +
     scale_y_continuous(expand=c(0,0), 
-                       limits= c(0,90),
-                       labels = label_number(accuracy = 1))
-  #, limits = c(NA, prlimit)) 
+                       limits= c(MN,MX),
+#                       labels = label_number(accuracy = 1),
+                       breaks = seq(MN, MX, by = MX/4)
+                       )
 }
 
 
@@ -371,6 +545,9 @@ EvalPerc <- function(input,case) {
     ggplot() +
     aes(Time_Period, Output_MWH, fill = ID) +
     geom_area(position = "fill", alpha=0.6, size=.5, colour="black") +
+    geom_hline(yintercept = 0.3, linetype = "dashed", color = "forestgreen", size = 1.5) +
+    geom_vline(xintercept = as.Date(ISOdate(2035, 1,1)),
+               linetype = "dashed", color = "dodgerblue", size = 1.5) +
     #    facet_wrap(~ Condition, nrow = 1) +
     theme_bw() +
     theme(panel.grid = element_blank(),
@@ -380,7 +557,8 @@ EvalPerc <- function(input,case) {
           legend.justification = c(0,0.5)) +
     scale_x_date(expand=c(0,0)) +
     scale_y_continuous(expand=c(0,0),
-                       labels = scales::percent) +
+                       labels = scales::percent, 
+                       breaks = sort(c(seq(0,1,length.out=5),0.3))) +
     scale_fill_manual(values = colours2) +
     labs(x = "Date", y = "Percentage of Generation", fill = "Resource") 
 }
@@ -510,7 +688,7 @@ Slack2 <- function(case, Fuel) {
       guide = "none") +
     scale_y_continuous(expand = c(0,0),
                        limits = c(0,(max(data$Max_Limit_Slack)+1)),
-                       breaks = c(8,16)) +
+                       breaks = c((max(data$Max_Limit_Slack)+1)/2,(max(data$Max_Limit_Slack)+1))) +
     theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1),
           panel.background = element_rect(fill = "transparent"),
           panel.grid.major.x = element_blank(),
@@ -533,9 +711,11 @@ Slack2 <- function(case, Fuel) {
 ################################################################################
 
 Week4 <- function(month,day,case) {
-  ggdraw(add_sub(ggarrange(Week1(Yr1,month,day,case),Week1(Yr2,month,day,case),
-            Week1(Yr3,month,day,case),Week1(Yr4,month,day,case),
-            labels = c(Yr1,Yr2),#,Yr3,Yr4),
+  ggdraw(add_sub(ggarrange(Week14(Yr4Sp[[1]],month,day,case),
+                           Week14(Yr4Sp[[2]],month,day,case),
+                           Week14(Yr4Sp[[3]],month,day,case),
+                           Week14(Yr4Sp[[4]],month,day,case),
+            labels = c(Yr4Sp[[1]],Yr4Sp[[2]]),#,Yr4Sp[[3]],Yr4Sp[[4]]),
             common.legend = TRUE, legend = "right",
             ncol = 2, nrow = 2), DB))
 }
@@ -544,9 +724,24 @@ Week4 <- function(month,day,case) {
 # Function to plot Price and Output together
 ################################################################################
 
-PrOut <- function(year,month,day,case) {
-  plot_grid(Stor1(year,month,day,case),week_price(year,month,day,case),
+PrOt <- function(year,month,day,case) {
+  plot_grid(week_price(year,month,day,case) + 
+              theme(axis.title.x=element_blank(),axis.text.x=element_blank()),
             Week1(year,month,day,case)+theme(legend.position ="none"), 
+            ncol = 1, align="v", axis = "l",rel_heights = c(1,2.5))
+}
+
+PrOut <- function(year,month,day,case) {
+  plot_grid(Stor1(year,month,day,case),
+            week_price(year,month,day,case) + theme(axis.title.x=element_blank(),
+                                                    axis.text.x=element_blank()),
+            Week1(year,month,day,case)+theme(legend.position ="none"), 
+            ncol = 1, align="v", axis = "l",rel_heights = c(1,1,2.5))
+}
+
+PrOut4 <- function(year,month,day,case) {
+  plot_grid(Stor14(year,month,day,case),week_price4(year,month,day,case),
+            Week14(year,month,day,case)+theme(legend.position ="none"), 
             ncol = 1, align="v", axis = "l",rel_heights = c(1,1,2.5))
 }
 
@@ -580,7 +775,7 @@ BuildUnits2 <- function(case, Fuel) {
                                          axis.text.x = element_blank(),
                                          text = element_text(size= 15)),
                   Slack2(case,Fuel)+theme(text = element_text(size= 15)),
-                  ncol = 1, align="v", axis = "l",rel_heights = c(1,1))
+                  ncol = 1, align="v", axis = "l",rel_heights = c(1,1.5))
   
   ggdraw(add_sub(p1,paste("Simulation: ",DB, sep = "")))
 }
@@ -596,21 +791,21 @@ g_legend<-function(a.gplot){
   return(legend)}
 
 Eval2 <- function(month,day,case) {
-  ggarrange(arrangeGrob(PrOut(Yr1,month,day,case)+theme(legend.position ="none"),
-                        PrOut(Yr2,month,day,case)+theme(legend.position ="none"),
+  ggarrange(arrangeGrob(PrOut(Yr2Sp[[1]],month,day,case)+theme(legend.position ="none"),
+                        PrOut(Yr2Sp[[2]],month,day,case)+theme(legend.position ="none"),
                         ncol=2),
-            g_legend(Week1(Yr1,month,day,case)),
+            g_legend(Week1(Yr2Sp[[1]],month,day,case)),
             nrow = 2, heights=c(12,1))
 }
 
 Eval4 <- function(month,day,case) {
-  ggarrange(arrangeGrob(PrOut(Yr1,month,day,case)+theme(legend.position ="none"),
-                        PrOut(Yr2,month,day,case)+theme(legend.position ="none"),
-                        PrOut(Yr3,month,day,case)+theme(legend.position ="none"),
-                        PrOut(Yr4,month,day,case)+theme(legend.position ="none"),
+  ggarrange(arrangeGrob(PrOut4(Yr4Sp[[1]],month,day,case)+theme(legend.position ="none"),
+                        PrOut4(Yr4Sp[[2]],month,day,case)+theme(legend.position ="none"),
+                        PrOut4(Yr4Sp[[3]],month,day,case)+theme(legend.position ="none"),
+                        PrOut4(Yr4Sp[[4]],month,day,case)+theme(legend.position ="none"),
                         ncol=4),
             ggdraw(
-            add_sub(g_legend(Week1(Yr1,month,day,case)), 
+            add_sub(g_legend(Week1(Yr4Sp[[1]],month,day,case)), 
                     paste("Simulation: \n",DB, sep = ""))),
             ncol = 2, widths=c(7,1))
 }

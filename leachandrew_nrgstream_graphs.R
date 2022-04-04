@@ -50,7 +50,9 @@ sub_samp<-filter(nrgstream_gen, time >= as.Date("2004-01-1"))
 
 demand <- nrgstream_gen %>%
   group_by(time) %>%
-  summarise(Demand = median(Demand))
+  summarise(Demand = median(Demand), 
+            Price = median(Price),
+            AIL = median(AIL))
   
 df1 <- sub_samp %>% 
   filter(! NRG_Stream %in% trade_excl)%>% 
@@ -269,7 +271,7 @@ ggsave(path = "images", filename = "wind_vs_market.png", bg = "transparent")
 
 ################################################################################
 ################################################################################
-# Function to plot actual AESO data
+# Function to plot actual AESO Output data
 ################################################################################
 ################################################################################
 
@@ -317,6 +319,9 @@ Week_act <- function(year,month,day) {
   dmd <- demand %>%
     filter(time >= wk_st & time <= wk_end)
   
+  MX <- plyr::round_any(rng[2], 100, f = ceiling)
+  MN <- plyr::round_any(rng[1], 100, f = floor)
+  
   # Plot the data    
   ##############################################################################
   ggplot() +
@@ -335,7 +340,8 @@ Week_act <- function(year,month,day) {
     theme(panel.grid = element_blank(),
           legend.position = "right",
     ) +
-    theme(panel.background = element_rect(fill = "transparent"),
+    theme(axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
           plot.background = element_rect(fill = "transparent", color = NA),
@@ -344,10 +350,45 @@ Week_act <- function(year,month,day) {
           legend.box.background = element_rect(fill='transparent', colour = "transparent"),
           text = element_text(size= 15)
     ) +
-    scale_y_continuous(expand=c(0,0), limits = c(0,ylimit)) +
+    scale_y_continuous(expand=c(0,0)) +
     labs(x = "Date", y = "Output (MWh)", fill = "AESO Data: \nResource") +
     scale_fill_manual(values = colours)
 }
+
+################################################################################
+################################################################################
+# Plot the AESO pool price
+################################################################################
+################################################################################
+
+wkPrice <- function(year,month,day) {
+  
+  wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
+  wk_end <- as.POSIXct(paste(day+14,month,year, sep = "/"), format="%d/%m/%Y")
+  
+  price_WK <- demand %>%
+    filter(time >= wk_st & time <= wk_end)
+
+  ggplot() +
+    geom_line(data = price_WK, 
+              aes(x=time, y=Price), 
+              size = 1.5, color="red") +
+    scale_x_datetime(expand=c(0,0)) +
+    theme_bw() +
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          text = element_text(size= 15)
+    ) +
+    scale_y_continuous(expand=c(0,0)) +
+    labs(x = "Date", y = "Pool Price \n($/MWh)")
+}
+
+################################################################################
+################################################################################
+# Plot combinations of plots
+################################################################################
+################################################################################
 
 g_legend<-function(a.gplot){
   tmp <- ggplot_gtable(ggplot_build(a.gplot))
@@ -355,16 +396,63 @@ g_legend<-function(a.gplot){
   legend <- tmp$grobs[[leg]]
   return(legend)}
 
+AESO_PrOt <- function(year,month,day) {
+  plot_grid(wkPrice(year,month,day) + 
+              theme(axis.title.x=element_blank(),axis.text.x=element_blank()),
+            Week_act(year,month,day)+theme(legend.position ="none"), 
+            ncol = 1, align="v", axis = "l",rel_heights = c(1,2.5))
+}
+
 AESO_Sim <- function(year,month,day,case) {
-  ggarrange(arrangeGrob(Week1(year,month,day,case)+
-                          ggtitle("Simulated Data")+
+  SimP <- week_price(year,month,day,case)
+  ActP <- wkPrice(year,month,day)
+  SimO <- Week1(year,month,day,case)
+  ActO <- Week_act(year,month,day)
+
+  MXP <- plyr::round_any(
+    max(layer_scales(SimP)$y$range$range,layer_scales(ActP)$y$range$range),
+    10, f = ceiling)
+  MNP <- plyr::round_any(
+    min(layer_scales(SimP)$y$range$range,layer_scales(ActP)$y$range$range),
+    10, f = floor)  
+  MXO <- plyr::round_any(
+    max(layer_scales(SimO)$y$range$range,layer_scales(ActO)$y$range$range),
+    100, f = ceiling)
+  MNO <- plyr::round_any(
+    min(layer_scales(SimO)$y$range$range,layer_scales(ActO)$y$range$range),
+    100, f = floor)
+
+  ggarrange(arrangeGrob(plot_grid(week_price(year,month,day,case) + 
+                                    theme(axis.title.x=element_blank(),
+                                          axis.text.x=element_blank()) + 
+                                    scale_y_continuous(expand=c(0,0), limits = c(MNP,MXP), 
+                                                       breaks = seq(MNP, MXP, by = MXP/4)),
+                                  Week1(year,month,day,case)+
+                                    theme(legend.position ="none") + 
+                                    scale_y_continuous(expand=c(0,0), limits = c(MNO,MXO), 
+                                                       breaks = seq(MNO, MXO, by = MXO/4)), 
+                                  ncol = 1, align="v", axis = "l",
+                                  rel_heights = c(1,2.5))+
+                          ggtitle(paste("Simulated Data for ",year," (",DB,")", sep = ""))+
                           theme(legend.position ="none",
                                 plot.title = element_text(hjust = 0.5)),
-                        Week_act(year,month,day)+
-                          ggtitle("AESO Data")+
+                        
+                        plot_grid(wkPrice(year,month,day) + 
+                                    theme(axis.title.x=element_blank(),
+                                          axis.text.x=element_blank()) + 
+                                    scale_y_continuous(expand=c(0,0), limits = c(MNP,MXP), 
+                                                       breaks = seq(MNP, MXP, by = MXP/4)),
+                                  Week_act(year,month,day)+
+                                    theme(legend.position ="none") + 
+                                    scale_y_continuous(expand=c(0,0), limits = c(MNO,MXO), 
+                                                       breaks = seq(MNO, MXO, by = MXO/4)), 
+                                  ncol = 1, align="v", axis = "l",
+                                  rel_heights = c(1,2.5)) +
+                          ggtitle(paste("AESO Data for ",year,sep=""))+
                           theme(legend.position ="none",
                                 plot.title = element_text(hjust = 0.5)),
                         ncol=2),
+            
             arrangeGrob(g_legend(Week1(year,month,day,case)),
                         g_legend(Week_act(year,month,day)),
                         nrow=2),
