@@ -830,12 +830,14 @@ imsave <- function(name) {
 # Load data
 ################################################################################
 {
-  setwd("D:/Documents/GitHub/AuroraEval")
+  setwd("D:/Documents/Education/Masters Degree/Datasets/Market")
   
   load("nrgstream_gen.RData") ## which is here *equivalent* to
   
   nrgstream_gen <- nrgstream_gen %>% rename(time=Time)
-  
+
+  setwd("D:/Documents/GitHub/AuroraEval")
+    
   errors<-nrgstream_gen %>% filter(is.na(Price),date<Sys.Date())
   gen_errors<-nrgstream_gen %>% filter(is.na(gen),date<Sys.Date())
   
