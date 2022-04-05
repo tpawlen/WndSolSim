@@ -497,14 +497,28 @@ week_price4 <- function(year, month, day,case) {
 ################################################################################
 
 Eval <- function(input,case) {
+  Imp <- Import %>%
+    filter(Run_ID == case) %>%
+    mutate(Time_Period = format(.$date, format="%Y")) %>%
+    group_by(Time_Period) %>%
+    summarise(Output_MWH = mean(Output_MWH)) %>%
+    mutate(ID = "Import")
+  
+  Imp$Time_Period  <- as.Date(as.character(Imp$Time_Period), 
+                               format = "%Y")
+  
+  Imp <- subset(Imp, Time_Period <= '2040-04-05')
+  
   # Filters for the desired case study
   data <- input %>%
-    filter(Run_ID == case & Condition == "Average")
+    filter(Run_ID == case & Condition == "Average") %>%
+    select(ID, Time_Period, Output_MWH) %>%
+    sim_filt(.) %>%
+    rbind(.,Imp) 
+    
+  data$ID<-fct_relevel(data$ID, "Import")
   
-  # Filter the data by resource
-  case_Time <- sim_filt(data)
-  
-  case_Time %>%
+  data %>%
     ggplot() +
     aes(Time_Period, (Output_MWH/1000), fill = ID) +
     geom_area(alpha=0.6, size=.5, colour="black") +
@@ -517,7 +531,7 @@ Eval <- function(input,case) {
           legend.justification = c(0,0.5)) +
     scale_x_date(expand=c(0,0)) +
     scale_y_continuous(expand=c(0,0)) +
-    scale_fill_manual(values = colours2) +
+    scale_fill_manual(values = colours1) +
     labs(x = "Date", y = "Output (GWh)", fill = "Resource") 
 }
 
