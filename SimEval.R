@@ -599,8 +599,75 @@ Built <- function(case) {
           legend.justification = c(0,0.5),
           ) +
     labs(x = "Date", y = "# of Units Built", fill = "Fuel Type") +
-    scale_y_continuous(expand=c(0,0)) +
-    scale_x_discrete(expand=c(0,0)) +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(0,(max(data$Units)+1))) +
+#    scale_x_discrete(expand=c(0,0)) +
+    scale_fill_manual(values = colours3)
+}
+
+# Stacked Area showing totals for Fuel Types
+Builtcol <- function(case) {
+  data <- Build %>%
+    filter(Run_ID == case & LT_Iteration == max(LT_Iteration) & 
+             Time_Period != "Study")%>%
+    group_by(Fuel_Type, Time_Period) %>%
+    summarise(Units = sum(Units_Built), Capacity = sum(Capacity_Built)) 
+  
+  data$Fuel_Type <- factor(data$Fuel_Type, 
+                           levels = c("WND","SUN","Gas0","Gas1", "PS", "OT"))
+  
+  Tot <- data %>%
+    group_by(Time_Period) %>%
+    summarise(totu = sum(Units), totc = sum(Capacity))
+  
+  mxu <- max(Tot$totu)
+  mxc <- max(Tot$totc)
+  
+  ggplot(data) +
+    aes(Time_Period, Units, fill = Fuel_Type, group = Fuel_Type) +
+    geom_bar(position="stack", stat="identity", alpha=0.6, colour = "black") +
+    theme_bw() +
+    theme(panel.grid = element_blank(),  
+          legend.position ="none"
+#          legend.justification = c(0,0.5),
+#          legend.position = "top"
+    ) +
+    labs(x = "Date", y = "# of Units Built", fill = "Fuel Type") +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(0,(mxu+1))) +
+    #    scale_x_discrete(expand=c(0,0)) +
+    scale_fill_manual(values = colours3)
+}
+
+# Stacked Area showing totals for Fuel Types
+BuiltMW <- function(case) {
+  data <- Build %>%
+    filter(Run_ID == case & LT_Iteration == max(LT_Iteration) & 
+             Time_Period != "Study")%>%
+    group_by(Fuel_Type, Time_Period) %>%
+    summarise(Units = sum(Units_Built), Capacity = sum(Capacity_Built)) 
+  
+  data$Fuel_Type <- factor(data$Fuel_Type, 
+                           levels = c("WND","SUN","Gas0","Gas1", "PS", "OT"))
+  
+  Tot <- data %>%
+    group_by(Time_Period) %>%
+    summarise(totu = sum(Units), totc = sum(Capacity))
+  
+  mxu <- max(Tot$totu)
+  mxc <- max(Tot$totc)
+  
+  ggplot(data) +
+    aes(Time_Period, Capacity, fill = Fuel_Type, group = Fuel_Type) +
+    geom_bar(position="stack", stat="identity", alpha=0.6, colour = "black") +
+    theme_bw() +
+    theme(panel.grid = element_blank(), 
+          legend.position ="none"
+    ) +
+    labs(x = "Date", y = "Capacity Built \n(MW)", fill = "Fuel Type") +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(0,plyr::round_any(mxc, 100, f = ceiling))) +
+    #    scale_x_discrete(expand=c(0,0)) +
     scale_fill_manual(values = colours3)
 }
 
@@ -617,7 +684,8 @@ Units <- function(case, Fuel) {
     labs(x = "Plant Name", y = "Units Built") +
     scale_y_continuous(expand = c(0,0),
                        limits = c(0,(max(data$Units_Built)+1))) +
-    theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1),
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+#          axis.title.x = element_text(vjust=0.5),
           panel.background = element_rect(fill = "transparent"),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
@@ -763,8 +831,11 @@ PrOut4 <- function(year,month,day,case) {
 
 EvalOut <- function(input,case) {
   p1 <- plot_grid(Eval(input,case) + theme(legend.position="top"), 
-            Built(case)+theme(legend.position ="none"), 
-            ncol = 1, align="v", axis = "l",rel_heights = c(3,1))
+            Builtcol(case)+theme(legend.position ="none",
+                                 axis.title.x = element_blank(),
+                                 axis.text.x = element_blank()), 
+            BuiltMW(case)+theme(legend.position ="none"), 
+            ncol = 1, align="v", axis = "l",rel_heights = c(2.5,0.8,1))
   
   ggdraw(add_sub(p1,paste("Simulation: ",DB, sep = "")))
 }
@@ -827,6 +898,13 @@ imsave <- function(name) {
   ggsave(path = "images", filename = paste(name,".png", sep = ""), bg = "transparent")
 }
 
+################################################################################
+################################################################################
+# AESO Actual Data
+################################################################################
+################################################################################
+
+################################################################################
 # Load data
 ################################################################################
 {
@@ -851,6 +929,8 @@ imsave <- function(name) {
     summarise(Demand = median(Demand), 
               Price = median(Price),
               AIL = median(AIL))
+  
+  trade_excl<-c("AB - WECC Imp Hr Avg MW", "AB - WECC Exp Hr Avg MW","AB - WECC Imp/Exp Hr Avg MW")
   
   df1 <- sub_samp %>% 
     filter(! NRG_Stream %in% trade_excl)%>% 
@@ -954,10 +1034,7 @@ Week_act <- function(year,month,day) {
   
   dmd <- demand %>%
     filter(time >= wk_st & time <= wk_end)
-  
-  MX <- plyr::round_any(rng[2], 100, f = ceiling)
-  MN <- plyr::round_any(rng[1], 100, f = floor)
-  
+
   # Plot the data    
   ##############################################################################
   ggplot() +
@@ -1062,11 +1139,11 @@ AESO_Sim <- function(year,month,day,case) {
                                     theme(axis.title.x=element_blank(),
                                           axis.text.x=element_blank()) + 
                                     scale_y_continuous(expand=c(0,0), limits = c(MNP,MXP), 
-                                                       breaks = seq(MNP, MXP, by = MXP/4)),
+                                                       breaks = pretty_breaks(4)),
                                   Week1(year,month,day,case)+
                                     theme(legend.position ="none") + 
                                     scale_y_continuous(expand=c(0,0), limits = c(MNO,MXO), 
-                                                       breaks = seq(MNO, MXO, by = MXO/4)), 
+                                                       breaks = pretty_breaks(4)), 
                                   ncol = 1, align="v", axis = "l",
                                   rel_heights = c(1,2.5))+
                           ggtitle(paste("Simulated Data for ",year," (",DB,")", sep = ""))+
@@ -1077,11 +1154,11 @@ AESO_Sim <- function(year,month,day,case) {
                                     theme(axis.title.x=element_blank(),
                                           axis.text.x=element_blank()) + 
                                     scale_y_continuous(expand=c(0,0), limits = c(MNP,MXP), 
-                                                       breaks = seq(MNP, MXP, by = MXP/4)),
+                                                       breaks = pretty_breaks(4)),
                                   Week_act(year,month,day)+
                                     theme(legend.position ="none") + 
                                     scale_y_continuous(expand=c(0,0), limits = c(MNO,MXO), 
-                                                       breaks = seq(MNO, MXO, by = MXO/4)), 
+                                                       breaks = pretty_breaks(4)), 
                                   ncol = 1, align="v", axis = "l",
                                   rel_heights = c(1,2.5)) +
                           ggtitle(paste("AESO Data for ",year,sep=""))+
