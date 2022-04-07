@@ -29,8 +29,8 @@ colnames(wind_pot) <- x
 {
   maxLat <- 60
   maxLon <- -120
-  minLat <- 49.02
-  minLon <- -110.02
+  minLat <- 49.01
+  minLon <- -110.01
   
   totLat <- maxLat-minLat
   totLon <- abs(maxLon-minLon)
@@ -82,18 +82,23 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
   # Note the start time
   old <- Sys.time()
   {  
-  for(i in 32010:nrow(wind_prof)) {
+  for(i in 1:nrow(wind_prof)) {
+    tempold <- Sys.time()
     url <- paste(cons1, wind_prof[i,1], cons2, wind_prof[i,2], sep = "")
     wind <- readHTMLTable(url,which=1)
     wind_prof[i,3] <- as.numeric(substr(wind[1,2], 1, 4))
     
     perc <- format(round((i/nrow(wind_prof)*100), 3), nsmall = 3)
-    print(paste(paste(perc,"%", sep = ""),i, sep = ", "))
+    
+    dif <- Sys.time() - tempold
+    fin <- ((nrow(wind_prof)-i) * dif) + Sys.time()
+    
+    print(paste(paste(perc,"%", sep = ""),i, fin, sep = ", "))
     #print(paste(wind_prof[i,1],wind_prof[i,2],sep = ","))
   }
 
-    # Creates an RDS file with the entire dataset.
-  saveRDS(wind_prof, file = paste("WindAtlas_Data2", res, sep = "_"))
+     # Creates an RDS file with the entire dataset.
+  saveRDS(wind_prof, file = paste("WindAtlas_Data1", res, sep = "_"))
   
   # Prints the location of the file.
   getwd()
@@ -102,4 +107,4 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
   New <- Sys.time() - old
   print(New)
 }
-               
+                            
