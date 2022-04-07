@@ -39,16 +39,29 @@ setwd("D:/Documents/GitHub/AuroraEval")
 getwd()
 
 ################################################################################
+# Set legend text size
+################################################################################
+legTitle <- 15
+legText <- 12
+
+################################################################################
 # Load in the data
 # Wind Speed data from Canada Wind Atlas 
 # http://www.windatlas.ca/nav-en.php?no=46&field=EU&height=80&season=ANU
 ################################################################################
+wind_profile <- readRDS("WindAtlas_Data_0.05")
+colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
+
+{
 wind_profile1 <- readRDS("WindAtlas_Data_0.05")
 colnames(wind_profile1) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile2 <- readRDS("WindAtlas_Data2_0.05")
 colnames(wind_profile2) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile3 <- readRDS("WindAtlas_Data3_0.05")
+colnames(wind_profile3) <- c('Latitude', 'Longitude', 'Wind')
 
-wind_profile <- rbind(wind_profile1, wind_profile2)
+wind_profile <- rbind(wind_profile1, wind_profile2, wind_profile3)
+}
 
 ################################################################################
 # Location of operational wind turbines, from Canadian Wind Turbine Database
@@ -133,7 +146,9 @@ AB <- ggplot() +
         axis.text = element_blank(),
         axis.ticks = element_blank(),
         legend.background = element_rect(fill = "transparent"),
-        legend.box.background = element_rect(fill = "transparent", color = "transparent")) 
+        legend.box.background = element_rect(fill = "transparent", color = "transparent"),
+        legend.text = element_text(size = legText),
+        legend.title = element_text(size = legTitle)) 
 
 ################################################################################
 ################################################################################
@@ -144,14 +159,16 @@ Act_wind <- AB + geom_point(data = active,
                 aes(x= Longitude, y = Latitude, size = Capacity), 
                 shape = 16, color = "black") +
   ggtitle("Active Wind Farms") +
-  theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5))
+  theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
+        legend.text = element_text(size = legText),
+        legend.title = element_text(size = legTitle)) 
 
 ################################################################################
 ################################################################################
 # Map of Alberta with active and queued wind farms
 ################################################################################
 ################################################################################
-
+{
 labs1 <- c("Active","AESO Queue")
 
 AESO_wind <- AB + geom_point(data = wind_farm,
@@ -161,8 +178,10 @@ AESO_wind <- AB + geom_point(data = wind_farm,
                      labels = labs1) +
   guides(shape = guide_legend(override.aes = list(size = 5))) +
   ggtitle("Active and Planned Wind Farms") +
-  theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5))
-
+  theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
+        legend.text = element_text(size = legText),
+        legend.title = element_text(size = legTitle)) 
+}
 ################################################################################
 # Save map as png
 ################################################################################
@@ -175,7 +194,7 @@ ggsave(path = "images", filename = "windfarmlocations.png", bg = "transparent")
 # simulation
 ################################################################################
 ################################################################################
-
+{
 labs2 <- c("Active","AESO Queue","Simulated")
 
 Sim_wind <- AB + geom_point(data = wind_sim,
@@ -185,8 +204,10 @@ Sim_wind <- AB + geom_point(data = wind_sim,
                      labels = labs2) +
   guides(shape = guide_legend(override.aes = list(size = 5))) +
   ggtitle("Active, Queued, & Potential \nWind Farms") +
-  theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5))
-
+  theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
+        legend.text = element_text(size = legText),
+        legend.title = element_text(size = legTitle)) 
+}
 ################################################################################
 # Save map as png
 ################################################################################
@@ -214,14 +235,16 @@ wnd_plot2 <- ggarrange(ggarrange(Act_wind + theme(legend.position = "none"),
                                 AESO_wind + theme(legend.position = "none"),
                                 nrow=1, widths = c(1,0,1)),
                       g_legend(AESO_wind), 
-                      ncol=2, widths=c(6,1))
+                      ncol=2, widths=c(5,1))
 
 wnd_plot <- annotate_figure(wnd_plot2, 
                            fig.lab = "Source: Canada Wind Atlas, Canada Wind Turbine Database, AESO Data 
                            Graph by Taylor Pawlenchuk",
                            fig.lab.pos = "bottom.right", 
                            fig.lab.face = "italic", 
-                           fig.lab.size = 8)
+                           fig.lab.size = 12)
+
+wnd_plot
 
 ################################################################################
 # Save map as png
