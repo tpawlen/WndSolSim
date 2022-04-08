@@ -65,7 +65,7 @@
   }
 
 {
-  DB <- "Apr_1_2022"
+  DB <- "Apr_8a_2022"
 # Connect to SQL database
 ################################################################################
 con <- dbConnect(odbc(),
@@ -336,7 +336,9 @@ Week14 <- function(year, month, day, case) {
     scale_fill_manual(values = colours1)
 }
 
+################################################################################
 # Generate weekly storage output plot function
+################################################################################
 ################################################################################
 Stor1 <- function(year, month, day, case) {
   # Add imports and exports to data
@@ -374,6 +376,10 @@ Stor1 <- function(year, month, day, case) {
     labs(x = "Date", y = "Storage\n(MWh)", fill = "Resource") +
     scale_fill_manual(values = "cyan")
 }
+
+################################################################################
+# Generate weekly storage output plot function with axis limits for 4 years
+################################################################################
 
 Stor14 <- function(year, month, day, case) {
   # Add imports and exports to data
@@ -421,6 +427,7 @@ Stor14 <- function(year, month, day, case) {
 ################################################################################
 # Function for plotting prices
 ################################################################################
+################################################################################
 
 week_price <- function(year, month, day,case) {
   # Filters for the desired case study
@@ -453,6 +460,10 @@ week_price <- function(year, month, day,case) {
                        breaks = seq(MN, MX, by = MX/4)
     )
 }
+
+################################################################################
+# Function for plotting prices with axis limits for 4 years
+################################################################################
 
 week_price4 <- function(year, month, day,case) {
   # Filters for the desired case study
@@ -491,9 +502,10 @@ week_price4 <- function(year, month, day,case) {
                        )
 }
 
-
+################################################################################
 ################################################################################
 # Function for plotting month/year profiles
+################################################################################
 ################################################################################
 
 Eval <- function(input,case) {
@@ -535,8 +547,34 @@ Eval <- function(input,case) {
     labs(x = "Date", y = "Output (GWh)", fill = "Resource") 
 }
 
+Evalcap <- function(input,case) {
+
+  # Filters for the desired case study
+  data <- input %>%
+    filter(Run_ID == case & Condition == "Average") %>%
+    select(ID, Time_Period, Capacity) %>%
+    sim_filt(.)
+
+  data %>%
+    ggplot() +
+    aes(Time_Period, (Capacity/1000), fill = ID) +
+    geom_area(alpha=0.6, size=.5, colour="black") +
+    #    facet_wrap(~ Condition, nrow = 1) +
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          plot.title = element_text(hjust = 0.5),
+          plot.subtitle = element_text(hjust = 0.5), 
+          legend.justification = c(0,0.5)) +
+    scale_x_date(expand=c(0,0)) +
+    scale_y_continuous(expand=c(0,0)) +
+    scale_fill_manual(values = colours2) +
+    labs(x = "Date", y = "Capacity (GWh)", fill = "Resource") 
+}
+
 ################################################################################
 # Function for plotting month/year profiles as a percentage of total
+################################################################################
 ################################################################################
 
 EvalPerc <- function(input,case) {
@@ -578,6 +616,7 @@ EvalPerc <- function(input,case) {
 ################################################################################
 # Function for plotting the resources built
 ################################################################################
+################################################################################
 
 # Stacked Area showing totals for Fuel Types
 Built <- function(case) {
@@ -604,6 +643,10 @@ Built <- function(case) {
 #    scale_x_discrete(expand=c(0,0)) +
     scale_fill_manual(values = colours3)
 }
+
+################################################################################
+# Function for plotting the resources built as bar chart
+################################################################################
 
 # Stacked Area showing totals for Fuel Types
 Builtcol <- function(case) {
@@ -639,6 +682,10 @@ Builtcol <- function(case) {
     scale_fill_manual(values = colours3)
 }
 
+################################################################################
+# Function for plotting the capacity of resources built
+################################################################################
+
 # Stacked Area showing totals for Fuel Types
 BuiltMW <- function(case) {
   data <- Build %>%
@@ -671,7 +718,11 @@ BuiltMW <- function(case) {
     scale_fill_manual(values = colours3)
 }
 
+################################################################################
 # Unit specific bar chart showing builds
+################################################################################
+################################################################################
+
 Units <- function(case, Fuel) {
   data <- Build %>%
     filter(Run_ID == case & LT_Iteration == max(LT_Iteration) & 
@@ -696,7 +747,11 @@ Units <- function(case, Fuel) {
           panel.border = element_rect(colour = "black", fill = "transparent")) 
 }
    
+################################################################################
 # Unit specific bar chart showing availability not built 
+################################################################################
+################################################################################
+
 Slack <- function(case, Fuel) {
   data <- Build %>%
     filter(Run_ID == case & LT_Iteration == max(LT_Iteration) & 
@@ -720,7 +775,10 @@ Slack <- function(case, Fuel) {
           panel.border = element_rect(colour = "black", fill = "transparent"))
 }
 
+################################################################################
 # Unit specific bar chart showing builds with potential builds highlighted
+################################################################################
+
 Units2 <- function(case, Fuel) {
   data <- Build %>%
     filter(Run_ID == case & LT_Iteration == max(LT_Iteration) & 
@@ -749,8 +807,11 @@ Units2 <- function(case, Fuel) {
           panel.border = element_rect(colour = "black", fill = "transparent")) 
 }
 
+################################################################################
 # Unit specific bar chart showing availability not built with potential sites 
 # highlighted
+################################################################################
+
 Slack2 <- function(case, Fuel) {
   data <- Build %>%
     filter(Run_ID == case & LT_Iteration == max(LT_Iteration) & 
@@ -892,6 +953,10 @@ Eval4 <- function(month,day,case) {
                     paste("Simulation: \n",DB, sep = ""))),
             ncol = 2, widths=c(7,1))
 }
+}
+
+subtit <- function(plot) {
+  ggdraw(add_sub(plot,paste("Simulation: ",DB, sep = "")))
 }
 
 imsave <- function(name) {
@@ -1173,3 +1238,4 @@ AESO_Sim <- function(year,month,day,case) {
 }
 
 ggsave(path = "images", filename = "simvsact.png", bg = "transparent")
+
