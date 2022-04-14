@@ -53,6 +53,8 @@
 
 {library(tidyverse)
   library(ggplot2)
+  library(grid)
+  library(gtable)
   library(gridExtra)
   library(plotly) # For interactive charts
   library(odbc)
@@ -65,7 +67,7 @@
   }
 
 {
-  DB <- "Apr_8a_2022"
+  DB <- "Apr_13_2022"
 # Connect to SQL database
 ################################################################################
 con <- dbConnect(odbc(),
@@ -82,17 +84,17 @@ con <- dbConnect(odbc(),
 data_raw_Hour <- dbReadTable(con,'ResourceGroupHour1')
 data_raw_Month <- dbReadTable(con,'ResourceGroupMonth1')
 data_raw_Year  <- dbReadTable(con,'ResourceGroupYear1')
-data_raw_Build <- dbReadTable(con,'LTBuildReport1')
+#data_raw_Build <- dbReadTable(con,'LTBuildReport1')
 data_ZoneHour <- dbReadTable(con,'ZoneHour1')
 data_Resource <- dbReadTable(con,'ResourceMonth1')
-data_LTResValue <- dbReadTable(con,'LTResValue1')
+#data_LTResValue <- dbReadTable(con,'LTResValue1')
 
 Hour <- data_raw_Hour
 Month <- data_raw_Month
 Year  <- data_raw_Year
-Build <- data_raw_Build
+#Build <- data_raw_Build
 ZoneHour <- data_ZoneHour
-LTRes <- data_LTResValue
+#LTRes <- data_LTResValue
 }
 
  # Set variables to identify the case studies
@@ -114,9 +116,9 @@ ylimit <- max(Hour$Output_MWH) + max(ZoneHour$Imports)
 colours = c("darkslateblue", "grey", "darkslategrey", "coral4", "goldenrod4", 
             "dodgerblue", "forestgreen", "gold", "darkolivegreen1", "cyan")
 colours1 = c("darkslateblue", "grey", "darkslategrey", "coral4", "goldenrod4", 
-            "dodgerblue", "forestgreen", "gold", "cyan")
+             "darkcyan", "dodgerblue", "forestgreen", "gold", "cyan")
 colours2 = c("grey", "darkslategrey", "coral4", "goldenrod4", 
-            "dodgerblue", "forestgreen", "gold", "cyan")
+            "dodgerblue", "darkcyan", "forestgreen", "gold", "cyan")
 colours3 = c("forestgreen", "gold", "coral4", "goldenrod4", "cyan", "dodgerblue")
 }
 
@@ -174,12 +176,15 @@ sim_filt <- function(inputdata) {
     filter(ID=="LTO_Coal")
   Coal2Gas  <- inputdata %>%
     filter(ID=="LTO_Coal2Gas")
+  Coal2Gas$Output_MWH[Coal2Gas$Output_MWH < 0] <- 0
   Cogen  <- inputdata %>%
     filter(ID=="LTO_Cogen")
   NatGas <- inputdata %>%
     filter(ID=="LTO_NatGas")
   Other <- inputdata %>%
     filter(ID=="LTO_Other")
+  Hydro <- inputdata %>%
+    filter(ID=="LTO_Hydro")
   Solar <- inputdata %>%
     filter(ID=="LTO_Solar")
   Storage <- inputdata %>%    
@@ -189,22 +194,57 @@ sim_filt <- function(inputdata) {
   }
   
   # Combine the grouped data
-  {case <- rbind(Coal, Coal2Gas, Cogen, NatGas, Solar, Wind, Storage, Other)
+  {case <- rbind(Coal, Coal2Gas, Cogen, NatGas, Hydro, Solar, Wind, Storage, Other)
     case$ID <- factor(case$ID, levels=c("LTO_Coal", "LTO_Coal2Gas", "LTO_Cogen", 
-                                        "LTO_NatGas", "LTO_Other", "LTO_Wind", 
-                                        "LTO_Solar", "LTO_Storage"))
-    levels(case$ID) <- c("Coal", "Coal2Gas", "Cogen", "NatGas", "Other", "Wind",
-                         "Solar", "Storage")
+                                        "LTO_NatGas", "LTO_Other", "LTO_Hydro", 
+                                        "LTO_Wind", "LTO_Solar", "LTO_Storage"))
+    levels(case$ID) <- c("Coal", "Coal2Gas", "Cogen", "NatGas", "Other", "Hydro",
+                         "Wind", "Solar", "Storage")
   }
   return(case)
+}
+
+{
+  sim_filt1 <- function(inputdata) {
+    # Filter the data by resource
+    {Coal <- inputdata %>%
+      filter(ID=="LTO_Coal")
+    SCCT  <- inputdata %>%
+      filter(ID=="AB_SCCT_noncogen")
+    Cogen  <- inputdata %>%
+      filter(ID=="LTO_Cogen")
+    CCCT <- inputdata %>%
+      filter(ID=="AB_CCCT_noncogen")
+    Other <- inputdata %>%
+      filter(ID=="LTO_Other")
+    Hydro <- inputdata %>%
+      filter(ID=="LTO_Hydro")
+    Solar <- inputdata %>%
+      filter(ID=="LTO_Solar")
+    Storage <- inputdata %>%    
+      filter(ID=="LTO_Storage")
+    Wind <- inputdata %>%
+      filter(ID=="LTO_Wind")
+    }
+    
+    # Combine the grouped data
+    {case <- rbind(Coal, Cogen, SCCT, CCCT, Hydro, Solar, Wind, Storage, Other)
+      case$ID <- factor(case$ID, levels=c("LTO_Coal", "AB_CCCT_noncogen", "LTO_Cogen",
+                                          "AB_SCCT_noncogen", "LTO_Hydro", "LTO_Other", 
+                                          "LTO_Wind", "LTO_Solar", "LTO_Storage"))
+      levels(case$ID) <- c("Coal", "NGCC", "Cogen", "SCGT", "Hydro", "Other",
+                           "Wind", "Solar", "Storage")
+    }
+    return(case)
+  }
 }
 
 # Function to convert the date time for plotting
 HrTime <- function(data, year, month, day) {
     subset(data,
-           (date >= paste(year,"-", month, "-", day," 01:00:00", sep = "") & 
+           (date >= paste(year,"-", month, "-", day," 00:00:00", sep = "") & 
               date <= 
-              paste(year,"-", month, "-", (day+7)," 23:00:00", sep = "")))
+              paste(year,"-", month, "-", (day+7)," 00:00:00", sep = "")))
 }
 }
 ################################################################################
@@ -222,14 +262,23 @@ HrTime <- function(data, year, month, day) {
     
     # Filters for the desired case study
     data <- Hour_pl %>%
-      sim_filt(.) %>%
+      sim_filt1(.) %>%
       rbind(.,Import) %>%
       filter(Run_ID == case)
     
-    data$ID <- factor(data$ID, levels=c("Import", "Coal", "Coal2Gas", "Cogen", 
-                                        "NatGas", "Other", "Wind", "Solar", 
-                                        "Storage"))
+    data$ID <- factor(data$ID, levels=c("Import", "Coal", "Cogen", "SCGT", "NGCC",
+                                        "Hydro", "Other", "Wind", "Solar", "Storage"))
     
+#    data$date <- as.POSIXct(data$date, tz = "MST")
+    
+#    wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
+#    wk_end <- as.POSIXct(paste(day+7,month,year, sep = "/"), format="%d/%m/%Y")
+    
+    # Select only a single week
+    ##############################################################################
+    WK <- data %>%
+      filter(date >= wk_st, date <= wk_end)
+
     # Select only a single week
     WK <- HrTime(data,year,month,day)
     ZPrice <- HrTime(ZH,year,month,day)
@@ -267,7 +316,7 @@ HrTime <- function(data, year, month, day) {
       ) +
       scale_y_continuous(expand=c(0,0), limits = c(MN,MX), 
                          breaks = seq(MN, MX, by = MX/4)) +
-      labs(x = "Date", y = "Output (MWh)", fill = "Simulated Data: \nResource") +
+      labs(x = "Date", y = "Output (MWh)", fill = "Resource") +
       scale_fill_manual(values = colours1)
   }
   
@@ -281,13 +330,12 @@ Week14 <- function(year, month, day, case) {
   
   # Filters for the desired case study
   data <- Hour_pl %>%
-    sim_filt(.) %>%
+    sim_filt1(.) %>%
     rbind(.,Import) %>%
     filter(Run_ID == case)
   
-  data$ID <- factor(data$ID, levels=c("Import", "Coal", "Coal2Gas", "Cogen", 
-                                      "NatGas", "Other", "Wind", "Solar", 
-                                      "Storage"))
+  data$ID <- factor(data$ID, levels=c("Import", "Coal", "Cogen", "SCGT", "NGCC",
+                                      "Hydro", "Other", "Wind", "Solar", "Storage"))
   
   # Select only a single week
     WK <- HrTime(data,year,month,day)
@@ -764,7 +812,7 @@ Slack <- function(case, Fuel) {
     labs(x = "Plant Name", y = "Units Available") +
     scale_y_continuous(expand = c(0,0),
                        limits = c(0,(max(data$Max_Limit_Slack)+1))) +
-    theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1),
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
           panel.background = element_rect(fill = "transparent"),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
@@ -796,7 +844,7 @@ Units2 <- function(case, Fuel) {
       guide = "none") +
     scale_y_continuous(expand = c(0,0),
                        limits = c(0,(max(data$Units_Built)+1))) +
-    theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1),
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
           panel.background = element_rect(fill = "transparent"),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
@@ -830,7 +878,7 @@ Slack2 <- function(case, Fuel) {
     scale_y_continuous(expand = c(0,0),
                        limits = c(0,(max(data$Max_Limit_Slack)+1)),
                        breaks = c((max(data$Max_Limit_Slack)+1)/2,(max(data$Max_Limit_Slack)+1))) +
-    theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust = 1),
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
           panel.background = element_rect(fill = "transparent"),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
@@ -1064,11 +1112,16 @@ Week_act <- function(year,month,day) {
   wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
   wk_end <- as.POSIXct(paste(day+7,month,year, sep = "/"), format="%d/%m/%Y")
   
+  wk_st <- hms::as.hms(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
+  wk_end <- hms::as.hms(paste(day+7,month,year, sep = "/"), format="%d/%m/%Y")
+  
+  df1a$time <- as.POSIXct(df1a$time, tz = "MST")
+  
   # Select only a single week
   ##############################################################################
-  WK <- df1a %>%
+  WKa <- df1a %>%
     filter(Plant_Type != "EXPORT" & Plant_Type != "IMPORT") %>%
-    filter(time >= wk_st & time <= wk_end)
+    filter(time >= wk_st, time <= wk_end)
   
   WKIM <- df1a %>%
     filter(Plant_Type == "IMPORT") %>%
@@ -1076,25 +1129,25 @@ Week_act <- function(year,month,day) {
   
   WKIM$total_gen <- WKIM$total_gen * -1
   
-  WK <- rbind(WKIM, WK)
+  WK <- rbind(WKIM, WKa)
   
   {
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "IMPORT", after = Inf)
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "COAL", after = Inf)
-    WK$Plant_Type<-fct_relevel(WK$Plant_Type, "NGCC", after = Inf)
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "COGEN", after = Inf)
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "SCGT", after = Inf)
+    WK$Plant_Type<-fct_relevel(WK$Plant_Type, "NGCC", after = Inf)
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "HYDRO", after = Inf)
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "OTHER", after = Inf)
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "WIND", after = Inf)
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "SOLAR", after = Inf)
   }
   
-  WK$Plant_Type <- factor(WK$Plant_Type, levels=c("IMPORT", "COAL", "NGCC", 
-                                                  "COGEN", "SCGT", "HYDRO", 
+  WK$Plant_Type <- factor(WK$Plant_Type, levels=c("IMPORT", "COAL", "COGEN", 
+                                                  "SCGT", "NGCC", "HYDRO", 
                                                   "OTHER", "WIND", "SOLAR"))
   
-  levels(WK$Plant_Type) <- c("Import","Coal", "NGCC", "Cogen", "SCGT", "Hydro", 
+  levels(WK$Plant_Type) <- c("Import","Coal", "Cogen", "SCGT", "NGCC", "Hydro", 
                              "Other", "Wind", "Solar")
   
   dmd <- demand %>%
@@ -1168,11 +1221,11 @@ wkPrice <- function(year,month,day) {
 ################################################################################
 ################################################################################
 
-g_legend<-function(a.gplot){
-  tmp <- ggplot_gtable(ggplot_build(a.gplot))
-  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
-  legend <- tmp$grobs[[leg]]
-  return(legend)}
+#g_legend<-function(a.gplot){
+#  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+#  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+#  legend <- tmp$grobs[[leg]]
+#  return(legend)}
 
 AESO_PrOt <- function(year,month,day) {
   plot_grid(wkPrice(year,month,day) + 
@@ -1200,6 +1253,8 @@ AESO_Sim <- function(year,month,day,case) {
     min(layer_scales(SimO)$y$range$range,layer_scales(ActO)$y$range$range),
     100, f = floor)
   
+  legend <- gtable_filter(ggplotGrob(Week1(year,month,day,case)), "guide-box")
+  
   ggarrange(arrangeGrob(plot_grid(week_price(year,month,day,case) + 
                                     theme(axis.title.x=element_blank(),
                                           axis.text.x=element_blank()) + 
@@ -1216,12 +1271,14 @@ AESO_Sim <- function(year,month,day,case) {
                                 plot.title = element_text(hjust = 0.5)),
                         
                         plot_grid(wkPrice(year,month,day) + 
-                                    theme(axis.title.x=element_blank(),
+                                    theme(axis.title=element_blank(),
                                           axis.text.x=element_blank()) + 
                                     scale_y_continuous(expand=c(0,0), limits = c(MNP,MXP), 
                                                        breaks = pretty_breaks(4)),
                                   Week_act(year,month,day)+
-                                    theme(legend.position ="none") + 
+                                    theme(legend.position ="none",
+                                          axis.title.y=element_blank())+#,
+                                     #     axis.text.y=element_blank()) + 
                                     scale_y_continuous(expand=c(0,0), limits = c(MNO,MXO), 
                                                        breaks = pretty_breaks(4)), 
                                   ncol = 1, align="v", axis = "l",
@@ -1229,12 +1286,14 @@ AESO_Sim <- function(year,month,day,case) {
                           ggtitle(paste("AESO Data for ",year,sep=""))+
                           theme(legend.position ="none",
                                 plot.title = element_text(hjust = 0.5)),
-                        ncol=2),
+                        ncol=2, widths = c(1.05,1)),
             
-            arrangeGrob(g_legend(Week1(year,month,day,case)),
-                        g_legend(Week_act(year,month,day)),
-                        nrow=2),
-            ncol=2, widths = c(5,1))
+            legend,
+            
+#            arrangeGrob(g_legend(Week1(year,month,day,case)),
+ #                       g_legend(Week_act(year,month,day)),
+  #                      nrow=2),
+            ncol=2, widths =c(5,1))#= unit.c(unit(1, "npc")-legend$width, legend$width))
 }
 
 ggsave(path = "images", filename = "simvsact.png", bg = "transparent")
