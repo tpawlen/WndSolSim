@@ -4,7 +4,7 @@
 # Author: Taylor Pawlenchuk
 # email: pawlench@ualberta.ca
 # January 2022; Last revision: January 18, 2022
-
+{
 {library(rgeos)
 #  library(maptools)
 #  library(ggmap) 
@@ -49,20 +49,26 @@ legText <- 12
 # Wind Speed data from Canada Wind Atlas 
 # http://www.windatlas.ca/nav-en.php?no=46&field=EU&height=80&season=ANU
 ################################################################################
-wind_profile <- readRDS("WindAtlas_Data_0.05")
-colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile <- readRDS("WindAtlas_Data_0.05")
+#colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
 
 {
-wind_profile1 <- readRDS("WindAtlas_Data_0.05")
-colnames(wind_profile1) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile2 <- readRDS("WindAtlas_Data2_0.05")
-colnames(wind_profile2) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile3 <- readRDS("WindAtlas_Data3_0.05")
-colnames(wind_profile3) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile00 <- readRDS("WindAtlas_Data00_0.05")
+colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile11 <- readRDS("WindAtlas_Data11_0.05")
+colnames(wind_profile11) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile22 <- readRDS("WindAtlas_Data22_0.05")
+colnames(wind_profile22) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile33 <- readRDS("WindAtlas_Data33_0.05")
+colnames(wind_profile33) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile44 <- readRDS("WindAtlas_Data44_0.05")
+colnames(wind_profile44) <- c('Latitude', 'Longitude', 'Wind')
 
-wind_profile <- rbind(wind_profile1, wind_profile2, wind_profile3)
+wind_profile <- rbind(wind_profile00, wind_profile11, wind_profile22, 
+                      wind_profile33, wind_profile44)
 }
 
+{
 ################################################################################
 # Location of operational wind turbines, from Canadian Wind Turbine Database
 # https://open.canada.ca/data/en/dataset/79fdad93-9025-49ad-ba16-c26d718cc070
@@ -101,6 +107,7 @@ plant$Status <- "Active"
 ################################################################################
 wind_farm <- rbind(plant,turb_pot)
 wind_sim <- rbind(plant,turb_pot,pot)
+}
 
 ################################################################################
 #Level 1 shows provinces, while level 2 shows individual counties
@@ -265,3 +272,4 @@ ggplot() +
   geom_point(data = turb_location, 
              aes(x = Longitude, y = Latitude), color = "forestgreen", size = 1) + 
   theme_void()
+}
