@@ -50,7 +50,7 @@
 # Author: Taylor Pawlenchuk
 # email: pawlench@ualberta.ca
 # March 2022; Last revision: March 9, 2022
-
+{
 {library(tidyverse)
   library(ggplot2)
   library(grid)
@@ -64,10 +64,13 @@
   library(cowplot)
   library(scales)
   library(dplyr)
+#  library(RMySQL)
+  library(RMariaDB)
+#  library(plyr)
   }
 
 {
-  DB <- "Apr_13_2022"
+  DB <- "Apr_22_2022"
 # Connect to SQL database
 ################################################################################
 con <- dbConnect(odbc(),
@@ -78,6 +81,27 @@ con <- dbConnect(odbc(),
                  PWD = "SOB704910",
                  Port = 49172)
 
+  # Connect to MySQL database
+  ################################################################################
+  con <- dbConnect(RMySQL::MySQL(),
+                   Driver = "SQL Server",
+                   user = 'tpawl',
+                   password = 'Aurora2022!',
+                   dbname = DB,
+                   Server = '192.168.0.139',
+                   port = 3306)
+  
+  # Connect to MySQL database
+  ################################################################################
+  con <- dbConnect(RMariaDB::MariaDB(),
+                   user = 'tpawl',
+                   Driver = "SQL Server",
+                   host='localhost'
+#                   Server = '192.168.0.139,3306',
+                   dbname = DB,
+                   password = 'Aurora2022!',
+                   port = 3306)
+  
   {
 # Write data to environment and set variables
 ################################################################################
@@ -89,18 +113,33 @@ data_ZoneHour <- dbReadTable(con,'ZoneHour1')
 data_Resource <- dbReadTable(con,'ResourceMonth1')
 #data_LTResValue <- dbReadTable(con,'LTResValue1')
 
-Hour <- data_raw_Hour
+setwd("D:/Documents/Education/Masters Degree/Aurora/R Code")
+
+#write.csv(data_raw_Hour, file="data_raw_Hour.csv")
+#write.csv(data_ZoneHour, file="data_ZoneHour.csv")
+
+Hour <- data_raw_Hour #read.csv("data_raw_Hour.csv", header = TRUE)
 Month <- data_raw_Month
 Year  <- data_raw_Year
 #Build <- data_raw_Build
-ZoneHour <- data_ZoneHour
+ZoneHour <- data_ZoneHour #read.csv("data_ZoneHour.csv", header = TRUE)
 #LTRes <- data_LTResValue
 }
+  
+#  Houra <- Hour
+#  Montha <- Month
+#  Yeara <- Year
+#  ZoneHoura <- ZoneHour
 
+#  Hour <- rbind(Houra, Hourb, Hourc)
+#  Month <- rbind(Montha, Monthb, Monthc)
+#  Year <- rbind(Yeara, Yearb, Yearc)
+#  ZoneHour <- rbind(ZoneHoura, ZoneHourb, ZoneHourc)
+  
  # Set variables to identify the case studies
 ################################################################################
 {
-  Yr4Sp <- list(2020,2030,2035,2040)
+  Yr4Sp <- list(2020,2025,2030,2035)
   Yr2Sp <- list(2020,2021)
 
 BC <- "Base Case"
@@ -125,11 +164,13 @@ colours3 = c("forestgreen", "gold", "coral4", "goldenrod4", "cyan", "dodgerblue"
 # Converts the date and time and identifies the week when applicable
 ################################################################################
 {
-Hour$date        <- ymd_h(gsub(" Hr ", "_",Hour$Time_Period))
+Hour$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",Hour$Time_Period))), 
+                        tz = "MST")-(60*60)
 Month$Time_Period <- ym(Month$Time_Period)
 Year$Time_Period  <- as.Date(as.character(Year$Time_Period), 
                                   format = "%Y")
-ZoneHour$date        <- ymd_h(gsub(" Hr ", "_",ZoneHour$Time_Period))
+ZoneHour$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",ZoneHour$Time_Period))), 
+                            tz = "MST")-(60*60)
 
 # Selects only the required columns
 ################################################################################
@@ -257,9 +298,6 @@ HrTime <- function(data, year, month, day) {
 # Functions for weekly evaluation
 ################################################################################
   Week1 <- function(year, month, day, case) {
-    # Add imports and exports to data
-    
-    
     # Filters for the desired case study
     data <- Hour_pl %>%
       sim_filt1(.) %>%
@@ -271,8 +309,8 @@ HrTime <- function(data, year, month, day) {
     
 #    data$date <- as.POSIXct(data$date, tz = "MST")
     
-#    wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
-#    wk_end <- as.POSIXct(paste(day+7,month,year, sep = "/"), format="%d/%m/%Y")
+    wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
+    wk_end <- as.POSIXct(paste(day+7,month,year, sep = "/"), format="%d/%m/%Y")
     
     # Select only a single week
     ##############################################################################
@@ -280,7 +318,7 @@ HrTime <- function(data, year, month, day) {
       filter(date >= wk_st, date <= wk_end)
 
     # Select only a single week
-    WK <- HrTime(data,year,month,day)
+#    WK <- HrTime(data,year,month,day)
     ZPrice <- HrTime(ZH,year,month,day)
     Expo <- HrTime(Export,year,month,day)
     WK$MX <- ZPrice$Demand + Expo$Output_MWH
@@ -564,10 +602,10 @@ Eval <- function(input,case) {
     summarise(Output_MWH = mean(Output_MWH)) %>%
     mutate(ID = "Import")
   
-  Imp$Time_Period  <- as.Date(as.character(Imp$Time_Period), 
-                               format = "%Y")
+#  Imp$Time_Period  <- as.Date(as.character(Imp$Time_Period), 
+#                               format = "%Y")
   
-  Imp <- subset(Imp, Time_Period <= '2040-04-05')
+#  Imp <- subset(Imp, Time_Period <= '2040-04-05')
   
   # Filters for the desired case study
   data <- input %>%
@@ -577,6 +615,7 @@ Eval <- function(input,case) {
     rbind(.,Imp) 
     
   data$ID<-fct_relevel(data$ID, "Import")
+  data$Time_Period <- as.Date(data$Time_Period)
   
   data %>%
     ggplot() +
@@ -589,7 +628,7 @@ Eval <- function(input,case) {
           plot.title = element_text(hjust = 0.5),
           plot.subtitle = element_text(hjust = 0.5), 
           legend.justification = c(0,0.5)) +
-    scale_x_date(expand=c(0,0)) +
+#    scale_x_date(expand=c(0,0)) +
     scale_y_continuous(expand=c(0,0)) +
     scale_fill_manual(values = colours1) +
     labs(x = "Date", y = "Output (GWh)", fill = "Resource") 
@@ -1051,7 +1090,8 @@ imsave <- function(name) {
     summarise(meancap = mean(Cap_Fac),
               total_gen=sum(gen,na.rm = T),
               total_rev=sum(Revenue,na.rm = T),
-              p_mean=mean(Price)) %>% 
+              price_mean=mean(Price),
+              heatrt_mean=mean(Heat.Rate)) %>% 
     ungroup()
   
   df1$Day <- date(df1$time)
@@ -1070,6 +1110,14 @@ imsave <- function(name) {
   df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "SOLAR",after=Inf)
   df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "IMPORT",after=Inf)
   df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "EXPORT",after=Inf)
+  
+  # Identify Specific Plant traits
+  ################################################################################
+  plnt_tr <- function(Asset_ID) {
+    plnt <- sub_samp %>%
+      filter(ID == Asset_ID) %>%
+      subset(., select = c(time, Price, gen, Capacity, Plant_Type, CO2, Heat.Rate, Revenue, Cap_Fac))
+  }
   
   # Establish image theme
   ################################################################################
@@ -1112,8 +1160,8 @@ Week_act <- function(year,month,day) {
   wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
   wk_end <- as.POSIXct(paste(day+7,month,year, sep = "/"), format="%d/%m/%Y")
   
-  wk_st <- hms::as.hms(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
-  wk_end <- hms::as.hms(paste(day+7,month,year, sep = "/"), format="%d/%m/%Y")
+  #wk_st <- hms::as.hms(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
+  #wk_end <- hms::as.hms(paste(day+7,month,year, sep = "/"), format="%d/%m/%Y")
   
   df1a$time <- as.POSIXct(df1a$time, tz = "MST")
   
@@ -1234,6 +1282,10 @@ AESO_PrOt <- function(year,month,day) {
             ncol = 1, align="v", axis = "l",rel_heights = c(1,2.5))
 }
 
+################################################################################
+# Plot comparison between actual and simulated data
+################################################################################
+
 AESO_Sim <- function(year,month,day,case) {
   SimP <- week_price(year,month,day,case)
   ActP <- wkPrice(year,month,day)
@@ -1298,3 +1350,85 @@ AESO_Sim <- function(year,month,day,case) {
 
 ggsave(path = "images", filename = "simvsact.png", bg = "transparent")
 
+
+################################################################################
+# Plot difference between simulated and actual pool price
+################################################################################
+
+year_comp <- function(year,case) {
+  # Filters for the desired case study
+  
+#  setwd("D:/Documents/Education/Masters Degree/Aurora/R Code")
+#  write.csv(ZH, file="sim_price.csv")
+#  sim <- read.csv("sim_price.csv", header = TRUE)
+
+  wk_st <- as.POSIXct(paste(01,01,year, sep = "/"), format="%d/%m/%Y")
+  wk_end <- as.POSIXct(paste(01,01,year+1, sep = "/"), format="%d/%m/%Y")
+  
+  sim <- ZH
+#  sim$Date <- as.POSIXct(as.character(sim$date), tz = "MST")
+  
+  sim_wk <- sim %>%
+    filter(date >= wk_st & date <= wk_end & Run_ID == case) %>%
+    subset(., select = c(date, Price))
+
+  
+  act <- demand
+  act$ActPrice <- act$Price
+  
+  act_wk <- act %>%
+    filter(time >= wk_st & time <= wk_end) %>%
+    subset(., select = c(time, ActPrice))
+  colnames(act_wk) <- c("date","ActPrice")
+  
+  data <- merge(sim_wk, act_wk, by.x="date", by.y="date")
+
+  data$diff <- (data$Price - data$ActPrice)
+
+  # Plot the data    
+  ggplot() +
+    geom_line(data = data, 
+              aes(x = date, y = diff), 
+              size = 1.5, colour = "red") +
+    geom_hline(yintercept = 0, linetype = "solid", color = "black", size = 0.5) +
+    theme_bw() +
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          text = element_text(size= 15)
+    ) +
+    ggtitle(paste("Simulated Data from "," (",DB,")", sep = ""))+
+    labs(x = year,
+         y = "Difference in Simulated and \n Actual Pool Price ($/MWh)", 
+         fill = "Resource") +
+    scale_x_datetime(expand=c(0,0))
+}
+
+cap_pf <- function(asset_id){
+  data <- plnt_tr(asset_id)
+  type <- data[1,5]
+  data1 <- data %>%
+    filter(Cap_Fac > 0) %>%
+    group_by(Cap_Fac) %>%
+    summarise(avPrice = mean(Price))
+  
+  ggplot() +
+    geom_point(data = data1,
+               aes(x = Cap_Fac, y = avPrice)) +
+    theme_bw() +
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          text = element_text(size= 15),
+          plot.title = element_text(hjust = 0.5)
+    ) +
+    scale_x_continuous(expand=c(0,0),
+                       limits = c(0,1)) +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(0,(max(data1$avPrice, na.rm = TRUE)+100))) +
+    ggtitle(paste("Average Capture Price for ", asset_id, " (", type, ")", sep = ""))+
+    labs(x = "% of Capacity Dispatched",
+         y = "Average Pool Price ($/MWh)")
+}
+
+}
