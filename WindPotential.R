@@ -29,8 +29,8 @@ colnames(wind_pot) <- x
 {
   maxLat <- 60
   maxLon <- -120
-  minLat <- 49.00
-  minLon <- -110.04
+  minLat <- 49.04
+  minLon <- -110.00
   
   totLat <- maxLat-minLat
   totLon <- abs(maxLon-minLon)
@@ -82,7 +82,7 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
   # Note the start time
   old <- Sys.time()
   {  
-  for(i in 37427:nrow(wind_prof)) {
+  for(i in 74026:nrow(wind_prof)) {
     tempold <- Sys.time()
     url <- paste(cons1, wind_prof[i,1], cons2, wind_prof[i,2], sep = "")
     wind <- readHTMLTable(url,which=1)
@@ -99,7 +99,7 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
 
      
    # Creates an RDS file with the entire dataset.
-  saveRDS(wind_prof, file = paste("WindAtlas_Data04", res, sep = "_"))
+  saveRDS(wind_prof, file = paste("WindAtlas_Data40", res, sep = "_"))
   
   # Prints the location of the file.
   getwd()
@@ -107,5 +107,4 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
   # Print the elapsed time
   New <- Sys.time() - old
   print(New)
-}
-                                       
+  }
