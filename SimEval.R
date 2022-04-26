@@ -70,7 +70,7 @@
   }
 
 {
-  DB <- "Apr_22_2022"
+  DB <- "Apr_25_2022"
 # Connect to SQL database
 ################################################################################
 con <- dbConnect(odbc(),
@@ -83,24 +83,14 @@ con <- dbConnect(odbc(),
 
   # Connect to MySQL database
   ################################################################################
-  con <- dbConnect(RMySQL::MySQL(),
-                   Driver = "SQL Server",
-                   user = 'tpawl',
-                   password = 'Aurora2022!',
-                   dbname = DB,
-                   Server = '192.168.0.139',
-                   port = 3306)
-  
-  # Connect to MySQL database
-  ################################################################################
-  con <- dbConnect(RMariaDB::MariaDB(),
-                   user = 'tpawl',
-                   Driver = "SQL Server",
-                   host='localhost'
-#                   Server = '192.168.0.139,3306',
-                   dbname = DB,
-                   password = 'Aurora2022!',
-                   port = 3306)
+#  con1 <- dbConnect(RMariaDB::MariaDB(),
+#                   user = 'tpawl',
+#                   password = 'Aurora2022!',
+#                   Driver = "SQL Server",
+#                   host='192.168.0.139',
+#                   dbname = DB,
+
+#                   port = 3306)
   
   {
 # Write data to environment and set variables
@@ -1026,7 +1016,7 @@ Eval2 <- function(month,day,case) {
                         PrOut(Yr2Sp[[2]],month,day,case)+theme(legend.position ="none"),
                         ncol=2),
             g_legend(Week1(Yr2Sp[[1]],month,day,case)),
-            nrow = 2, heights=c(12,1))
+            ncol = 2, widths=c(12,1))
 }
 
 Eval4 <- function(month,day,case) {
@@ -1116,7 +1106,7 @@ imsave <- function(name) {
   plnt_tr <- function(Asset_ID) {
     plnt <- sub_samp %>%
       filter(ID == Asset_ID) %>%
-      subset(., select = c(time, Price, gen, Capacity, Plant_Type, CO2, Heat.Rate, Revenue, Cap_Fac))
+      subset(., select = c(time, Price, gen, Capacity, Plant_Type, AESO_Name, CO2, Heat.Rate, Revenue, Cap_Fac))
   }
   
   # Establish image theme
@@ -1348,7 +1338,7 @@ AESO_Sim <- function(year,month,day,case) {
             ncol=2, widths =c(5,1))#= unit.c(unit(1, "npc")-legend$width, legend$width))
 }
 
-ggsave(path = "images", filename = "simvsact.png", bg = "transparent")
+#ggsave(path = "images", filename = "simvsact.png", bg = "transparent")
 
 
 ################################################################################
@@ -1406,29 +1396,179 @@ year_comp <- function(year,case) {
 
 cap_pf <- function(asset_id){
   data <- plnt_tr(asset_id)
+  name <- data[1,6]
   type <- data[1,5]
   data1 <- data %>%
-    filter(Cap_Fac > 0) %>%
-    group_by(Cap_Fac) %>%
+    filter(Cap_Fac > 0)# %>%
+#    group_by(Cap_Fac) %>%
+#    summarise(avPrice = mean(Price))
+  breaks= c(0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
+  tags <- c("0-10%","10-20%","20-30%","30-40%","40-50%","50-60%","60-70%","70-80%","80-90%","90-100%")
+  data1$bins <- cut(data1$Cap_Fac, 
+                    breaks= breaks,
+                    labels=tags)
+  data1 <- na.omit(data1)
+  
+  data2 <- data1 %>%
+    group_by(bins) %>%
     summarise(avPrice = mean(Price))
   
-  ggplot() +
-    geom_point(data = data1,
-               aes(x = Cap_Fac, y = avPrice)) +
+  ggplot(data2, aes(x = bins, y = avPrice, group=bins)) +
+    geom_bar(stat="identity") +
+    geom_text(aes(label = paste("$",round(avPrice, digits = 0),sep="")), 
+                  vjust = -0.3, size = 4)+#, angle = 90) +
     theme_bw() +
     theme(panel.background = element_rect(fill = "transparent"),
           panel.grid = element_blank(),
           plot.background = element_rect(fill = "transparent", color = NA),
           text = element_text(size= 15),
-          plot.title = element_text(hjust = 0.5)
+          plot.title = element_text(hjust = 0.5),
+          axis.text.x = element_text(angle = 45, hjust=1)
     ) +
-    scale_x_continuous(expand=c(0,0),
-                       limits = c(0,1)) +
     scale_y_continuous(expand=c(0,0),
-                       limits = c(0,(max(data1$avPrice, na.rm = TRUE)+100))) +
-    ggtitle(paste("Average Capture Price for ", asset_id, " (", type, ")", sep = ""))+
+                       limits = c(0,750)) +
+    ggtitle(paste(name, type, sep = ": "))+
     labs(x = "% of Capacity Dispatched",
-         y = "Average Pool Price ($/MWh)")
+         y = "Average Pool Price \n($/MWh)")
+  
+#  ggplot() +
+#    geom_point(data = data1,
+#               aes(x = Cap_Fac, y = Price)) +
+#    theme_bw() +
+#    theme(panel.background = element_rect(fill = "transparent"),
+#          panel.grid = element_blank(),
+#          plot.background = element_rect(fill = "transparent", color = NA),
+#          text = element_text(size= 15),
+#          plot.title = element_text(hjust = 0.5)
+#    ) +
+#    scale_x_continuous(expand=c(0,0),
+#                       limits = c(0,1)) +
+#    scale_y_continuous(expand=c(0,0),
+#                       limits = c(0,(max(data1$Price, na.rm = TRUE)+100))) +
+#    ggtitle(paste("Average Capture Price for ", asset_id, " (", type, ")", sep = ""))+
+#    labs(x = "% of Capacity Dispatched",
+#         y = "Average Pool Price ($/MWh)")
 }
 
+#poly <- lm(avPrice~poly(Cap_Fac,4,raw=TRUE), data=data1)
+#exp <- lm(avPrice~log(Cap_Fac), data=data1)
+
+Cap3 <- function(plant1,plant2,plant3) {
+  ggarrange(cap_pf(plant1), cap_pf(plant2), cap_pf(plant3),
+            ncol = 2, nrow = 2)
+}
+
+Cap4 <- function(plant1,plant2,plant3,plant4) {
+  ggarrange(cap_pf(plant1), cap_pf(plant2), cap_pf(plant3), cap_pf(plant4),
+            ncol = 2, nrow = 2)
+}
+}
+
+year_dif <- function(year,case) {
+  # Filters for the desired case study
+
+  wk_st <- as.POSIXct(paste(01,01,year, sep = "/"), format="%d/%m/%Y")
+  wk_end <- as.POSIXct(paste(31,12,year, sep = "/"), format="%d/%m/%Y")
+  
+  sim <- ZH
+  sim_wk <- sim %>%
+    filter(date >= wk_st & date <= wk_end & Run_ID == case) %>%
+    subset(., select = c(date, Price))
+
+  act <- demand
+  act_wk <- act %>%
+    filter(time >= wk_st & time <= wk_end) %>%
+    subset(., select = c(time, Price))
+  colnames(act_wk) <- c("date","actPrice")
+  
+  data <- merge(sim_wk, act_wk, by.x="date", by.y="date")
+  
+  results <- data %>%
+    mutate(month = floor_date(date, "month")) %>%
+    group_by(month) %>%
+    summarize(Price = mean(Price), actPrice = mean(actPrice))
+  results$month <- as.Date(results$month)
+  
+  results$diff <- (results$Price - results$actPrice)
+  
+  mx <- plyr::round_any(max(results$diff), 20, f = ceiling)
+  mn <- plyr::round_any(min(results$diff), 20, f = floor)
+  
+  # Plot the data    
+  ggplot(results, aes(x = month, y = diff)) +
+    geom_bar(stat="identity", alpha = 0.7) +
+    geom_text(aes(label = paste("$",round(diff, digits = 0),sep="")), 
+                  vjust = -0.3, size = 4)+#, angle = 90) +
+    geom_hline(yintercept = 0, linetype = "solid", color = "black", size = 0.5) +
+    theme_bw() +
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          text = element_text(size= 15),
+          plot.title = element_text(hjust = 0.5),
+          axis.text.x = element_text(angle = 90, hjust=1, vjust=0.5)
+    ) +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(-60,140), 
+                       breaks = pretty_breaks(8)) +
+    scale_x_date(date_labels="%B", date_breaks = "months") +
+    ggtitle(paste("Monthly Price Average Differences"," (",DB,")", sep = ""))+
+    labs(x = year,
+         y = "Difference in Simulated and Actual \nAverage Pool Price ($/MWh)",
+         colour = element_blank())
+}
+
+year_avg <- function(year,case) {
+  # Filters for the desired case study
+
+  wk_st <- as.POSIXct(paste(01,01,year, sep = "/"), format="%d/%m/%Y")
+  wk_end <- as.POSIXct(paste(31,12,year, sep = "/"), format="%d/%m/%Y")
+  
+  sim <- ZH
+  sim_wk <- sim %>%
+    filter(date >= wk_st & date <= wk_end & Run_ID == case) %>%
+    subset(., select = c(date, Price))
+  
+  sim_wk$sit <- "Simulated"
+  
+  act <- demand
+  act$sit <- "Actual"
+  
+  act_wk <- act %>%
+    filter(time >= wk_st & time <= wk_end) %>%
+    subset(., select = c(time, Price, sit))
+  colnames(act_wk) <- c("date","Price","sit")
+  
+  data <- rbind(sim_wk, act_wk)
+
+  results <- data %>%
+    mutate(month = floor_date(date, "month")) %>%
+    group_by(month,sit) %>%
+    summarize(avPrice = mean(Price), sd = sd(Price))
+  results$month <- as.Date(results$month)
+  
+  mx <- plyr::round_any(max(results$avPrice), 20, f = ceiling)
+
+  # Plot the data    
+  ggplot(results, aes(x = month, y = avPrice, fill=sit, colour = sit)) +
+    geom_bar(stat="identity", position = "dodge", alpha = 0.7) +
+    theme_bw() +
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          text = element_text(size= 15),
+          plot.title = element_text(hjust = 0.5),
+          axis.text.x = element_text(angle = 90, hjust=1, vjust=0.5)
+    ) +
+    scale_fill_manual(values = c("forestgreen","dodgerblue")) +
+    scale_color_manual(values = c("forestgreen","dodgerblue")) +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(0,160), 
+                       breaks = pretty_breaks(6)) +
+    scale_x_date(date_labels="%B", date_breaks = "months") +
+    ggtitle(paste("Monthly Price Averages"," (",DB,")", sep = ""))+
+    labs(x = year,
+         y = "Average Pool Price \n($/MWh)",
+         fill = element_blank(),
+         colour = element_blank())
 }
