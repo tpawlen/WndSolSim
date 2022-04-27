@@ -1,0 +1,278 @@
+# Functions defined
+################################################################################
+{# Generates functions used to plot simulation outputs
+#
+# The entire code can be run once per session, then just the functions can be 
+# used for each iteration.
+#
+# AESO_Sim(year, month, day, case) 
+{#    compares a single week of AESO data against 
+#    the same week of simulated data
+}
+# comp_dur(year1, year2, case) 
+{#    compares duration curves of actual and simulated 
+#    data.  
+}
+#  
+# Eval4(month, day, case) 
+{#    plots the output of a single specified week over 4 
+#    years for a specified case study with storage separate on top, price in the  
+#    middle, and output on the bottom. Basically 4 PrOuts.
+}
+# Eval2(month, day, case) 
+{#    plots the output of a single specified week over 2 
+#    years for a specified case study with storage separate on top, price in the  
+#    middle, and output on the bottom. Basically 2 PrOuts.
+}
+  
+# EvalOut(input, case) 
+{#    plots the output averaged over the specified time period 
+#    (month, year) on top with the resources built on the bottom.
+}
+# EvalPerc(input, case) 
+{#    plots the output of each generation type as a percentage
+#     of total generation
+}
+# BuildUnits(case,Fuel) 
+{#    plots the units built for a fuel type along with the 
+#     available units not built.
+}
+# BuildUnits2(case,Fuel) 
+{#   same as BuildUnits, with hypothetical sites highlighted
+}
+# PrOut(year, month, day, case) 
+{#   plots the output of a single specified week for
+#    a specified case study with storage separate on top, price in the middle, 
+#    and output on the bottom.
+}
+# PrOut4(year, month, day, case) 
+{#   same as PrOut with limits set for 4 year 
+#    comparison
+}
+# PrOt(year, month, day, case) 
+{#   same as PrOut minus the storage plot
+}
+#
+{# Week1(year, month, day, case) plots the output of a single specified week for
+#    a specified case study.
+# Week14(year, month, day, case) same as Week1 with limits set for 4 year
+#    comparison
+# Stor1(year, month, day, case) plots the storage output of a single specified 
+#    week for a specified case study.
+# Stor14(year, month, day, case) same as Stor1 with limits set for 4 year
+#    comparison
+# Week4(month, day, case) plots the output of a single specified week for 
+#    specified years for a specified case study.
+# week_price(year, month, day, case) plots the price of electricity for a single 
+#    specified week for a specified case study.
+# week_price4(year, month, day, case) same as week_price with limits set for 4 
+#    year comparison
+# Eval(input, case) plots the output averaged over the specified time period 
+#    (month, year)
+# Built(case) plots the resources built over the time span of the study.
+# Units(case, Fuel) plots the units of a particular resource the simulation built
+# Slack(case, Fuel) plots the units available to build in the simulation that 
+#     were not built
+}
+#
+# imsave("name") Saves the image of the plot to directory
+#
+# Author: Taylor Pawlenchuk
+# email: pawlench@ualberta.ca
+# March 2022; Last revision: April 27, 2022
+}
+
+################################################################################
+# library
+################################################################################
+
+{
+  library(tidyverse)
+  library(ggplot2)
+  library(grid)
+  library(gtable)
+  library(gridExtra)
+  library(odbc)
+  library(ggpubr)
+  library(DBI)
+  library(lubridate)
+  library(cowplot)
+  library(scales)
+  library(dplyr)
+}
+
+################################################################################
+# Connect to SQL
+################################################################################
+
+{
+  DB <- "Apr_25_2022"
+  # Connect to SQL database
+  ################################################################################
+  con <- dbConnect(odbc(),
+                   Driver = "SQL Server",
+                   Server = "192.168.0.139,49172",
+                   Database = DB,
+                   UID = "admin",
+                   PWD = "SOB704910",
+                   Port = 49172)
+  
+  # Connect to MySQL database
+  ################################################################################
+  #  con1 <- dbConnect(RMariaDB::MariaDB(),
+  #                   user = 'tpawl',
+  #                   password = 'Aurora2022!',
+  #                   Driver = "SQL Server",
+  #                   host='192.168.0.139',
+  #                   dbname = DB,
+  
+  #                   port = 3306)
+}
+
+################################################################################
+# Load simulation Data
+################################################################################
+
+  {
+    # Write data to environment and set variables
+    ################################################################################
+    Hour <- dbReadTable(con,'ResourceGroupHour1')
+    Month <- dbReadTable(con,'ResourceGroupMonth1')
+    Year  <- dbReadTable(con,'ResourceGroupYear1')
+    #Build <- dbReadTable(con,'LTBuildReport1')
+    ZoneHour <- dbReadTable(con,'ZoneHour1')
+    Resource <- dbReadTable(con,'ResourceMonth1')
+    #LTRes <- dbReadTable(con,'LTResValue1')
+    
+    setwd("D:/Documents/GitHub/AuroraEval")
+    
+    source("aeso_sim_comp.R")
+    source("sim_eval.R")
+    source("aeso_eval.R")
+    
+    {
+      Yr4Sp <- list(2020,2025,2030,2035)
+      Yr2Sp <- list(2020,2021)
+      
+      BC <- "Base Case"
+      MS  <- "Minimum Solar Constraint"
+      LCT <- "Low Carbon Tax"
+      HS <- "Hypothetical Sites"
+      
+      # Set limits for plots to be consistent
+      ylimit <- max(Hour$Output_MWH) + max(ZoneHour$Imports)
+      
+      # Set legend variables
+      colours = c("darkslateblue", "grey", "darkslategrey", "coral4", "goldenrod4", 
+                  "dodgerblue", "forestgreen", "gold", "darkolivegreen1", "cyan")
+      colours1 = c("darkslateblue", "grey", "darkslategrey", "coral4", "goldenrod4", 
+                   "darkcyan", "dodgerblue", "forestgreen", "gold", "cyan")
+      colours2 = c("grey", "darkslategrey", "coral4", "goldenrod4", 
+                   "dodgerblue", "darkcyan", "forestgreen", "gold", "cyan")
+      colours3 = c("forestgreen", "gold", "coral4", "goldenrod4", "cyan", "dodgerblue")
+
+    # Converts the date and time and identifies the week when applicable
+    ################################################################################
+    {
+      Hour$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",Hour$Time_Period))), 
+                              tz = "MST")-(60*60)
+      Month$Time_Period <- ym(Month$Time_Period)
+      Year$Time_Period  <- as.Date(as.character(Year$Time_Period), 
+                                   format = "%Y")
+      ZoneHour$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",ZoneHour$Time_Period))), 
+                                  tz = "MST")-(60*60)
+      
+      # Selects only the required columns
+      ################################################################################
+      
+      Hour <- Hour %>%
+        subset(., select = c(ID, date, Output_MWH, Run_ID))
+      
+      ZH <- ZoneHour %>%
+        filter(Name == "WECC_Alberta") %>%
+        filter(Condition == "Average") %>%
+        subset(., select = c(date, Price, Baseline_Demand, Demand, Demand_Total,
+                             Net_Load, Net_Load_Total, Marginal_Resource, 
+                             Smp_Max_Date_Time, Smp_Max_Demand, Smp_Max_Capacity, 
+                             Run_ID, Imports, Exports))
+      
+      ZoneH <- ZoneHour %>%
+        filter(Name == "WECC_Alberta") %>%
+        subset(., select = c(date, Condition, Price, Demand, Marginal_Resource, Report_Year,
+                             Run_ID))
+      
+      # Select the Import/Export data
+      Import <- ZH %>%
+        subset(., select = c(date, Imports, Run_ID)) %>%
+        'colnames<-'(c("date", "Output_MWH", "Run_ID")) %>%
+        add_column(ID = "Import")
+      
+      Export <- ZH %>%
+        subset(., select = c(date, Exports, Run_ID)) %>%
+        'colnames<-'(c("date", "Output_MWH", "Run_ID")) %>%
+        add_column(ID = "Export")
+      
+      Export$Output_MWH <- Export$Output_MWH * -1
+    }
+  }
+}
+
+################################################################################
+# Load AESO Data
+################################################################################
+      
+  {
+    setwd("D:/Documents/Education/Masters Degree/Datasets/Market")
+    
+    load("nrgstream_gen.RData") 
+    nrgstream_gen <- nrgstream_gen %>% rename(time=Time)
+    
+    setwd("D:/Documents/GitHub/AuroraEval")
+    
+    errors<-nrgstream_gen %>% filter(is.na(Price),date<Sys.Date())
+    gen_errors<-nrgstream_gen %>% filter(is.na(gen),date<Sys.Date())
+    
+    nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$gen),] 
+    nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$time),] 
+    
+    sub_samp<-filter(nrgstream_gen, time >= as.Date("2018-01-1"))
+    
+    demand <- sub_samp %>%
+      group_by(time) %>%
+      summarise(Demand = median(Demand), 
+                Price = median(Price),
+                AIL = median(AIL))
+    
+    trade_excl<-c("AB - WECC Imp Hr Avg MW", "AB - WECC Exp Hr Avg MW","AB - WECC Imp/Exp Hr Avg MW")
+    
+    df1 <- sub_samp %>% 
+      filter(! NRG_Stream %in% trade_excl)%>% 
+      group_by(Plant_Type,time) %>% 
+      summarise(meancap = mean(Cap_Fac),
+                total_gen=sum(gen,na.rm = T),
+                total_rev=sum(Revenue,na.rm = T),
+                price_mean=mean(Price),
+                heatrt_mean=mean(Heat.Rate)) %>% 
+      ungroup()
+    
+    df1$Day <- date(df1$time)
+    df1$Year <- as.factor(year(df1$time))
+    
+    # Identify the Plant Types
+    ################################################################################
+    gen_set<-c("COAL","COGEN","HYDRO","NGCC", "OTHER", "SCGT","SOLAR","IMPORT","EXPORT","WIND")
+    
+    df1a <- df1 %>%
+      filter(Plant_Type %in% gen_set,year(time)<2022)
+    
+    df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "OTHER",after=Inf)
+    df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "HYDRO",after=Inf)
+    df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "WIND",after=Inf)
+    df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "SOLAR",after=Inf)
+    df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "IMPORT",after=Inf)
+    df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "EXPORT",after=Inf)
+  }
+
+AESO_Sim(2020,03,01,BC)
+
+comp_dur(2020,2021,BC)

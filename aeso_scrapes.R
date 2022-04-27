@@ -1,12 +1,12 @@
 #Mac
-if(R.version$platform ==  "x86_64-apple-darwin15.6.0")
-  setwd("/Users/aleach/Google Drive/alberta_power")
+#if(R.version$platform ==  "x86_64-apple-darwin15.6.0")
+#  setwd("/Users/aleach/Google Drive/alberta_power")
 
 #PC
-if(R.version$platform ==  "x86_64-w64-mingw32")
-  setwd("C:/Users/aleach/Google Drive/alberta_power")
-print(getwd())
-source("../andrew_base.R")
+#if(R.version$platform ==  "x86_64-w64-mingw32")
+#  setwd("C:/Users/aleach/Google Drive/alberta_power")
+#print(getwd())
+#source("../andrew_base.R")
 
 library(stringi)
 

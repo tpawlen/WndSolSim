@@ -95,24 +95,24 @@ con <- dbConnect(odbc(),
   {
 # Write data to environment and set variables
 ################################################################################
-data_raw_Hour <- dbReadTable(con,'ResourceGroupHour1')
-data_raw_Month <- dbReadTable(con,'ResourceGroupMonth1')
-data_raw_Year  <- dbReadTable(con,'ResourceGroupYear1')
-#data_raw_Build <- dbReadTable(con,'LTBuildReport1')
-data_ZoneHour <- dbReadTable(con,'ZoneHour1')
-data_Resource <- dbReadTable(con,'ResourceMonth1')
-#data_LTResValue <- dbReadTable(con,'LTResValue1')
+Hour <- dbReadTable(con,'ResourceGroupHour1')
+Month <- dbReadTable(con,'ResourceGroupMonth1')
+Year  <- dbReadTable(con,'ResourceGroupYear1')
+#Build <- dbReadTable(con,'LTBuildReport1')
+ZoneHour <- dbReadTable(con,'ZoneHour1')
+Resource <- dbReadTable(con,'ResourceMonth1')
+#LTRes <- dbReadTable(con,'LTResValue1')
 
 setwd("D:/Documents/Education/Masters Degree/Aurora/R Code")
 
 #write.csv(data_raw_Hour, file="data_raw_Hour.csv")
 #write.csv(data_ZoneHour, file="data_ZoneHour.csv")
 
-Hour <- data_raw_Hour #read.csv("data_raw_Hour.csv", header = TRUE)
-Month <- data_raw_Month
-Year  <- data_raw_Year
+#Hour <- data_raw_Hour #read.csv("data_raw_Hour.csv", header = TRUE)
+#Month <- data_raw_Month
+#Year  <- data_raw_Year
 #Build <- data_raw_Build
-ZoneHour <- data_ZoneHour #read.csv("data_ZoneHour.csv", header = TRUE)
+#ZoneHour <- data_ZoneHour #read.csv("data_ZoneHour.csv", header = TRUE)
 #LTRes <- data_LTResValue
 }
   
@@ -165,7 +165,7 @@ ZoneHour$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",ZoneHour$Time_Pe
 # Selects only the required columns
 ################################################################################
 
-Hour_pl <- Hour %>%
+Hour <- Hour %>%
   subset(., select = c(ID, date, Output_MWH, Run_ID))
 
 ZH <- ZoneHour %>%
@@ -176,20 +176,25 @@ ZH <- ZoneHour %>%
                        Smp_Max_Date_Time, Smp_Max_Demand, Smp_Max_Capacity, 
                        Run_ID, Imports, Exports))
 
+ZoneH <- ZoneHour %>%
+  filter(Name == "WECC_Alberta") %>%
+  subset(., select = c(date, Condition, Price, Demand, Marginal_Resource, Report_Year,
+                       Run_ID))
+
 # Select the Import/Export data
 Import <- ZH %>%
   subset(., select = c(date, Imports, Run_ID)) %>%
   'colnames<-'(c("date", "Output_MWH", "Run_ID")) %>%
   add_column(ID = "Import")
 
-Export <- ZH %>%
-  subset(., select = c(date, Exports, Run_ID)) %>%
-  'colnames<-'(c("date", "Output_MWH", "Run_ID")) %>%
-  add_column(ID = "Export")
+#Export <- ZH %>%
+#  subset(., select = c(date, Exports, Run_ID)) %>%
+#  'colnames<-'(c("date", "Output_MWH", "Run_ID")) %>%
+#  add_column(ID = "Export")
 
 #Export$Output_MWH <- Export$Output_MWH * -1
 
-ImEx <- rbind(Import, Export)
+#ImEx <- rbind(Import, Export)
 }
 }
 
@@ -289,7 +294,7 @@ HrTime <- function(data, year, month, day) {
 ################################################################################
   Week1 <- function(year, month, day, case) {
     # Filters for the desired case study
-    data <- Hour_pl %>%
+    data <- Hour %>%
       sim_filt1(.) %>%
       rbind(.,Import) %>%
       filter(Run_ID == case)
@@ -357,7 +362,7 @@ Week14 <- function(year, month, day, case) {
   
   
   # Filters for the desired case study
-  data <- Hour_pl %>%
+  data <- Hour %>%
     sim_filt1(.) %>%
     rbind(.,Import) %>%
     filter(Run_ID == case)
@@ -421,7 +426,7 @@ Stor1 <- function(year, month, day, case) {
   
   
   # Filters for the desired case study
-  data <- Hour_pl %>%
+  data <- Hour %>%
     filter(ID=="LTO_Storage") %>%
     filter(Run_ID == case)
   
@@ -462,7 +467,7 @@ Stor14 <- function(year, month, day, case) {
   
   
   # Filters for the desired case study
-  data <- Hour_pl %>%
+  data <- Hour %>%
     filter(ID=="LTO_Storage") %>%
     filter(Run_ID == case)
 
@@ -919,6 +924,36 @@ Slack2 <- function(case, Fuel) {
 }
 
 ################################################################################
+# Simulation duration curve. 
+# The price duration curve represents the percentage of hours in which pool price 
+# equaled or exceeded a specified level.
+################################################################################
+
+Sim_dur <- function(case) {
+  
+  tot <- ZoneH %>%
+    group_by(Condition, Report_Year)%>%
+    mutate(perc = 1-ecdf(Price)(Price))
+    
+  tot$Report_Year <- as.factor(tot$Report_Year)
+  
+  ggplot() +
+    geom_line(data = tot, 
+              aes(x = perc, y = Price, colour = Report_Year), size = 1) +
+    facet_grid(cols = vars(Condition)) +
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+    ) +
+    labs(y = "Pool Price$/MWh", x = "Percentage of Time") +
+    scale_color_manual(values = c("goldenrod1", "forestgreen", "cornflowerblue")) +
+    scale_x_continuous(expand=c(0,0), 
+                       limits = c(0,1.1),
+                       labels = percent) +
+    scale_y_continuous(expand=c(0,0)
+    )
+}
+
+################################################################################
 ################################################################################
 # Combination plotting functions defined
 ################################################################################
@@ -1052,9 +1087,17 @@ imsave <- function(name) {
 {
   setwd("D:/Documents/Education/Masters Degree/Datasets/Market")
   
-  load("nrgstream_gen.RData") ## which is here *equivalent* to
+  load("nrgstream_gen.RData") 
+  load("all_merit.RData")
+  library(readr)
+  merit <- read_csv("student_data_2021_Jul_23_14_09.csv.gz")
+#  library(data.table)
+#  dt = fread("student_data_2021_Jul_23_14_09.csv.gz")
+  merit_filt <- filter(merit, date >= as.Date("2020-01-1"), date <= as.Date("2020-12-31"))
   
   nrgstream_gen <- nrgstream_gen %>% rename(time=Time)
+#  merit_data<-merit_data[!is.na(nrgstream_gen$date),] 
+  merit_samp <- filter(merit_data, date >= as.Date("2020-01-1"), date <= as.Date("2020-12-31"))
 
   setwd("D:/Documents/GitHub/AuroraEval")
     
@@ -1064,7 +1107,7 @@ imsave <- function(name) {
   nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$gen),] 
   nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$time),] 
   
-  sub_samp<-filter(nrgstream_gen, time >= as.Date("2020-01-1"))
+  sub_samp<-filter(nrgstream_gen, time >= as.Date("2018-01-1"))
   
   demand <- sub_samp %>%
     group_by(time) %>%
@@ -1344,6 +1387,61 @@ AESO_Sim <- function(year,month,day,case) {
 ################################################################################
 # Plot difference between simulated and actual pool price
 ################################################################################
+
+comp_dur <- function(year1, year2, case) {
+  
+  totSim <- ZoneH %>%
+    filter(Report_Year >= year1 & 
+           Report_Year <= year2,
+           Run_ID == case, 
+           Condition != "Average") %>%
+    group_by(Condition, Report_Year) %>%
+    mutate(perc = 1-ecdf(Price)(Price)) %>%
+    select(Condition, Report_Year, Price, perc) %>%
+    rename(Year = Report_Year) %>%
+    ungroup() %>%
+    mutate(sit = "Simulated")
+  
+#  totSim$Report_Year <- as.factor(totSim$Report_Year)
+  
+  Actual <- na.omit(demand)
+  Actual$Year <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%Y")
+  Actual$Hour <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%H")
+
+  totAct <- Actual %>%
+    filter(Year >= year1, 
+           Year <= year2,) %>%
+    mutate(Condition = if_else(between(Hour, 8, 23), 
+                               "On-Peak WECC", "Off-Peak WECC")) %>%
+    group_by(Year, Condition) %>%
+    mutate(perc = 1-ecdf(Price)(Price)) %>%
+    select(Condition, Year, Price, perc) %>%
+    ungroup() %>%
+    mutate(sit = "Actual")
+  
+  total <- rbind(totSim, totAct)
+  
+#  totAct$Year <- as.factor(totAct$Year)
+  
+  ggplot() +
+    geom_line(data = total, 
+              aes(x = perc, y = Price, colour = Year, linetype = sit), size = 1) +
+    facet_grid(cols = vars(Condition)) +
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          legend.title = element_blank()
+    ) +
+    labs(y = "Pool Price$/MWh", 
+         x = "Percentage of Time", 
+         title = "AESO Data vs Simulation",
+         subtitle = DB) +
+    scale_color_manual(values = c("goldenrod1", "forestgreen", "cornflowerblue","gray60")) +
+    scale_x_continuous(expand=c(0,0), 
+                       limits = c(0,1.1),
+                       labels = percent) +
+    scale_y_continuous(expand=c(0,0)
+    )
+}
 
 year_comp <- function(year,case) {
   # Filters for the desired case study
