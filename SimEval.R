@@ -1097,7 +1097,7 @@ imsave <- function(name) {
   
   nrgstream_gen <- nrgstream_gen %>% rename(time=Time)
 #  merit_data<-merit_data[!is.na(nrgstream_gen$date),] 
-  merit_samp <- filter(merit_data, date >= as.Date("2020-01-1"), date <= as.Date("2020-12-31"))
+  merit_samp <- filter(merit_data, date >= as.Date("2020-01-1"), date <= as.Date("2021-12-31"))
 
   setwd("D:/Documents/GitHub/AuroraEval")
     
@@ -1607,7 +1607,7 @@ year_dif <- function(year,case) {
           axis.text.x = element_text(angle = 90, hjust=1, vjust=0.5)
     ) +
     scale_y_continuous(expand=c(0,0),
-                       limits = c(-60,140), 
+                       limits = c(-70,240), 
                        breaks = pretty_breaks(8)) +
     scale_x_date(date_labels="%B", date_breaks = "months") +
     ggtitle(paste("Monthly Price Average Differences"," (",DB,")", sep = ""))+
@@ -1670,3 +1670,5 @@ year_avg <- function(year,case) {
          fill = element_blank(),
          colour = element_blank())
 }
+
+

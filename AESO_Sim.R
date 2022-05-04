@@ -99,6 +99,8 @@
   library(cowplot)
   library(scales)
   library(dplyr)
+  library(reshape2)
+#  library(lmtest)
 }
 
 ################################################################################
@@ -106,7 +108,7 @@
 ################################################################################
 
 {
-  DB <- "Apr_25_2022"
+  DB <- "May_3_2022"
   # Connect to SQL database
   ################################################################################
   con <- dbConnect(odbc(),
@@ -226,6 +228,9 @@
     
     load("nrgstream_gen.RData") 
     nrgstream_gen <- nrgstream_gen %>% rename(time=Time)
+    merit <- read_csv("student_data_2021_Jul_23_14_09.csv.gz")
+    merit_filt <- filter(merit, date >= as.Date("2018-01-1"), 
+                         date <= as.Date("2020-12-31"))
     
     setwd("D:/Documents/GitHub/AuroraEval")
     
@@ -243,7 +248,9 @@
                 Price = median(Price),
                 AIL = median(AIL))
     
-    trade_excl<-c("AB - WECC Imp Hr Avg MW", "AB - WECC Exp Hr Avg MW","AB - WECC Imp/Exp Hr Avg MW")
+    trade_excl<-c("AB - WECC Imp Hr Avg MW", 
+                  "AB - WECC Exp Hr Avg MW",
+                  "AB - WECC Imp/Exp Hr Avg MW")
     
     df1 <- sub_samp %>% 
       filter(! NRG_Stream %in% trade_excl)%>% 
@@ -276,3 +283,4 @@
 AESO_Sim(2020,03,01,BC)
 
 comp_dur(2020,2021,BC)
+ 
