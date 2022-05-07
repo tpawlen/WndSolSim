@@ -115,7 +115,7 @@
     # Select only a single week
     #    WK <- HrTime(data,year,month,day)
     ZPrice <- HrTime(ZH,year,month,day)
-#    Expo <- HrTime(Export,year,month,day)
+    Expo <- HrTime(Export,year,month,day)
     WK$MX <- ZPrice$Demand + Expo$Output_MWH
     
     # Set the max and min for the plot
@@ -486,6 +486,14 @@
             axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
             plot.title = element_text(hjust = 0.5),
             plot.subtitle = element_text(hjust = 0.5), 
+            legend.title = element_blank(),
+            panel.background = element_rect(fill = "transparent"),
+            panel.grid.major.x = element_blank(),
+            panel.grid.minor.x = element_blank(),
+            plot.background = element_rect(fill = "transparent", color = NA),
+            legend.key = element_rect(colour = "transparent", fill = "transparent"),
+            legend.background = element_rect(fill='transparent'),
+            legend.box.background = element_rect(fill='transparent', colour = "transparent"),
             legend.justification = c(0,0.5)) +
       scale_x_date(expand=c(0,0)) +
       scale_y_continuous(expand=c(0,0),
@@ -872,5 +880,6 @@ subtit <- function(plot) {
 }
 
 imsave <- function(name) {
+  setwd("D:/Documents/GitHub/AuroraEval")
   ggsave(path = "images", filename = paste(name,".png", sep = ""), bg = "transparent")
 }

@@ -112,7 +112,7 @@ comp_dur <- function(year1, year2, case) {
   totAct <- Actual %>%
     filter(Year >= year1, 
            Year <= year2,) %>%
-    mutate(Condition = if_else(between(Hour, 8, 23), 
+    mutate(Condition = if_else(between(Hour, 08, 23), 
                                "On-Peak WECC", "Off-Peak WECC")) %>%
     group_by(Year, Condition) %>%
     mutate(perc = 1-ecdf(Price)(Price)) %>%
@@ -121,6 +121,7 @@ comp_dur <- function(year1, year2, case) {
     mutate(sit = "Actual")
   
   total <- rbind(totSim, totAct)
+  sz <- 15
   
   #  totAct$Year <- as.factor(totAct$Year)
   
@@ -129,8 +130,20 @@ comp_dur <- function(year1, year2, case) {
               aes(x = perc, y = Price, colour = Year, linetype = sit), size = 1) +
     facet_grid(cols = vars(Condition)) +
     theme_bw() +
-    theme(panel.grid = element_blank(),
-          legend.title = element_blank()
+    theme(axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz),
+          panel.grid = element_blank(),
+          legend.title = element_blank(),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
     ) +
     labs(y = "Pool Price$/MWh", 
          x = "Percentage of Time", 
