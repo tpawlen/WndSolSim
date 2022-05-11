@@ -100,6 +100,7 @@
   library(scales)
   library(dplyr)
   library(reshape2)
+  library(zoo)
 #  library(lmtest)
 }
 
@@ -108,7 +109,7 @@
 ################################################################################
 
 {
-  DB <- "May_3_2022"
+  DB <- "May_6c_2022"
   # Connect to SQL database
   ################################################################################
   con <- dbConnect(odbc(),
@@ -188,7 +189,7 @@
       ################################################################################
       
       Hour <- Hour %>%
-        subset(., select = c(ID, date, Output_MWH, Run_ID))
+        subset(., select = c(ID, date, Report_Year, Output_MWH, Run_ID))
       
       ZH <- ZoneHour %>%
         filter(Name == "WECC_Alberta") %>%
@@ -200,7 +201,8 @@
       
       ZoneH <- ZoneHour %>%
         filter(Name == "WECC_Alberta") %>%
-        subset(., select = c(date, Condition, Price, Demand, Marginal_Resource, Report_Year,
+        subset(., select = c(date, Condition, Price, Demand, Marginal_Resource, 
+                             Report_Year, Report_Month,
                              Run_ID))
       
       # Select the Import/Export data
@@ -228,19 +230,25 @@
     
     load("nrgstream_gen.RData") 
     nrgstream_gen <- nrgstream_gen %>% rename(time=Time)
-    merit <- read_csv("student_data_2021_Jul_23_14_09.csv.gz")
-    merit_filt <- filter(merit, date >= as.Date("2018-01-1"), 
-                         date <= as.Date("2020-12-31"))
+#    merit <- read_csv("student_data_2021_Jul_23_14_09.csv.gz")
+#    merit <- read_csv("student_data_2022_May_05_15_19.csv.gz")
+#    saveRDS(merit, file = "Leach_MeritData.RData")
+    merit <- readRDS("Leach_MeritData.RData")
+#    load("Leach_MeritData.RData")
+    merit_filt <- filter(merit, 
+                         date >= as.Date("2017-01-1"))
+    rm(merit)
     
     setwd("D:/Documents/GitHub/AuroraEval")
     
-    errors<-nrgstream_gen %>% filter(is.na(Price),date<Sys.Date())
-    gen_errors<-nrgstream_gen %>% filter(is.na(gen),date<Sys.Date())
+#    errors<-nrgstream_gen %>% filter(is.na(Price),date<Sys.Date())
+#    gen_errors<-nrgstream_gen %>% filter(is.na(gen),date<Sys.Date())
     
     nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$gen),] 
     nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$time),] 
     
-    sub_samp<-filter(nrgstream_gen, time >= as.Date("2018-01-1"))
+    sub_samp<-filter(nrgstream_gen, time >= as.Date("2017-01-1"))
+    rm(nrgstream_gen)
     
     demand <- sub_samp %>%
       group_by(time) %>%
@@ -280,7 +288,7 @@
     df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "EXPORT",after=Inf)
   }
 
-AESO_Sim(2020,03,01,BC)
+AESO_Sim(2021,03,01,BC)
 
-comp_dur(2020,2021,BC)
+comp_dur(2018,2021,BC)
  

@@ -672,44 +672,16 @@ cdata <- function(plant,parameter){
   # Remove extra columns
   data2 <- data2[,c(mx2tier,8,9,10,11,12)]
   
-  # Relabel the second top tier if it was never dispatched ie. it was another
-  # maximum price
-#  data4 <- data2 %>%
-#    group_by(month) %>%
-#    filter(tier == max(tier[tier!=max(tier)])) %>%
-#    mutate(xaxis = ifelse(avCap_Fac == 0, paste(xaxis,"~100%",sep=""),xaxis))
-  
-  # Relabel the top tier to be a range to 100%
-#  data3 <- data2 %>%
-#    group_by(month) %>%
-#    filter(tier == max(tier)) %>%
-#    mutate(xaxis = paste(xaxis,"-100%",sep=""))
-#  
-#  data2 <- data2 %>%
-#    group_by(month) %>%
-#    filter(tier != max(tier),tier != max(tier[tier!=max(tier)]))
-  
-  # Recombine the data
-#  data1 <- rbind(data2,data3,data4)
-  
-#  data <- data2 %>%
-#    filter(tier == tr) %>%
-#    arrange(month)
-  
   colkeep <- ifelse(parameter == "xaxis", 1,6)
   
-#  data1 <- t(data[,c(1,6)])
   data1 <- data2[,c(3,2,colkeep)]
   data3 <- reshape2::dcast(data1,tier~month)
 
-   
-#  colnames(data1) <- data$month
-  
   setwd("F:/My Drive/transfer")
   write.csv(data3, "Incremental_Bid_Factors.csv")
 }
 
-cap_box <- function(plant){#, year){
+cap_type <- function(plant_type){#, year){
   
   # Set a start and end date if needed
   #  start <- as.Date(paste(year,"-01-01",sep=""))
@@ -718,71 +690,82 @@ cap_box <- function(plant){#, year){
   # Select just the plant in question from the spreadsheet 
   # "student_data_2021_Jul_23_14_09.csv.gz"
   data <- merit_filt %>%
-    filter(asset_id == plant, 
+    filter(Plant_Type == plant_type, 
            #           date >= start, 
            #           date <= end
     ) %>%
-    select(date, month, he, AESO_Name, Plant_Type,
-           price, dispatched_mw)
+    group_by(date,he,month,price) %>%
+    summarise(dispatched_mw = sum(dispatched_mw)) %>%
+    select(date, month, he, price, dispatched_mw)
   
   # Save the plant name and type for the plot later
-  name <- data[1,4]
-  type <- data[1,5]
-  
-  # Retain only necessary columns
-  data <- data %>%
-    select(date, month, he, price, dispatched_mw)
+  type <- plant_type
   
   # Select just the plant in question from the nrgstream data.
   cap <- sub_samp %>%
-    filter(ID == plant, 
+    filter(Plant_Type == plant_type, 
            #           date >= start, 
            #           date <= end
     ) %>%
+    group_by(date, he) %>%
+    summarise(Capacity = sum(Capacity)) %>%
     select(date, he, Capacity)#, Cap_Fac)
+  
+#  input <- ifelse(peak == "on", "On-Peak WECC", "Off-Peak WECC")
   
   # Combine the two datasets by datetime and calculate the capacity factor for 
   # each row
   data1 <- left_join(data, cap, by=c("date","he")) %>%
-    mutate(C_Fac = (dispatched_mw/Capacity)) %>%
-    mutate(time = as.POSIXct(paste(date, he), format="%Y-%m-%d %H")) %>%
-    select(-date,-he)
+    mutate(Capacity_Factor = ifelse(dispatched_mw/Capacity > 1, 1, 
+                                    dispatched_mw/Capacity),
+    )
   
-  # Create new column to define the pricing tier. $0/MWh is always tier 1, and 
-  # the tiers are then sorted from low to high price.
-  if (sum(data1$price) == 0) {
-    data3 <- data1 %>%
-      filter(price == 0) %>%
-      group_by(time) %>%
-      mutate(tier = 1, Cap_F = sum(C_Fac))
-  } else {
-    
     data2 <- data1 %>%
       filter(price == 0) %>%
-      group_by(time) %>%
-      mutate(tier = 1, Cap_F = sum(C_Fac))
-    
+      group_by(date,he) %>%
+      mutate(tier = 1, Cap_F = sum(Capacity_Factor))
     
     data1 <- data1 %>%
       filter(price != 0) %>%
-      group_by(time) %>%
+      group_by(date,he) %>%
       arrange(price) %>%
-      mutate(tier = 2:(n()+1), Cap_F = sum(C_Fac))
+      mutate(tier = 2:(n()+1), Cap_F = sum(Capacity_Factor))
     
     data3 <- rbind(data1,data2)
-  }
   
   # Omit NA data
-  data1 <- na.omit(data3)
+  data <- na.omit(data3)
+  
+  data <- data %>%
+    mutate(
+      Condition = if_else(between(he, 08, 23), 
+                          "On-Peak", "Off-Peak"),
+      bidding_fact = round(price/mn-1,2)
+    )
+  
+  data1 <- data %>%
+    filter(Condition == "On-Peak")
   
   # Summarize data by month and tier to find the average prices and capacity 
   # factors for each group
-  data2 <- data1 %>%
+  data3 <- data1 %>%
+#    mutate(fact = round(price/mn-1,2)) %>%
     group_by(month,tier) %>%
     summarise(avPrice = mean(price), 
-              avCap_Fac = mean(C_Fac),
-    )
+#              sdP = sd(price),
+              avCap_Fac = mean(Capacity_Factor),
+#              sdC = sd(Capacity_Factor),
+#              avbid_fact = mean(bidding_fact),
+#              sdB = sd(bid_fact)
+    ) %>%
+    mutate(bid_fact = round(avPrice/mn-1,2))
   
+  data2 <- data3 %>%
+    group_by(month,avCap_Fac) %>%
+    summarise(avPrice = max(avPrice),
+              bid_fact = max(bid_fact),
+              tier = min(tier)) %>%
+    arrange(month,tier)
   
   #  Identify the lowest non-zero price to establish baseline
   mn <- ifelse(length(data2$tier)==1,data2$avPrice,
@@ -791,51 +774,347 @@ cap_box <- function(plant){#, year){
                           data2$avPrice)))
   
   # Calculate Aurora's bid factor for each row
-  ifelse(mn==0,data2$bid_fact<-0,
-         data2 <- data2%>%
-           mutate(bid_fact = round(avPrice/mn-1,2)) 
-  )
-  
-  # Long and cumbersome code to calculate the building capacity factors for each 
-  # month.
-  data2 <- data2 %>% 
-    mutate(One = avCap_Fac + ifelse(is.na(lag(avCap_Fac))==TRUE,0,lag(avCap_Fac))) %>%
-    mutate(Two = avCap_Fac + ifelse(is.na(lag(One))==TRUE,0,lag(One))) %>%
-    mutate(Three = avCap_Fac + ifelse(is.na(lag(Two))==TRUE,0,lag(Two))) %>%
-    mutate(Four = avCap_Fac + ifelse(is.na(lag(Three))==TRUE,0,lag(Three))) %>%
-    mutate(Five = avCap_Fac + ifelse(is.na(lag(Four))==TRUE,0,lag(Four))) %>%
-    mutate(Six = avCap_Fac + ifelse(is.na(lag(Five))==TRUE,0,lag(Five))) %>%
-    mutate(Seven = avCap_Fac + ifelse(is.na(lag(Six))==TRUE,0,lag(Six)))
-  
-  # Rearrange the columns to put the previously added columns at the front
-  data2 <- data2[, c(6,7,8,9,10,11,12,1,2,3,4,5)]
-  
+
+  data3 <- data2 %>% 
+    arrange(tier) %>%
+    group_by(month) %>%
+    mutate(overall_cap = cumsum(avCap_Fac))
+    
   # Identify the largest tier
-  mxtier <- max(data2$tier)
+  mxtier <- max(data3$tier)
   mx2tier <- ifelse(mxtier==1,1,mxtier-1)
   
+#  par <- ifelse(parameter == "cap", "CapFac", "BidFac")
+  
+#  colkeep1 <- ifelse(parameter == "cap", 6, 4)
+  
+  data1 <- data3[,c(1,5,6)]
+  data1 <- reshape2::dcast(data1,tier~month)
+  data2 <- data2[,c(1,5,4)]
+  data2 <- reshape2::dcast(data2,tier~month)
+  
+  setwd("F:/My Drive/transfer")
+  write.csv(data1, paste(type,"CapFac","OnPeak","Incremental_Bid_Factors.csv",sep="_"))
+  write.csv(data2, paste(type,"BidFac","OnPeak","Incremental_Bid_Factors.csv",sep="_"))
+  
+  data1 <- data %>%
+    filter(Condition == "Off-Peak")
+  
+  # Summarize data by month and tier to find the average prices and capacity 
+  # factors for each group
+  data3 <- data1 %>%
+    #    mutate(fact = round(price/mn-1,2)) %>%
+    group_by(month,tier) %>%
+    summarise(avPrice = mean(price), 
+              avCap_Fac = mean(Capacity_Factor),
+    ) %>%
+    mutate(bid_fact = round(avPrice/mn-1,2))
+  
+  data2 <- data3 %>%
+    group_by(month,avCap_Fac) %>%
+    summarise(avPrice = max(avPrice),
+              bid_fact = max(bid_fact),
+              tier = min(tier)) %>%
+    arrange(month,tier)
+  
+  #  Identify the lowest non-zero price to establish baseline
+  mn <- ifelse(length(data2$tier)==1,data2$avPrice,
+               min(ifelse(data2$avPrice==0,
+                          data2$avPrice[data2$avPrice!=min(data2$avPrice)],
+                          data2$avPrice)))
+  
+  # Calculate Aurora's bid factor for each row
+  
+  data3 <- data2 %>% 
+    arrange(tier) %>%
+    group_by(month) %>%
+    mutate(overall_cap = cumsum(avCap_Fac))
+  
+  # Identify the largest tier
+  mxtier <- max(data3$tier)
+  mx2tier <- ifelse(mxtier==1,1,mxtier-1)
+  
+  data1 <- data3[,c(1,5,6)]
+  data1 <- reshape2::dcast(data1,tier~month)
+  data2 <- data2[,c(1,5,4)]
+  data2 <- reshape2::dcast(data2,tier~month)
+  
+  write.csv(data1, paste(type,"CapFac","OffPeak","Incremental_Bid_Factors.csv",sep="_"))
+  write.csv(data2, paste(type,"BidFac","OffPeak","Incremental_Bid_Factors.csv",sep="_"))
+}
+
+table_type <- function(plant_type){#, year){
+  
+  # Set a start and end date if needed
+  #  start <- as.Date(paste(year,"-01-01",sep=""))
+  #  end <- as.Date(paste(year,"-12-31",sep=""))
+  
+  # Select just the plant in question from the spreadsheet 
+  # "student_data_2021_Jul_23_14_09.csv.gz"
+  data <- merit_filt %>%
+    filter(Plant_Type == plant_type, 
+           #           date >= start, 
+           #           date <= end
+    ) %>%
+    group_by(date,he,month,price) %>%
+    summarise(dispatched_mw = sum(dispatched_mw)) %>%
+    select(date, he, price, dispatched_mw)
+  
+  # Save the plant name and type for the plot later
+  type <- plant_type
+  
+  # Select just the plant in question from the nrgstream data.
+  cap <- sub_samp %>%
+    filter(Plant_Type == plant_type, 
+           #           date >= start, 
+           #           date <= end
+    ) %>%
+    group_by(date, he) %>%
+    summarise(Capacity = sum(Capacity)) %>%
+    select(date, he, Capacity)#, Cap_Fac)
+  
+  # Combine the two datasets by datetime and calculate the capacity factor for 
+  # each row
+  data1 <- left_join(data, cap, by=c("date","he")) %>%
+    mutate(Capacity_Factor = ifelse(dispatched_mw/Capacity > 1, 1, 
+                                    dispatched_mw/Capacity),
+    )
+  
+  data2 <- data1 %>%
+    filter(price == 0) %>%
+    group_by(date,he) %>%
+    mutate(tier = 1)#, Cap_F = sum(Capacity_Factor))
+  
+  data1 <- data1 %>%
+    filter(price != 0) %>%
+    group_by(date,he) %>%
+    arrange(price) %>%
+    mutate(tier = 2:(n()+1))#, Cap_F = sum(Capacity_Factor))
+  
+  data3 <- rbind(data1,data2)
+  
+  # Omit NA data
+  data <- na.omit(data3)
+  
+  data <- data %>%
+    mutate(
+      Condition = if_else(between(he, 08, 23), 
+                          "On-Peak", "Off-Peak")
+    )
+  
+#  data1 <- data %>%
+#    filter(Condition == "On-Peak")
+  
+  # Summarize data by month and tier to find the average prices and capacity 
+  # factors for each group
+  data3 <- data %>%
+    group_by(tier, Condition) %>%#,month) %>%
+    summarise(avPrice = mean(price), 
+              #              sdP = sd(price),
+              avCap_Fac = mean(Capacity_Factor),
+              #              sdC = sd(Capacity_Factor),
+    )
+  
+  # Lump duplicate avCap_Fac together
+  data2 <- data3 %>%
+    group_by(avCap_Fac, Condition) %>%
+    summarise(avPrice = max(avPrice),
+              tier = min(tier)) %>%
+    arrange(tier)
+  
+  #  Identify the lowest non-zero price to establish baseline
+  mn <- ifelse(length(data2$tier)==1,data2$avPrice,
+               min(ifelse(data2$avPrice==0,
+                          data2$avPrice[data2$avPrice!=min(data2$avPrice)],
+                          data2$avPrice)))
+  
+  # Calculate Aurora's bid factor for each row
+  
+  data3 <- data2 %>% 
+    arrange(tier) %>%
+    group_by(Condition) %>% #month) %>%
+    mutate(overall_cap = round(cumsum(avCap_Fac),2),
+           bid_fact = round(avPrice/mn-1,2)) %>%
+    ungroup() %>%
+    group_by(overall_cap, Condition) %>%
+    summarise(tier = min(tier),
+              bid_fact = mean(bid_fact))
+  
+  # Identify the largest tier
+  mxtier <- max(data3$tier)
+  mx2tier <- ifelse(mxtier==1,1,mxtier-1)
+  
+  #  par <- ifelse(parameter == "cap", "CapFac", "BidFac")
+  
+  #  colkeep1 <- ifelse(parameter == "cap", 6, 4)
+  
+#  data1 <- data3[,c(2,3,4,5,6)]
+#  data1 <- reshape2::dcast(data1,tier~month)
+#  data2 <- data2[,c(1,5,4)]
+#  data2 <- reshape2::dcast(data2,tier~month)
+  
+  setwd("F:/My Drive/transfer")
+  write.csv(data3, paste(type,"Incremental_Bid_Factors.csv",sep="_"))
+#  write.csv(data2, paste(type,"BidFac","OnPeak","Incremental_Bid_Factors.csv",sep="_"))
+}
+
+graph_type <- function(plant_type){
+  # Plots each month capture prices, bidding factors at the various capacities
+  
+  # Set a start and end date if needed
+  #  start <- as.Date(paste(year,"-01-01",sep=""))
+  #  end <- as.Date(paste(year,"-12-31",sep=""))
+  
+  # Select just the plant in question from the spreadsheet 
+  # "student_data_2021_Jul_23_14_09.csv.gz"
+  data <- merit_filt %>%
+    filter(Plant_Type == plant_type, 
+           #           date >= start, 
+           #           date <= end
+    ) %>%
+    group_by(date,he,month,price) %>%
+    summarise(dispatched_mw = sum(dispatched_mw)) %>%
+    select(date, month, he, price, dispatched_mw)
+  
+  # Save the plant name and type for the plot later
+  type <- plant_type
+  
+  # Select just the plant in question from the nrgstream data.
+  cap <- sub_samp %>%
+    filter(Plant_Type == plant_type, 
+           #           date >= start, 
+           #           date <= end
+    ) %>%
+    group_by(date, he) %>%
+    summarise(Capacity = sum(Capacity)) %>%
+    select(date, he, Capacity)#, Cap_Fac)
+  
+  #  input <- ifelse(peak == "on", "On-Peak WECC", "Off-Peak WECC")
+  
+  # Combine the two datasets by datetime and calculate the capacity factor for 
+  # each row
+  data1 <- left_join(data, cap, by=c("date","he")) %>%
+    mutate(Capacity_Factor = ifelse(dispatched_mw/Capacity > 1, 1, 
+                                    dispatched_mw/Capacity),
+    )
+  
+  data2 <- data1 %>%
+    filter(price == 0) %>%
+    group_by(date,he) %>%
+    mutate(tier = 1, Cap_F = sum(Capacity_Factor))
+  
+  data1 <- data1 %>%
+    filter(price != 0) %>%
+    group_by(date,he) %>%
+    arrange(price) %>%
+    mutate(tier = 2:(n()+1), Cap_F = sum(Capacity_Factor))
+  
+  data3 <- rbind(data1,data2)
+  
+  # Omit NA data
+  data <- na.omit(data3)
+  
+  data <- data %>%
+    mutate(
+      Condition = if_else(between(he, 08, 23), 
+                          "On-Peak", "Off-Peak"),
+ #     bidding_fact = round(price/mn-1,2)
+    )
+
+  # Summarize data by month and tier to find the average prices and capacity 
+  # factors for each group
+  data3 <- data %>%
+    #    mutate(fact = round(price/mn-1,2)) %>%
+    group_by(month,tier) %>%
+    summarise(avPrice = mean(price), 
+              #              sdP = sd(price),
+              avCap_Fac = mean(Capacity_Factor),
+              #              sdC = sd(Capacity_Factor),
+              #              avbid_fact = mean(bidding_fact),
+              #              sdB = sd(bid_fact)
+    ) #%>%
+#    mutate(bid_fact = round(avPrice/mn-1,2))
+  
+  data2 <- data3 %>%
+    group_by(month,avCap_Fac) %>%
+    summarise(avPrice = max(avPrice),
+#              bid_fact = max(bid_fact),
+              tier = min(tier)) %>%
+    arrange(month,tier)
+  
+  #  Identify the lowest non-zero price to establish baseline
+  mn <- ifelse(length(data2$tier)==1,data2$avPrice,
+               min(ifelse(data2$avPrice==0,
+                          data2$avPrice[data2$avPrice!=min(data2$avPrice)],
+                          data2$avPrice)))
+  
+  # Calculate Aurora's bid factor for each row
+  
+  data3 <- data2 %>% 
+    arrange(tier) %>%
+    group_by(month) %>%
+    mutate(overall_cap = cumsum(avCap_Fac))
+  
+  # Identify the largest tier
+  mxtier <- max(data3$tier)
+  mx2tier <- ifelse(mxtier==1,1,mxtier-1)
+  
+  # Summarize data by month and tier to find the average prices and capacity 
+  # factors for each group
+  data3 <- data1 %>%
+    #    mutate(fact = round(price/mn-1,2)) %>%
+    group_by(month,tier) %>%
+    summarise(avPrice = mean(price), 
+              avCap_Fac = mean(Capacity_Factor),
+    ) %>%
+    mutate(bid_fact = round(avPrice/mn-1,2))
+  
+  data2 <- data3 %>%
+    group_by(month,avCap_Fac) %>%
+    summarise(avPrice = max(avPrice),
+              bid_fact = max(bid_fact),
+              tier = min(tier)) %>%
+    arrange(month,tier)
+  
+  #  Identify the lowest non-zero price to establish baseline
+  mn <- ifelse(length(data2$tier)==1,data2$avPrice,
+               min(ifelse(data2$avPrice==0,
+                          data2$avPrice[data2$avPrice!=min(data2$avPrice)],
+                          data2$avPrice)))
+  
+  # Calculate Aurora's bid factor for each row
+  
+  data3 <- data2 %>% 
+    arrange(tier) %>%
+    group_by(month) %>%
+    mutate(overall_cap = cumsum(avCap_Fac))
+  
+  # Identify the largest tier
+  mxtier <- max(data3$tier)
+  mx2tier <- ifelse(mxtier==1,1,mxtier-1)
+
   # Rename the column with the correct capacity factors to the 'xaxis' and change
   # column format to character for readability
-  names(data2)[mx2tier] <- "xaxis"
-  data2$xaxis <- as.character(paste(round(data2$xaxis*100,3),"%",sep=""))
+#  names(data2)[mx2tier] <- "xaxis"
+  data3$overall_cap <- as.character(paste(round(data3$overall_cap*100,3),"%",sep=""))
   
   # Remove extra columns
-  data2 <- data2[,c(mx2tier,8,9,10,11,12)]
+#  data2 <- data2[,c(mx2tier,8,9,10,11,12)]
   
   # Relabel the second top tier if it was never dispatched ie. it was another
   # maximum price
-  data4 <- data2 %>%
+  data4 <- data3 %>%
     group_by(month) %>%
     filter(tier == max(tier[tier!=max(tier)])) %>%
-    mutate(xaxis = ifelse(avCap_Fac == 0, paste(xaxis,"~100%",sep=""),xaxis))
+    mutate(overall_cap = ifelse(avCap_Fac == 0, paste(overall_cap,"~100%",sep=""),overall_cap))
   
   # Relabel the top tier to be a range to 100%
-  data3 <- data2 %>%
+  data2 <- data3 %>%
     group_by(month) %>%
     filter(tier == max(tier)) %>%
-    mutate(xaxis = paste(xaxis,"-100%",sep=""))
+    mutate(overall_cap = paste(overall_cap,"-100%",sep=""))
   
-  data2 <- data2 %>%
+  data3 <- data3 %>%
     group_by(month) %>%
     filter(tier != max(tier),tier != max(tier[tier!=max(tier)]))
   
@@ -864,7 +1143,7 @@ cap_box <- function(plant){#, year){
   
   # Plot the data
   ggplot(data1, 
-         aes(x = reorder(xaxis,tier), y = avPrice)) +
+         aes(x = reorder(overall_cap,tier), y = avPrice)) +
     geom_bar(stat="identity") +
     facet_wrap(~month, scales="free_x", labeller=var_label) +
     geom_text(aes(label = 
@@ -885,7 +1164,7 @@ cap_box <- function(plant){#, year){
                        limits = c(0,1300)) +
     labs(x = "% of Capacity Dispatched",
          y = "Average Offer Price \n($/MWh)",
-         title = paste(name, type, sep = ": "),
+         title = type
     )
 }
 
