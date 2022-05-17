@@ -1212,3 +1212,85 @@ Cap4 <- function(plant1,plant2,plant3,plant4) {
 #                                 breaks = pretty_breaks(4)),
             ncol = 2, nrow = 2)
 }
+
+yearly_dmd <- function(year) {
+  data <- demand 
+  
+  data$Hour <- format(as.POSIXct(data$time, format = "%Y/%m/%d %H:%M:%S"), "%H")
+  data$Year <- format(as.POSIXct(data$time, format = "%Y/%m/%d %H:%M:%S"), "%Y")
+  data$Date <- format(as.POSIXct(data$time, format = "%Y/%m/%d %H:%M:%S"), "%Y-%m-%d")
+  
+  data <- data %>%
+    filter(Year == year) %>%
+    select(Date, Hour, Demand)
+  
+  setwd("D:/Documents/GitHub/AuroraEval")
+  
+  #SAVE FILE (To save the processed data) This is to be entered into Aurora.
+  write.csv(data, file=paste("Alberta",year,".csv",sep=""))
+}
+
+monthly_dmd_ave <- function() {
+  data <- demand 
+  
+#  data$Hour <- format(as.POSIXct(data$time, format = "%Y/%m/%d %H:%M:%S"), "%H")
+#  data$Month <- format(as.POSIXct(data$time, format = "%Y/%m/%d %H:%M:%S"), "%m")
+  data$Year <- format(as.POSIXct(data$time, format = "%Y/%m/%d %H:%M:%S"), "%Y")
+#  data$Date <- format(as.POSIXct(data$time, format = "%Y/%m/%d %H:%M:%S"), "%Y-%m-%d")
+  
+  data <- na.omit(data)
+  
+  data1 <- data %>%
+    group_by(Year) %>%
+    summarise(Load = mean(Demand)) %>%
+    mutate(case = "Average")
+  
+  data2 <- data %>%
+    group_by(Year) %>%
+    summarise(Load = max(Demand)) %>%
+    mutate(case = "Peak")
+  
+  data <- rbind(data1,data2)
+  data$Year <- as.numeric(data$Year)
+#  data$Year <- ISOdate(data$Year, 1, 1)
+  
+  ggplot(data = data, 
+         aes(x=Year, y=Load, group = case)) +
+#    geom_line(aes(linetype=case, color=case)) +
+    geom_point(aes(shape = case, color=case)) +
+#    geom_smooth(method="lm", fullrange=TRUE) +
+    geom_smooth(method=lm, fullrange = TRUE, se=FALSE, 
+                aes(color=case)) +
+    stat_regline_equation(
+#      label.y = 12000, 
+      aes(label = ..eq.label..)
+      ) +
+    stat_regline_equation(
+      label.x = 2010,
+      aes(label = ..rr.label..)
+      ) +
+    geom_vline(xintercept = 2040,
+               linetype = "solid", color = "dodgerblue", size = 0.5) +
+    geom_hline(yintercept = 14860, linetype = "solid", color = "forestgreen", 
+               size = 0.5) +
+    geom_hline(yintercept = 12625, linetype = "solid", color = "forestgreen", 
+               size = 0.5) +
+#    geom_text(x = 2005, y = 11500, label = lm_eqn(data), parse = TRUE) +
+    scale_color_manual(values=c("black","grey40")) +
+#    scale_linetype_manual(values=c("solid","longdash")) +
+    scale_x_continuous(breaks = seq(2004,2040,2),
+                     limits = c(2004,2040)
+                     ) +
+    theme_bw() +
+    theme(axis.text.x = element_text(vjust = 1, hjust = 0.5),
+          panel.background = element_rect(fill = "transparent"),
+#          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          text = element_text(size= 15),
+          legend.title = element_blank(),
+    ) +
+    scale_y_continuous(limits=c(7000,15000),
+                       breaks=seq(7000,15000,500)) +
+    labs(y = "Load (MWh)",
+         )
+}

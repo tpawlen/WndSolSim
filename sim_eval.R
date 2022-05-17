@@ -96,7 +96,7 @@
     # Filters for the desired case study
     data <- Hour %>%
       sim_filt1(.) %>%
-      select(-Report_Year) %>%
+      select(-c(Report_Year,Capacity_Factor)) %>%
       rbind(.,Import) %>%
       filter(Run_ID == case)
     

@@ -90,75 +90,6 @@ AESO_Sim <- function(year,month,day,case) {
 # Plot difference between simulated and actual pool price
 ################################################################################
 
-comp_dur <- function(year1, year2, case) {
-  
-  totSim <- ZoneH %>%
-    filter(Report_Year >= year1 & 
-             Report_Year <= year2,
-           Run_ID == case, 
-           Condition != "Average") %>%
-    group_by(Condition, Report_Year) %>%
-    mutate(perc = 1-ecdf(Price)(Price)) %>%
-    select(Condition, Report_Year, Price, perc) %>%
-    rename(Year = Report_Year) %>%
-    ungroup() %>%
-    mutate(sit = "Simulated")
-  
-  #  totSim$Report_Year <- as.factor(totSim$Report_Year)
-  
-  Actual <- na.omit(demand)
-  Actual$Year <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%Y")
-  Actual$Hour <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%H")
-  
-  totAct <- Actual %>%
-    filter(Year >= year1, 
-           Year <= year2,) %>%
-    mutate(Condition = if_else(between(Hour, 08, 23), 
-                               "On-Peak WECC", "Off-Peak WECC")) %>%
-    group_by(Year, Condition) %>%
-    mutate(perc = 1-ecdf(Price)(Price)) %>%
-    select(Condition, Year, Price, perc) %>%
-    ungroup() %>%
-    mutate(sit = "Actual")
-  
-  total <- rbind(totSim, totAct)
-  sz <- 15
-  
-  #  totAct$Year <- as.factor(totAct$Year)
-  
-  ggplot() +
-    geom_line(data = total, 
-              aes(x = perc, y = Price, colour = Year, linetype = sit), size = 1) +
-    facet_grid(cols = vars(Condition)) +
-    theme_bw() +
-    theme(axis.text = element_text(size = sz),
-          axis.title = element_text(size = sz),
-          plot.title = element_text(size = sz+2),
-          legend.text = element_text(size = sz),
-          panel.grid = element_blank(),
-          legend.title = element_blank(),
-          panel.background = element_rect(fill = "transparent"),
-          panel.grid.major.x = element_blank(),
-          panel.grid.minor.x = element_blank(),
-          panel.spacing = unit(1.5, "lines"),
-          plot.background = element_rect(fill = "transparent", color = NA),
-          legend.key = element_rect(colour = "transparent", fill = "transparent"),
-          legend.background = element_rect(fill='transparent'),
-          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
-    ) +
-    labs(y = "Pool Price$/MWh", 
-         x = "Percentage of Time", 
-         title = "AESO Data vs Simulation",
-         subtitle = DB) +
-    scale_color_manual(values = c("goldenrod1", "forestgreen", "cornflowerblue",
-                                  "firebrick","gray60")) +
-    scale_x_continuous(expand=c(0,0), 
-                       limits = c(0,1.1),
-                       labels = percent) +
-    scale_y_continuous(expand=c(0,0)
-    )
-}
-
 rev_dur <- function(year1, year2, type, case) {
   # Plots revenue duration plot by plant type, comparing simulated and AESO
   
@@ -244,7 +175,7 @@ rev_dur <- function(year1, year2, type, case) {
 }
 
 year_comp <- function(year,case) {
-  # Filters for the desired case study
+  # Plots the difference in Pool Price between AESO and Sim
   
   #  setwd("D:/Documents/Education/Masters Degree/Aurora/R Code")
   #  write.csv(ZH, file="sim_price.csv")
@@ -401,9 +332,13 @@ year_avg <- function(year,case) {
          colour = element_blank())
 }
 
+################################################################################
+# Plot charts shown in AESO 2021 Market Report
+################################################################################
+
 year_pool <- function(year1, year2,case) {
   # A function to plot the Monthly average pool price 
-  # (Like in the AESO Market Report)
+  # (Like in the AESO Market Report 2021 Figure 1)
 
   # Filter and prepare Simulation data
   Sim <- ZoneH %>%
@@ -481,7 +416,7 @@ year_pool <- function(year1, year2,case) {
     theme_bw() +
     theme(axis.text = element_text(size = sz),
           axis.title = element_text(size = sz),
-          axis.text.x = element_text(angle = 90, hjust=1, vjust = 0.5, size = sz),
+          axis.text.x = element_text(angle = 45, hjust=1, size = sz),
           plot.title = element_text(size = sz+2),
           legend.text = element_text(size = sz),
           panel.grid = element_blank(),
@@ -496,16 +431,300 @@ year_pool <- function(year1, year2,case) {
           legend.background = element_rect(fill='transparent'),
           legend.box.background = element_rect(fill='transparent', colour = "transparent"),
     ) +
-    labs(y = "Average Pool Price ($/MWh)", 
+    labs(y = "Average Pool Price \n($/MWh)", 
          title = "AESO Data vs Simulation Monthly Average Pool Price",
          subtitle = DB) +
-    scale_linetype_discrete(labels = c("AESO Historical","Simulated"))+
+    scale_linetype_discrete(labels = c("Actual","Simulated"))+
     scale_color_manual(values = c("midnightblue", "orange"),
-                       labels = c("Monthly Average","12-Month Rolling Average")) +
+                       labels = c("Monthly Ave","12-Month Rolling")) +
     scale_x_date(date_labels = "%b-%Y",
       expand=c(0,0), 
       date_breaks = "2 months"
 ) +
     scale_y_continuous(expand=c(0,0)
     )
+}
+
+comp_dur <- function(year1, year2, case) {
+  # Plots the Pool Price duration vs percentile for AESO and Sim
+  # Like AESO Market Report 2021 Figures 2 and 3
+  
+  # Load and filter Simulation data, 
+    # Calculate the percentage of time
+    # Create column 'sit' to indicate Simulation
+  totSim <- ZoneH %>%
+    filter(Report_Year >= year1 & 
+             Report_Year <= year2,
+           Run_ID == case, 
+           Condition != "Average") %>%
+    group_by(Condition, Report_Year) %>%
+    mutate(perc = 1-ecdf(Price)(Price)) %>%
+    select(Condition, Report_Year, Price, perc) %>%
+    rename(Year = Report_Year) %>%
+    ungroup() %>%
+    mutate(sit = "Simulated")
+  
+  # Load and filter AESO data, 
+    # Calculate the percentage of time
+    # Create column 'sit' to indicate Actual AESO data
+  Actual <- na.omit(demand)
+  Actual$Year <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%Y")
+  Actual$Hour <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%H")
+  
+  totAct <- Actual %>%
+    filter(Year >= year1, 
+           Year <= year2,) %>%
+    mutate(Condition = if_else(between(Hour, 08, 23), 
+                               "On-Peak WECC", "Off-Peak WECC")) %>%
+    group_by(Year, Condition) %>%
+    mutate(perc = 1-ecdf(Price)(Price)) %>%
+    select(Condition, Year, Price, perc) %>%
+    ungroup() %>%
+    mutate(sit = "Actual")
+  
+  # Combine Actual and Simulation data
+  total <- rbind(totSim, totAct)
+  
+  # Set font size for plot
+  sz <- 15
+  
+  ggplot() +
+    geom_line(data = total, 
+              aes(x = perc, y = Price, colour = Year, linetype = sit), size = 1) +
+    facet_grid(cols = vars(Condition)) +
+    theme_bw() +
+    theme(axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz),
+          
+          # For transparent background
+          panel.grid = element_blank(),
+          legend.title = element_blank(),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) +
+    labs(y = "Pool Price$/MWh", 
+         x = "Percentage of Time", 
+         title = "AESO Data vs Simulation",
+         subtitle = DB) +
+    scale_color_manual(values = c("goldenrod1", "forestgreen", "cornflowerblue",
+                                  "firebrick","gray60")) +
+    scale_x_continuous(expand=c(0,0), 
+                       limits = c(0,1.1),
+                       labels = percent) +
+    scale_y_continuous(expand=c(0,0)
+    )
+}
+
+load_dur <- function(year1, year2, case) {
+  # Plots the load duration vs percentile for AESO and Sim
+  # Like AESO Market Report 2021 Figures 7 and 8
+  
+  # Load and filter Simulation data, 
+    # Calculate the percentage of time
+    # Create column 'sit' to indicate Simulation
+  totSim <- ZoneH %>%
+    filter(Report_Year >= year1 & 
+             Report_Year <= year2,
+           Run_ID == case, 
+           Condition != "Average") %>%
+    group_by(Condition, Report_Year) %>%
+    mutate(perc = 1-ecdf(Demand)(Demand)) %>%
+    select(Condition, Report_Year, Demand, perc) %>%
+    rename(Year = Report_Year) %>%
+    ungroup() %>%
+    mutate(sit = "Simulated")
+  
+  # Load and filter AESO data, 
+    # Calculate the percentage of time
+    # Use AIL as demand
+    # Create column 'sit' to indicate Actual AESO data
+  Actual <- na.omit(demand)
+  Actual$Year <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%Y")
+  Actual$Hour <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%H")
+  
+  totAct <- Actual %>%
+    filter(Year >= year1, 
+           Year <= year2,) %>%
+    mutate(Condition = if_else(between(Hour, 08, 23), 
+                               "On-Peak WECC", "Off-Peak WECC")) %>%
+    group_by(Year, Condition) %>%
+    mutate(perc = 1-ecdf(AIL)(AIL)) %>%
+    select(Condition, Year, AIL, perc) %>%
+    ungroup() %>%
+    mutate(sit = "Actual", Demand = AIL) %>%
+    select(Condition, Year, Demand, perc,sit)
+  
+  # Combine Actual and Simulation data
+  total <- rbind(totSim, totAct)
+  
+  # Set font size for plot
+  sz <- 15
+  
+  ggplot() +
+    geom_line(data = total, 
+              aes(x = perc, y = Demand, colour = Year, linetype = sit), size = 1) +
+    facet_grid(cols = vars(Condition)) +
+    theme_bw() +
+    theme(axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz),
+          panel.grid = element_blank(),
+          legend.title = element_blank(),
+          
+          # For transparent background
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) +
+    labs(y = "Hourly Alberta Internal Load (MW)", 
+         x = "Percentage of Time", 
+         title = "AESO Data vs Simulation",
+         subtitle = DB) +
+    scale_color_manual(values = c("goldenrod1", "forestgreen", "cornflowerblue",
+                                  "firebrick","gray60")) +
+    scale_x_continuous(expand=c(0,0), 
+                       limits = c(0,1.1),
+                       labels = percent) +
+    scale_y_continuous(expand=c(0,0)
+    )
+}
+
+tech_cap <- function(yearstart, yearend, case) {
+  # Plots the capacity factor by technology for AESO and Sim
+  # Like AESO Market Report 2021 Figure 15
+  
+  Act <- df1 %>%
+    filter(Plant_Type != "STORAGE") %>%
+    group_by(Year, Plant_Type) %>%
+    summarise(Cap = mean(meancap)) %>%
+    mutate(sit = "Actual")
+  
+  Act$Year <- as.numeric(as.character(Act$Year))
+  
+  Act <- na.omit(Act)
+  
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "HYDRO",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "WIND",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "SOLAR",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "OTHER",after=Inf)
+#  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "STORAGE",after=Inf)
+  
+  Sim <- Hour %>%
+    filter(Run_ID == case,
+           ID == "LTO_Coal" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
+           ID == "AB_SCCT_noncogen" | ID == "LTO_Hydro" | ID == "LTO_Other" | 
+           ID == "LTO_Wind" | ID == "LTO_Solar") %>%
+    group_by(Report_Year, ID) %>%
+    summarise(Cap = mean(Capacity_Factor)) %>%
+    mutate(sit = "Simulation")
+  
+  colnames(Sim) <- c("Year", "Plant_Type", "Cap", "sit")
+
+  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("LTO_Coal", "AB_CCCT_noncogen", "LTO_Cogen",
+                                      "AB_SCCT_noncogen", "LTO_Hydro", "LTO_Other", 
+                                      "LTO_Wind", "LTO_Solar"))
+  levels(Sim$Plant_Type) <- c("COAL", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
+                       "WIND", "SOLAR")
+  
+  total <- rbind(Sim,Act)
+  
+  total <- total %>%
+    filter(Year >= yearstart,
+           Year <= yearend)
+  
+  sz <- 15
+  
+  ggplot() +
+    geom_col(data = total, position = "dodge", alpha = 0.8, width = 0.7,
+              aes(x = Plant_Type, y = Cap, fill = sit, linetype = sit)) +
+    facet_grid(~Year) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          axis.title.x = element_blank(),
+          axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz),
+          panel.grid = element_blank(),
+          legend.title = element_blank(),
+          
+          # For transparent background
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) +
+    labs(y = "Capacity Factor", 
+         title = "AESO Data vs Simulation",
+         subtitle = DB) +
+    scale_fill_manual(values = c("black", "gray60"
+#      "goldenrod1", "forestgreen"
+#                                 "darkseagreen", "cornflowerblue",
+#                                  "firebrick","gray60", "forestgreen"
+                                 )) +
+#    scale_x_continuous(expand=c(0,0), 
+#                       limits = c(0,1.1),
+#                       labels = percent) +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(0,1),
+                       breaks = seq(0,1, by = 0.2)
+    )
+}
+
+################################################################################
+# Plot combination of plots
+################################################################################
+
+AESOSim <- function(year1,year2,case) {
+
+  sz <- 10
+  
+  plot_grid(comp_dur(year1,year2,case) +
+              theme(axis.text = element_text(size = sz),
+                    axis.title = element_text(size = sz),
+                    axis.text.x = element_text(angle = 45, hjust=1, size = sz),
+                    plot.title = element_text(size = sz+2),
+                    legend.text = element_text(size = sz-2),
+                    axis.title.x = element_blank()),
+            year_pool(year1,year2,case) + 
+              theme(axis.text = element_text(size = sz),
+                    axis.title = element_text(size = sz),
+                    axis.text.x = element_text(angle = 45, hjust=1, size = sz),
+
+                    legend.text = element_text(size = sz-2),
+                    plot.title = element_blank(),
+                    plot.subtitle = element_blank(),
+                    axis.title.x = element_blank(),
+                    legend.position = "right"),
+            tech_cap(year1,year2,case) + 
+              theme(axis.text = element_text(size = sz),
+                    axis.title = element_text(size = sz),
+                    axis.text.x = element_text(angle = 45, hjust=1, size = sz),
+
+                    legend.text = element_text(size = sz-2),
+                    plot.title = element_blank(),
+                    plot.subtitle = element_blank(),
+                    legend.position = "right"),
+            ncol = 1, align = "v", axis = "l",
+            rel_heights = c(2,1,2))
+  
+ 
 }

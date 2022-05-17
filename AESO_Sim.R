@@ -101,6 +101,7 @@
   library(dplyr)
   library(reshape2)
   library(zoo)
+  library(ggpattern)
 #  library(lmtest)
 }
 
@@ -109,7 +110,7 @@
 ################################################################################
 
 {
-  DB <- "May_6c_2022"
+  DB <- "May_16_2022"
   # Connect to SQL database
   ################################################################################
   con <- dbConnect(odbc(),
@@ -130,13 +131,12 @@
   #                   dbname = DB,
   
   #                   port = 3306)
-}
+
 
 ################################################################################
 # Load simulation Data
 ################################################################################
 
-  {
     # Write data to environment and set variables
     ################################################################################
     Hour <- dbReadTable(con,'ResourceGroupHour1')
@@ -161,6 +161,8 @@
       MS  <- "Minimum Solar Constraint"
       LCT <- "Low Carbon Tax"
       HS <- "Hypothetical Sites"
+      IR <- "Incr Heat Rate"
+      HREB <- "Heat Rate and Extreme Bid Factors"
       
       # Set limits for plots to be consistent
       ylimit <- max(Hour$Output_MWH) + max(ZoneHour$Imports)
@@ -189,7 +191,7 @@
       ################################################################################
       
       Hour <- Hour %>%
-        subset(., select = c(ID, date, Report_Year, Output_MWH, Run_ID))
+        subset(., select = c(ID, date, Report_Year, Output_MWH, Run_ID, Capacity_Factor))
       
       ZH <- ZoneHour %>%
         filter(Name == "WECC_Alberta") %>%
@@ -247,14 +249,13 @@
     nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$gen),] 
     nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$time),] 
     
-    sub_samp<-filter(nrgstream_gen, time >= as.Date("2017-01-1"))
-    rm(nrgstream_gen)
-    
-    demand <- sub_samp %>%
+    demand <- nrgstream_gen %>%
       group_by(time) %>%
       summarise(Demand = median(Demand), 
                 Price = median(Price),
                 AIL = median(AIL))
+    sub_samp<-filter(nrgstream_gen, time >= as.Date("2017-01-1"))
+    rm(nrgstream_gen)
     
     trade_excl<-c("AB - WECC Imp Hr Avg MW", 
                   "AB - WECC Exp Hr Avg MW",
@@ -288,7 +289,9 @@
     df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "EXPORT",after=Inf)
   }
 
-AESO_Sim(2021,03,01,BC)
+AESO_Sim(2021,03,01,IR)
 
-comp_dur(2018,2021,BC)
+comp_dur(2018,2021,IR)
+
+load_dur(2018,2021,IR)
  
