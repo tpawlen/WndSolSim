@@ -68,8 +68,8 @@
         case$ID <- factor(case$ID, levels=c("LTO_Coal", "AB_CCCT_noncogen", "LTO_Cogen",
                                             "AB_SCCT_noncogen", "LTO_Hydro", "LTO_Other", 
                                             "LTO_Wind", "LTO_Solar", "LTO_Storage"))
-        levels(case$ID) <- c("Coal", "NGCC", "Cogen", "SCGT", "Hydro", "Other",
-                             "Wind", "Solar", "Storage")
+        levels(case$ID) <- c("COAL", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
+                             "WIND", "SOLAR", "STORAGE")
       }
       return(case)
     }
@@ -96,11 +96,13 @@
     # Filters for the desired case study
     data <- Hour %>%
       sim_filt1(.) %>%
+      select(-Report_Year) %>%
       rbind(.,Import) %>%
       filter(Run_ID == case)
     
-    data$ID <- factor(data$ID, levels=c("Import", "Coal", "Cogen", "SCGT", "NGCC",
-                                        "Hydro", "Other", "Wind", "Solar", "Storage"))
+    data$ID <- factor(data$ID, levels=c("Import", "COAL", "COGEN", "SCGT", "NGCC", 
+                                        "HYDRO", "OTHER",
+                                        "WIND", "SOLAR", "STORAGE"))
     
     #    data$date <- as.POSIXct(data$date, tz = "MST")
     
@@ -164,11 +166,13 @@
     # Filters for the desired case study
     data <- Hour %>%
       sim_filt1(.) %>%
+      select(-Report_Year) %>%
       rbind(.,Import) %>%
       filter(Run_ID == case)
     
-    data$ID <- factor(data$ID, levels=c("Import", "Coal", "Cogen", "SCGT", "NGCC",
-                                        "Hydro", "Other", "Wind", "Solar", "Storage"))
+    data$ID <- factor(data$ID, levels=c("Import", "COAL", "COGEN", "SCGT", "NGCC", 
+                                        "HYDRO", "OTHER",
+                                        "WIND", "SOLAR", "STORAGE"))
     
     # Select only a single week
     WK <- HrTime(data,year,month,day)

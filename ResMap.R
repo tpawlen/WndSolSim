@@ -55,17 +55,26 @@ legText <- 12
 {
 wind_profile00 <- readRDS("WindAtlas_Data00_0.05")
 colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile04 <- readRDS("WindAtlas_Data04_0.05")
+colnames(wind_profile04) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile11 <- readRDS("WindAtlas_Data11_0.05")
 colnames(wind_profile11) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile13 <- readRDS("WindAtlas_Data13_0.05")
+colnames(wind_profile13) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile22 <- readRDS("WindAtlas_Data22_0.05")
 colnames(wind_profile22) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile33 <- readRDS("WindAtlas_Data33_0.05")
 colnames(wind_profile33) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile31 <- readRDS("WindAtlas_Data31_0.05")
+colnames(wind_profile31) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile44 <- readRDS("WindAtlas_Data44_0.05")
 colnames(wind_profile44) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile40 <- readRDS("WindAtlas_Data40_0.05")
+colnames(wind_profile40) <- c('Latitude', 'Longitude', 'Wind')
 
-wind_profile <- rbind(wind_profile00, wind_profile11, wind_profile22, 
-                      wind_profile33, wind_profile44)
+wind_profile <- rbind(wind_profile00, wind_profile04, wind_profile11, 
+                      wind_profile13, wind_profile22, wind_profile31,
+                      wind_profile33, wind_profile40, wind_profile44)
 }
 
 {
