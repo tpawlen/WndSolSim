@@ -49,7 +49,7 @@ legText <- 12
 # Wind Speed data from Canada Wind Atlas 
 # http://www.windatlas.ca/nav-en.php?no=46&field=EU&height=80&season=ANU
 ################################################################################
-#wind_profile <- readRDS("WindAtlas_Data_0.05")
+#wind_profile <- readRDS("WindAtlas_Data00_0.05")
 #colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
 
 {
@@ -139,6 +139,8 @@ alberta_ellipsoid1 =
 
 active <- wind_farm %>%
   filter(Status == "Active")
+simple <- wind_sim %>%
+  filter(Status != "Planning")
 
 ################################################################################
 ################################################################################
@@ -224,11 +226,33 @@ Sim_wind <- AB + geom_point(data = wind_sim,
         legend.text = element_text(size = legText),
         legend.title = element_text(size = legTitle)) 
 }
+
+################################################################################
+################################################################################
+# Map of Alberta with active wind farms with selected locations for
+# simulation
+################################################################################
+################################################################################
+{
+  labs3 <- c("Active","Simulated")
+  
+  Simple_wind <- AB + geom_point(data = simple,
+                              aes(x= Longitude, y = Latitude, size = Capacity, shape = Status, color = Status)) + 
+    scale_shape_manual(values = c(16,17), labels = labs3) +
+    scale_color_manual(values = c("black","red4"), 
+                       labels = labs3) +
+    guides(shape = guide_legend(override.aes = list(size = 5))) +
+    ggtitle("Active, Queued, & Potential \nWind Farms") +
+    theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
+          legend.text = element_text(size = legText),
+          legend.title = element_text(size = legTitle)) 
+}
+
 ################################################################################
 # Save map as png
 ################################################################################
 
-ggsave(path = "images", filename = "windfarmpotential.png", bg = "transparent")
+ggsave(path = "images", filename = "simplewindfarmpotential.png", bg = "transparent")
 
 ################################################################################
 # Extract the legend
