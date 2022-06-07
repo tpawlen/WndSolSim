@@ -442,9 +442,10 @@ year_pool <- function(year1, year2,case) {
                        labels = c("Monthly Ave","12-Month Rolling")) +
     scale_x_date(date_labels = "%b-%Y",
       expand=c(0,0), 
-      date_breaks = "2 months"
+      date_breaks = "3 months"
       ) +
-    scale_y_continuous(expand=c(0,0)
+    scale_y_continuous(expand=c(0,0),
+                       n.breaks = 3
     )
 }
 
@@ -456,7 +457,7 @@ comp_dur <- function(year1, year2, case) {
     # Calculate the percentage of time
     # Create column 'sit' to indicate Simulation
   totSim <- ZoneH %>%
-    filter(Report_Year >= year1 & 
+    filter(Report_Year >= (year1-2) & 
              Report_Year <= year2,
            Run_ID == case, 
            Condition != "Average") %>%
@@ -475,7 +476,7 @@ comp_dur <- function(year1, year2, case) {
   Actual$Hour <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%H")
   
   totAct <- Actual %>%
-    filter(Year >= year1, 
+    filter(Year >= (year1-2), 
            Year <= year2,) %>%
     mutate(Condition = if_else(between(Hour, 08, 23), 
                                "On-Peak WECC", "Off-Peak WECC")) %>%
@@ -908,36 +909,48 @@ tot_cap <- function(year1, year2, case) {
 
 AESOSim <- function(year1,year2,case) {
 
-  sz <- 10
+  sz <- 16
   
-  plot_grid(comp_dur(year1,year2,case) +
-              theme(axis.text = element_text(size = sz),
-                    axis.title = element_text(size = sz),
-                    axis.text.x = element_text(angle = 45, hjust=1, size = sz),
-                    plot.title = element_text(size = sz+2),
-                    legend.text = element_text(size = sz-2),
-                    axis.title.x = element_blank()),
-            year_pool(year1,year2,case) + 
-              theme(axis.text = element_text(size = sz),
-                    axis.title = element_text(size = sz),
-                    axis.text.x = element_text(angle = 45, hjust=1, size = sz),
-
-                    legend.text = element_text(size = sz-2),
-                    plot.title = element_blank(),
-                    plot.subtitle = element_blank(),
-                    axis.title.x = element_blank(),
-                    legend.position = "right"),
-            tech_cap(year1,year2,case) + 
-              theme(axis.text = element_text(size = sz),
-                    axis.title = element_text(size = sz),
-                    axis.text.x = element_text(angle = 45, hjust=1, size = sz),
-
-                    legend.text = element_text(size = sz-2),
-                    plot.title = element_blank(),
-                    plot.subtitle = element_blank(),
-                    legend.position = "right"),
-            ncol = 1, align = "v", axis = "l",
-            rel_heights = c(2,1,2))
+  p.c <- comp_dur(year1,year2,case) +
+    theme(axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, hjust=1, size = sz),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz-2),
+          axis.title.x = element_blank())
+  p.y <- year_pool(year1,year2,case) + 
+    theme(axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, hjust=1, size = sz),
+          
+          legend.text = element_text(size = sz-2),
+          plot.title = element_blank(),
+          plot.subtitle = element_blank(),
+          axis.title.x = element_blank(),
+          legend.position = "right")
+  p.t <- tech_cap(year1,year2,case) + 
+    theme(axis.text = element_text(size = sz-2),
+          axis.title = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, hjust=1, size = sz-2),
+          
+          legend.text = element_text(size = sz-2),
+          plot.title = element_blank(),
+          plot.subtitle = element_blank(),
+          legend.position = "right")
   
- 
+  p.c + p.y + p.t + plot_layout(design = "A
+                                B
+                                C") &
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          panel.border = element_rect(colour = "black", fill = "transparent"))
+  
+#  plot_grid(p.c,p.y,p.t,
+#            ncol = 1, align = "v", axis = "l",
+#            rel_heights = c(2,1.5,2))
 }

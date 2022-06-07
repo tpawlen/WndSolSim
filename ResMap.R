@@ -121,14 +121,14 @@ wind_sim <- rbind(plant,turb_pot,pot)
 ################################################################################
 #Level 1 shows provinces, while level 2 shows individual counties
 ################################################################################
-can_level1 = getData("GADM", country = "CA", level = 1)
+{can_level1 = getData("GADM", country = "CA", level = 1)
 
 WGS84 <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 canada_level1_ellipsoid = spTransform(can_level1, WGS84)
 
 alberta_ellipsoid1 = 
   canada_level1_ellipsoid[which(canada_level1_ellipsoid$NAME_1 == "Alberta"),]
-
+}
 ################################################################################
 # Excludes any points outside the province
 ################################################################################
@@ -155,7 +155,7 @@ AB <- ggplot() +
                aes(x = long, y = lat, group = group), 
                fill = "transparent", colour = "black") +
   scale_fill_gradientn(colors = matlab.like2(100),
-                       limits=c(3,10),oob=squish, name = "Mean Wind Speed \nat 80m height \n(m/s)") +
+                       limits=c(3,10),oob=squish, name = "Mean wind speed \nat 80m height \n(m/s)") +
   theme(panel.background = element_rect(fill = "transparent"),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -292,7 +292,7 @@ wnd_plot
 
 ggsave(path = "images", filename = "windfarmlocationsdouble.png", bg = "transparent")
 
-################################################################################
+###############################################################################
 ################################################################################
 # Map of Canada
 ################################################################################

@@ -110,7 +110,7 @@
 ################################################################################
 
 {
-  DB <- "May_26a_2022"
+  DB <- "Jun_6_2022"
   # Connect to SQL database
   ################################################################################
   con <- dbConnect(odbc(),
@@ -148,7 +148,7 @@
     #StackHr <- dbReadTable(con,'ResourceStackHour1')
     
     #LTRes <- dbReadTable(con,'LTResValue1')
-    #Build <- dbReadTable(con,'LTBuildReport1')
+    Build <- dbReadTable(con,'LTBuildReport1')
     #Study <- dbReadTable(con,'StudyLog1')
     #Link <- dbReadTable(con,'LinkYear1')
     #Fuel <- dbReadTable(con,'FuelYear1')
@@ -307,11 +307,11 @@
     df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "EXPORT",after=Inf)
   }
 
-AESO_Sim(2021,03,01,IR)
+AESO_Sim(2021,03,07,BC)
 
-AESOSim(2020,2021,IR)
+AESOSim(2020,2021,BC)
 
 comp_dur(2018,2021,BC)
 
-load_dur(2018,2021,BC)
+load_dur(2018,2021,IR)
  
