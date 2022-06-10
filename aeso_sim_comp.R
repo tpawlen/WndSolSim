@@ -336,6 +336,9 @@ year_avg <- function(year,case) {
 # Plot charts shown in AESO 2021 Market Report
 ################################################################################
 
+AESO_colours <- c("goldenrod1", "gray60", "yellowgreen", "cornflowerblue",
+                  "#001933")
+
 year_pool <- function(year1, year2,case) {
   # A function to plot the Monthly average pool price 
   # (Like in the AESO Market Report 2021 Figure 1)
@@ -439,9 +442,10 @@ year_pool <- function(year1, year2,case) {
                        labels = c("Monthly Ave","12-Month Rolling")) +
     scale_x_date(date_labels = "%b-%Y",
       expand=c(0,0), 
-      date_breaks = "2 months"
-) +
-    scale_y_continuous(expand=c(0,0)
+      date_breaks = "3 months"
+      ) +
+    scale_y_continuous(expand=c(0,0),
+                       n.breaks = 3
     )
 }
 
@@ -453,13 +457,13 @@ comp_dur <- function(year1, year2, case) {
     # Calculate the percentage of time
     # Create column 'sit' to indicate Simulation
   totSim <- ZoneH %>%
-    filter(Report_Year >= year1 & 
+    filter(Report_Year >= (year1-2) & 
              Report_Year <= year2,
            Run_ID == case, 
            Condition != "Average") %>%
     group_by(Condition, Report_Year) %>%
     mutate(perc = 1-ecdf(Price)(Price)) %>%
-    select(Condition, Report_Year, Price, perc) %>%
+    subset(., select=c(Condition, Report_Year, Price, perc)) %>%
     rename(Year = Report_Year) %>%
     ungroup() %>%
     mutate(sit = "Simulated")
@@ -472,13 +476,13 @@ comp_dur <- function(year1, year2, case) {
   Actual$Hour <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%H")
   
   totAct <- Actual %>%
-    filter(Year >= year1, 
+    filter(Year >= (year1-2), 
            Year <= year2,) %>%
     mutate(Condition = if_else(between(Hour, 08, 23), 
                                "On-Peak WECC", "Off-Peak WECC")) %>%
     group_by(Year, Condition) %>%
     mutate(perc = 1-ecdf(Price)(Price)) %>%
-    select(Condition, Year, Price, perc) %>%
+    subset(., select=c(Condition, Year, Price, perc)) %>%
     ungroup() %>%
     mutate(sit = "Actual")
   
@@ -537,7 +541,7 @@ load_dur <- function(year1, year2, case) {
            Condition != "Average") %>%
     group_by(Condition, Report_Year) %>%
     mutate(perc = 1-ecdf(Demand)(Demand)) %>%
-    select(Condition, Report_Year, Demand, perc) %>%
+    dplyr::select(Condition, Report_Year, Demand, perc) %>%
     rename(Year = Report_Year) %>%
     ungroup() %>%
     mutate(sit = "Simulated")
@@ -557,10 +561,10 @@ load_dur <- function(year1, year2, case) {
                                "On-Peak WECC", "Off-Peak WECC")) %>%
     group_by(Year, Condition) %>%
     mutate(perc = 1-ecdf(AIL)(AIL)) %>%
-    select(Condition, Year, AIL, perc) %>%
+    dplyr::select(Condition, Year, AIL, perc) %>%
     ungroup() %>%
     mutate(sit = "Actual", Demand = AIL) %>%
-    select(Condition, Year, Demand, perc,sit)
+    dplyr::select(Condition, Year, Demand, perc,sit)
   
   # Combine Actual and Simulation data
   total <- rbind(totSim, totAct)
@@ -689,42 +693,264 @@ tech_cap <- function(yearstart, yearend, case) {
     )
 }
 
+margin <- function(year1, year2, case) {
+  # Plots the marginal price-setting technology for AESO and Sim
+  # Like AESO Market Report 2021 Figure 19
+  
+  totZone <- ZoneH %>%
+    filter(Report_Year >= year1 & 
+             Report_Year <= year2,
+           Run_ID == case, 
+           Condition != "Average") %>%
+    mutate(Name = Marginal_Resource) %>%
+    subset(.,select=c(date,Name,Price))
+  
+  totHour <- RHour %>%
+    filter(Report_Year >= year1 & 
+             Report_Year <= year2,
+           Run_ID == case) %>%
+    subset(.,select=c(date,Name,Dispatch_Cost,Incr_Cost,Primary_Fuel,Percent_Marginal,Zone))
+
+  data1 <- left_join(totZone, totHour, by=c("date","Name")) 
+  
+  data1 <- data1 %>%
+    group_by(Name, Report_Year) %>%
+    mutate(perc = 1-ecdf(Price)(Price)) %>%
+  
+  Act <- merit_filt %>%
+    filter(dispatched_mw != 0) %>%
+    group_by(date, he) %>%
+    slice_max(n=1,merit)
+}
+
+wind_cap <- function(year1, year2, case) {
+  # Plots the annual wind capacity factor duration curve for AESO and Sim
+  # Like AESO Market Report 2021 Figure 25
+  
+  # Load and filter Simulation data, 
+  # Calculate the percentage of time
+  # Create column 'sit' to indicate Simulation
+  Sim <- Hour %>%
+    filter(Report_Year >= year1 & 
+             Report_Year <= year2,
+           Run_ID == case,
+           ID == "LTO_Wind") %>%
+    group_by(Report_Year) %>%
+    mutate(perc = 1-ecdf(Capacity_Factor)(Capacity_Factor)) %>%
+    mutate(sit = "Simulated", Cap_Fac = Capacity_Factor) %>%
+    subset(., select=c(Report_Year, Cap_Fac, perc, sit)) %>%
+    rename(Year = Report_Year) %>%
+    ungroup() 
+  
+  # Load and filter AESO data, 
+  # Calculate the percentage of time
+  # Create column 'sit' to indicate Actual AESO data
+  Actual <- sub_samp 
+#  Actual <- df1
+#  Actual$Year <- as.numeric(as.character(Actual$Year))
+#  Actual$Year <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%Y")
+  Actual <- Actual %>%
+  filter(year(time) >= year1,
+         year(time) <= year2,
+         Plant_Type == "WIND") #%>%
+ #   mutate(Cap_Fac = meancap)
+  Actual <- na.omit(Actual)
+  Actual$Year <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%Y")
+  
+#  Act <- Actual %>%
+#    group_by(Year,time) %>%
+#    mutate(perc = 1-ecdf(Cap_Fac)(Cap_Fac)) %>%
+#    subset(., select=c(Year, Cap_Fac, perc)) %>%
+#    ungroup() %>%
+#    mutate(sit = "Actual")
+  
+  Act <- Actual %>%
+    group_by(Year,time) %>%
+    summarise(Cap_Fac = mean(Cap_Fac)) %>%
+    mutate(perc = 1-ecdf(Cap_Fac)(Cap_Fac)) %>%
+    subset(., select=c(Year, Cap_Fac, perc)) %>%
+    ungroup() %>%
+    mutate(sit = "Actual")
+  
+  # Combine Actual and Simulation data
+  total <- rbind(Sim, Act)
+  
+  # Set font size for plot
+  sz <- 15
+  
+  ggplot() +
+    geom_line(data = total, 
+              aes(x = perc, y = Cap_Fac, colour = Year, linetype = sit), size = 1) +
+#    facet_grid(cols = vars(Condition)) +
+    theme_bw() +
+    theme(axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz),
+          
+          # For transparent background
+          panel.grid = element_blank(),
+          legend.title = element_blank(),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) +
+    labs(y = "Wind Capacity Factor", 
+         x = "Percentage of Time", 
+         title = "AESO Data vs Simulation",
+         subtitle = DB) +
+    scale_color_manual(values = AESO_colours) +
+    scale_x_continuous(expand=c(0,0), 
+                       limits = c(0,1.1),
+                       labels = percent) +
+    scale_y_continuous(expand=c(0,0)
+    )
+}
+
+tot_cap <- function(year1, year2, case) {
+  # Plots the year-end capacity by technology for AESO and Sim
+  # Like AESO Market Report 2021 Figure 11
+  
+  Act <- sub_samp %>%
+    filter(! NRG_Stream %in% trade_excl,
+           year(time) >= year1,
+           year(time) <= year2,
+           month(time) == 12,
+           day(time) == 31,
+           hour(time) == 23,
+#           Plant_Type != "STORAGE"
+           ) %>%
+    group_by(time, Plant_Type) %>%
+    summarise(Cap = sum(Capacity)) %>%
+#    subset(., select=c(time, Cap, perc)) %>%
+    mutate(sit = "Actual", Year = as.factor(year(time))) %>%
+    subset(., select=c(Year, Plant_Type, Cap, sit))
+  
+  Act <- na.omit(Act)
+  
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "HYDRO",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "WIND",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "SOLAR",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "OTHER",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "STORAGE",after=Inf)
+  
+  Sim <- Hr %>%
+    filter(Run_ID == case,
+           Report_Month == 12,
+           Report_Day == 31,
+           Report_Hour == 24,
+           ID == "LTO_Coal" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
+             ID == "AB_SCCT_noncogen" | ID == "LTO_Hydro" | ID == "LTO_Other" | 
+             ID == "LTO_Wind" | ID == "LTO_Solar") %>%
+    group_by(Report_Year, ID) %>%
+    subset(., select=c(Report_Year, ID, Capacity)) %>%
+#    summarise(Cap = mean(Capacity_Factor)) %>%
+    mutate(sit = "Simulation")
+  
+  colnames(Sim) <- c("Year", "Plant_Type", "Cap", "sit")
+  
+  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("LTO_Coal", "AB_CCCT_noncogen", "LTO_Cogen",
+                                                    "AB_SCCT_noncogen", "LTO_Hydro", "LTO_Other", 
+                                                    "LTO_Wind", "LTO_Solar"))
+  levels(Sim$Plant_Type) <- c("COAL", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
+                              "WIND", "SOLAR")
+  
+  Sim$Year <- as.factor(Sim$Year)
+  
+  total <- rbind(Sim,Act)
+
+  sz <- 15
+  
+  ggplot() +
+    geom_col(data = total, position = "dodge", alpha = 0.8, width = 0.7,
+             aes(x = Plant_Type, y = Cap, fill = sit, linetype = sit)) +
+    facet_grid(~Year) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          axis.title.x = element_blank(),
+          axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz),
+          panel.grid = element_blank(),
+          legend.title = element_blank(),
+          
+          # For transparent background
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) +
+    labs(y = "Installed Generation Capacity (MW)", 
+         title = "Year-end generation capacity AESO Data vs Simulation",
+         subtitle = DB) +
+    scale_fill_manual(values = AESO_colours) +
+    #    scale_x_continuous(expand=c(0,0), 
+    #                       limits = c(0,1.1),
+    #                       labels = percent) +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(0,6000),
+#                       breaks = seq(0,1, by = 0.2)
+    )
+}
+
 ################################################################################
 # Plot combination of plots
 ################################################################################
 
 AESOSim <- function(year1,year2,case) {
 
-  sz <- 10
+  sz <- 16
   
-  plot_grid(comp_dur(year1,year2,case) +
-              theme(axis.text = element_text(size = sz),
-                    axis.title = element_text(size = sz),
-                    axis.text.x = element_text(angle = 45, hjust=1, size = sz),
-                    plot.title = element_text(size = sz+2),
-                    legend.text = element_text(size = sz-2),
-                    axis.title.x = element_blank()),
-            year_pool(year1,year2,case) + 
-              theme(axis.text = element_text(size = sz),
-                    axis.title = element_text(size = sz),
-                    axis.text.x = element_text(angle = 45, hjust=1, size = sz),
-
-                    legend.text = element_text(size = sz-2),
-                    plot.title = element_blank(),
-                    plot.subtitle = element_blank(),
-                    axis.title.x = element_blank(),
-                    legend.position = "right"),
-            tech_cap(year1,year2,case) + 
-              theme(axis.text = element_text(size = sz),
-                    axis.title = element_text(size = sz),
-                    axis.text.x = element_text(angle = 45, hjust=1, size = sz),
-
-                    legend.text = element_text(size = sz-2),
-                    plot.title = element_blank(),
-                    plot.subtitle = element_blank(),
-                    legend.position = "right"),
-            ncol = 1, align = "v", axis = "l",
-            rel_heights = c(2,1,2))
+  p.c <- comp_dur(year1,year2,case) +
+    theme(axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, hjust=1, size = sz),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz-2),
+          axis.title.x = element_blank())
+  p.y <- year_pool(year1,year2,case) + 
+    theme(axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, hjust=1, size = sz),
+          
+          legend.text = element_text(size = sz-2),
+          plot.title = element_blank(),
+          plot.subtitle = element_blank(),
+          axis.title.x = element_blank(),
+          legend.position = "right")
+  p.t <- tech_cap(year1,year2,case) + 
+    theme(axis.text = element_text(size = sz-2),
+          axis.title = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, hjust=1, size = sz-2),
+          
+          legend.text = element_text(size = sz-2),
+          plot.title = element_blank(),
+          plot.subtitle = element_blank(),
+          legend.position = "right")
   
- 
+  p.c + p.y + p.t + plot_layout(design = "A
+                                B
+                                C") &
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          panel.border = element_rect(colour = "black", fill = "transparent"))
+  
+#  plot_grid(p.c,p.y,p.t,
+#            ncol = 1, align = "v", axis = "l",
+#            rel_heights = c(2,1.5,2))
 }

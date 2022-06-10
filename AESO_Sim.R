@@ -110,7 +110,7 @@
 ################################################################################
 
 {
-  DB <- "May_16_2022"
+  DB <- "Jun_6_2022"
   # Connect to SQL database
   ################################################################################
   con <- dbConnect(odbc(),
@@ -139,13 +139,19 @@
 
     # Write data to environment and set variables
     ################################################################################
-    Hour <- dbReadTable(con,'ResourceGroupHour1')
+    Hr <- dbReadTable(con,'ResourceGroupHour1')
     Month <- dbReadTable(con,'ResourceGroupMonth1')
     Year  <- dbReadTable(con,'ResourceGroupYear1')
-    #Build <- dbReadTable(con,'LTBuildReport1')
     ZoneHour <- dbReadTable(con,'ZoneHour1')
-    Resource <- dbReadTable(con,'ResourceMonth1')
+    ResourceYr <- dbReadTable(con,'ResourceYear1')
+    ResourceHr <- dbReadTable(con,'ResourceHour1')
+    #StackHr <- dbReadTable(con,'ResourceStackHour1')
+    
     #LTRes <- dbReadTable(con,'LTResValue1')
+    Build <- dbReadTable(con,'LTBuildReport1')
+    #Study <- dbReadTable(con,'StudyLog1')
+    #Link <- dbReadTable(con,'LinkYear1')
+    #Fuel <- dbReadTable(con,'FuelYear1')
     
     setwd("D:/Documents/GitHub/AuroraEval")
     
@@ -165,7 +171,7 @@
       HREB <- "Heat Rate and Extreme Bid Factors"
       
       # Set limits for plots to be consistent
-      ylimit <- max(Hour$Output_MWH) + max(ZoneHour$Imports)
+      ylimit <- max(Hr$Output_MWH) + max(ZoneHour$Imports)
       
       # Set legend variables
       colours = c("darkslateblue", "grey", "darkslategrey", "coral4", "goldenrod4", 
@@ -179,18 +185,20 @@
     # Converts the date and time and identifies the week when applicable
     ################################################################################
     {
-      Hour$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",Hour$Time_Period))), 
+      Hr$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",Hr$Time_Period))), 
                               tz = "MST")-(60*60)
       Month$Time_Period <- ym(Month$Time_Period)
       Year$Time_Period  <- as.Date(as.character(Year$Time_Period), 
                                    format = "%Y")
       ZoneHour$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",ZoneHour$Time_Period))), 
                                   tz = "MST")-(60*60)
+      ResourceHr$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",ResourceHr$Time_Period))), 
+                            tz = "MST")-(60*60)
       
       # Selects only the required columns
       ################################################################################
       
-      Hour <- Hour %>%
+      Hour <- Hr %>%
         subset(., select = c(ID, date, Report_Year, Output_MWH, Run_ID, Capacity_Factor))
       
       ZH <- ZoneHour %>%
@@ -204,8 +212,18 @@
       ZoneH <- ZoneHour %>%
         filter(Name == "WECC_Alberta") %>%
         subset(., select = c(date, Condition, Price, Demand, Marginal_Resource, 
-                             Report_Year, Report_Month,
+                             Name,Report_Year, Report_Month,
                              Run_ID))
+      
+      RHour <- ResourceHr %>%
+#        filter(Zone == "WECC_Alberta") %>%
+        subset(., select = c(ID, Name, Beg_Date, End_Date, date, Capability, Capacity, 
+                             Dispatch_Cost, Incr_Cost, Fixed_Cost, Fuel_Cost, 
+                             Output_MWH, Percent_Marginal, Percent_Committed,
+                             Revenue, Variable_OM_Cost, Capacity_Factor, 
+                             Total_Emission_Cost, Total_Hours_Run, Condition, 
+                             Report_Year, Run_ID, Peak_Capacity, 
+                             Primary_Fuel,Zone))
       
       # Select the Import/Export data
       Import <- ZH %>%
@@ -220,7 +238,7 @@
       
       Export$Output_MWH <- Export$Output_MWH * -1
     }
-  }
+   }
 }
 
 ################################################################################
@@ -289,9 +307,11 @@
     df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "EXPORT",after=Inf)
   }
 
-AESO_Sim(2021,03,01,IR)
+AESO_Sim(2021,03,07,BC)
 
-comp_dur(2018,2021,IR)
+AESOSim(2020,2021,BC)
+
+comp_dur(2018,2021,BC)
 
 load_dur(2018,2021,IR)
  

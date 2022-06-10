@@ -49,7 +49,7 @@ legText <- 12
 # Wind Speed data from Canada Wind Atlas 
 # http://www.windatlas.ca/nav-en.php?no=46&field=EU&height=80&season=ANU
 ################################################################################
-#wind_profile <- readRDS("WindAtlas_Data_0.05")
+#wind_profile <- readRDS("WindAtlas_Data00_0.05")
 #colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
 
 {
@@ -121,14 +121,14 @@ wind_sim <- rbind(plant,turb_pot,pot)
 ################################################################################
 #Level 1 shows provinces, while level 2 shows individual counties
 ################################################################################
-can_level1 = getData("GADM", country = "CA", level = 1)
+{can_level1 = getData("GADM", country = "CA", level = 1)
 
 WGS84 <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 canada_level1_ellipsoid = spTransform(can_level1, WGS84)
 
 alberta_ellipsoid1 = 
   canada_level1_ellipsoid[which(canada_level1_ellipsoid$NAME_1 == "Alberta"),]
-
+}
 ################################################################################
 # Excludes any points outside the province
 ################################################################################
@@ -139,6 +139,8 @@ alberta_ellipsoid1 =
 
 active <- wind_farm %>%
   filter(Status == "Active")
+simple <- wind_sim %>%
+  filter(Status != "Planning")
 
 ################################################################################
 ################################################################################
@@ -153,7 +155,7 @@ AB <- ggplot() +
                aes(x = long, y = lat, group = group), 
                fill = "transparent", colour = "black") +
   scale_fill_gradientn(colors = matlab.like2(100),
-                       limits=c(3,10),oob=squish, name = "Mean Wind Speed \nat 80m height \n(m/s)") +
+                       limits=c(3,10),oob=squish, name = "Mean wind speed \nat 80m height \n(m/s)") +
   theme(panel.background = element_rect(fill = "transparent"),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -224,11 +226,33 @@ Sim_wind <- AB + geom_point(data = wind_sim,
         legend.text = element_text(size = legText),
         legend.title = element_text(size = legTitle)) 
 }
+
+################################################################################
+################################################################################
+# Map of Alberta with active wind farms with selected locations for
+# simulation
+################################################################################
+################################################################################
+{
+  labs3 <- c("Active","Simulated")
+  
+  Simple_wind <- AB + geom_point(data = simple,
+                              aes(x= Longitude, y = Latitude, size = Capacity, shape = Status, color = Status)) + 
+    scale_shape_manual(values = c(16,17), labels = labs3) +
+    scale_color_manual(values = c("black","red4"), 
+                       labels = labs3) +
+    guides(shape = guide_legend(override.aes = list(size = 5))) +
+    ggtitle("Active, Queued, & Potential \nWind Farms") +
+    theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
+          legend.text = element_text(size = legText),
+          legend.title = element_text(size = legTitle)) 
+}
+
 ################################################################################
 # Save map as png
 ################################################################################
 
-ggsave(path = "images", filename = "windfarmpotential.png", bg = "transparent")
+ggsave(path = "images", filename = "simplewindfarmpotential.png", bg = "transparent")
 
 ################################################################################
 # Extract the legend
@@ -268,7 +292,7 @@ wnd_plot
 
 ggsave(path = "images", filename = "windfarmlocationsdouble.png", bg = "transparent")
 
-################################################################################
+###############################################################################
 ################################################################################
 # Map of Canada
 ################################################################################
