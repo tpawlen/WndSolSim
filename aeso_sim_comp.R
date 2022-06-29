@@ -519,7 +519,7 @@ comp_dur <- function(year1, year2, case) {
          title = "AESO Data vs Simulation",
          subtitle = DB) +
     scale_color_manual(values = c("goldenrod1", "forestgreen", "cornflowerblue",
-                                  "firebrick","gray60")) +
+                                  "firebrick","gray60", "orange")) +
     scale_x_continuous(expand=c(0,0), 
                        limits = c(0,1.1),
                        labels = percent) +

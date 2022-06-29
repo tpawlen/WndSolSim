@@ -102,6 +102,7 @@
   library(reshape2)
   library(zoo)
   library(ggpattern)
+  library(patchwork)
 #  library(lmtest)
 }
 
@@ -110,7 +111,7 @@
 ################################################################################
 
 {
-  DB <- "Jun_6_2022"
+  DB <- "Jun_20b_2022"
   # Connect to SQL database
   ################################################################################
   con <- dbConnect(odbc(),
@@ -144,11 +145,11 @@
     Year  <- dbReadTable(con,'ResourceGroupYear1')
     ZoneHour <- dbReadTable(con,'ZoneHour1')
     ResourceYr <- dbReadTable(con,'ResourceYear1')
-    ResourceHr <- dbReadTable(con,'ResourceHour1')
+    #ResourceHr <- dbReadTable(con,'ResourceHour1')
     #StackHr <- dbReadTable(con,'ResourceStackHour1')
     
     #LTRes <- dbReadTable(con,'LTResValue1')
-    Build <- dbReadTable(con,'LTBuildReport1')
+    #Build <- dbReadTable(con,'LTBuildReport1')
     #Study <- dbReadTable(con,'StudyLog1')
     #Link <- dbReadTable(con,'LinkYear1')
     #Fuel <- dbReadTable(con,'FuelYear1')
@@ -192,8 +193,8 @@
                                    format = "%Y")
       ZoneHour$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",ZoneHour$Time_Period))), 
                                   tz = "MST")-(60*60)
-      ResourceHr$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",ResourceHr$Time_Period))), 
-                            tz = "MST")-(60*60)
+#      ResourceHr$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",ResourceHr$Time_Period))), 
+#                            tz = "MST")-(60*60)
       
       # Selects only the required columns
       ################################################################################
@@ -215,15 +216,15 @@
                              Name,Report_Year, Report_Month,
                              Run_ID))
       
-      RHour <- ResourceHr %>%
+#      RHour <- ResourceHr %>%
 #        filter(Zone == "WECC_Alberta") %>%
-        subset(., select = c(ID, Name, Beg_Date, End_Date, date, Capability, Capacity, 
-                             Dispatch_Cost, Incr_Cost, Fixed_Cost, Fuel_Cost, 
-                             Output_MWH, Percent_Marginal, Percent_Committed,
-                             Revenue, Variable_OM_Cost, Capacity_Factor, 
-                             Total_Emission_Cost, Total_Hours_Run, Condition, 
-                             Report_Year, Run_ID, Peak_Capacity, 
-                             Primary_Fuel,Zone))
+#        subset(., select = c(ID, Name, Beg_Date, End_Date, date, Capability, Capacity, 
+#                             Dispatch_Cost, Incr_Cost, Fixed_Cost, Fuel_Cost, 
+#                             Output_MWH, Percent_Marginal, Percent_Committed,
+#                             Revenue, Variable_OM_Cost, Capacity_Factor, 
+#                             Total_Emission_Cost, Total_Hours_Run, Condition, 
+#                             Report_Year, Run_ID, Peak_Capacity, 
+#                             Primary_Fuel,Zone))
       
       # Select the Import/Export data
       Import <- ZH %>%
@@ -307,11 +308,11 @@
     df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "EXPORT",after=Inf)
   }
 
-AESO_Sim(2021,03,07,BC)
+AESO_Sim(2021,03,01,BC)
 
 AESOSim(2020,2021,BC)
 
 comp_dur(2018,2021,BC)
 
-load_dur(2018,2021,IR)
+load_dur(2018,2021,BC)
  
