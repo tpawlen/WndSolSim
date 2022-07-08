@@ -339,7 +339,7 @@ tot_gen <- function(year1, year2, case) {
     filter(! NRG_Stream %in% trade_excl,
            year(time) >= year1,
            year(time) <= year2,
-           Plant_Type == "COAL" | Plant_Type == "COGEN" | Plant_Type == "NGCC" |
+           Plant_Type == "COAL" | Plant_Type == "NGCONV" | Plant_Type == "COGEN" | Plant_Type == "NGCC" |
              Plant_Type == "SCGT" | Plant_Type == "HYDRO" | Plant_Type == "OTHER" |
              Plant_Type == "WIND" | Plant_Type == "SOLAR" | Plant_Type == "STORAGE" |
              Plant_Type == "EXPORT" | Plant_Type == "IMPORT"
@@ -381,7 +381,7 @@ tot_gen <- function(year1, year2, case) {
     filter(Run_ID == case,
            Report_Year >= year1,
            Report_Year <= year2,
-           ID == "LTO_Coal" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
+           ID == "LTO_Coal" | ID == "AB_NGCONV" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
              ID == "AB_SCCT_noncogen" | ID == "LTO_Hydro" | ID == "LTO_Other" | 
              ID == "LTO_Wind" | ID == "LTO_Solar" | ID == "LTO_Storage"
     ) %>%
@@ -392,11 +392,11 @@ tot_gen <- function(year1, year2, case) {
   
   Sim <- rbind(Sim, Imp, Exp)
   
-  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("LTO_Coal", "AB_CCCT_noncogen", "LTO_Cogen",
+  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("LTO_Coal", "AB_NGCONV", "AB_CCCT_noncogen", "LTO_Cogen",
                                                     "AB_SCCT_noncogen", "LTO_Hydro", "LTO_Other", 
                                                     "LTO_Wind", "LTO_Solar", "LTO_Storage", "EXPORT", "IMPORT"))
   
-  levels(Sim$Plant_Type) <- c("COAL", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
+  levels(Sim$Plant_Type) <- c("COAL", "NGCONV", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
                               "WIND", "SOLAR", "STORAGE", "EXPORT", "IMPORT")
   
   Sim$Year <- as.factor(Sim$Year)
@@ -533,6 +533,130 @@ tot_intertie <- function(year1, year2, case) {
                        limits = c(-12000,6000)
                        #                       breaks = seq(0,1, by = 0.2)
     )
+}
+
+capture_price <- function(year1, year2, case) {
+  # Plots the difference between the average capture price realized by each 
+  # generation technology and the mean price for the same time period. 
+  
+  # Based on a plot designed by Dr. Andrew Leach
+
+  # Filters data set for required timeframe
+  Act <- df1 %>% 
+    filter(year(time) >= year1,
+           year(time) <= year2,
+           Plant_Type %in% gen_set) %>%
+    group_by(Plant_Type,Year) %>% 
+    summarise(capture = sum(total_rev)/sum(total_gen),
+              avg_rev = sum(total_rev)/sum(total_gen),
+              p_mean=mean(price_mean, na.rm = TRUE)) %>%
+    mutate(sit = "Actual", Year = as.factor(Year))
+
+  # Filters data set for required timeframe for simulated data
+  SampleSimZ <- ZH  %>%
+    filter(year(date) >= year1,
+           year(date) <= year2,
+           Run_ID == case,
+    ) %>%
+    subset(., select = c(date, Price, Imports, Exports))
+  
+  SampleSim <- Hr %>%
+    filter(year(date) >= year1,
+           year(date) <= year2,
+           Output_MWH >= 0,
+           Run_ID == case,
+           ID == "LTO_Coal" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
+             ID == "AB_SCCT_noncogen" | ID == "LTO_Hydro" | ID == "LTO_Other" | 
+             ID == "LTO_Wind" | ID == "LTO_Solar" | ID == "LTO_Storage"
+    ) %>%
+    mutate(Year = as.factor(Report_Year)) %>%
+    subset(., select = c(date, ID, Output_MWH, Energy_Revenue, Year)) 
+  
+  SamSim <- merge(SampleSimZ, SampleSim, by = "date") %>%
+    subset(., select = -c(Imports,Exports))
+  
+  # This section calculates the achieved prices for imports and exports
+    Imp <- SampleSimZ %>%
+      mutate(Energy_Revenue = Price*Imports/1000, 
+             Year = as.factor(year(date)), 
+             ID = "IMPORT",
+             Output_MWH = Imports) %>%
+      subset(., select = -c(Imports,Exports))
+  
+    Exp <- SampleSimZ %>%
+      mutate(Energy_Revenue = Price*Exports/1000, 
+             Year = as.factor(year(date)), 
+             ID = "EXPORT",
+             Output_MWH = Exports) %>%
+      subset(., select = -c(Imports,Exports))
+  
+  Sim <- rbind(SamSim,Imp,Exp) %>%
+    group_by(ID,Year,date) %>%
+    summarise(total_rev = sum(Energy_Revenue*1000), 
+              total_gen = sum(Output_MWH),
+              price_mean=mean(Price)) %>%
+    ungroup() %>%
+    mutate(Plant_Type = ID) %>%
+    group_by(Plant_Type,Year) %>%
+    summarise(capture = sum(total_rev)/sum(total_gen),
+              avg_rev = sum(total_rev)/sum(total_gen),
+              p_mean=mean(price_mean, na.rm = TRUE)) %>%
+    mutate(sit = "Simulation")
+  
+  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("LTO_Coal","AB_CCCT_noncogen", 
+                                                    "LTO_Cogen","AB_SCCT_noncogen",
+                                                    "LTO_Hydro","LTO_Other", 
+                                                    "LTO_Wind","LTO_Solar",
+                                                    "LTO_Storage","EXPORT","IMPORT"))
+  
+  levels(Sim$Plant_Type) <- c("COAL", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
+                              "WIND", "SOLAR", "STORAGE", "EXPORT", "IMPORT")
+  
+  total <- rbind(Sim,Act)
+  
+  sz <- 12
+  
+  # Plot the data
+  ggplot(total,
+         aes(Year,capture-p_mean,colour=sit,fill=sit),
+         alpha=0.8)+
+    geom_col(aes(Plant_Type,capture-p_mean,colour=sit,fill=sit),
+             size=1.5,position = position_dodge(width = .9),width = .6)+
+    geom_hline(yintercept=0, linetype="solid", color="gray",size=1)+
+    scale_color_manual("",values=AESO_colours)+
+    scale_fill_manual("",values=AESO_colours)+
+    facet_grid(~Year) +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(-50,200),
+                       breaks = seq(-40,200, by = 20)
+    ) +
+    labs(x="",y="Revenue Relative to \nMean Price ($/MWh)",
+         title=paste0("Energy Price Capture Differential ($/MWh, ",year1,"-",year2,")"),
+         subtitle = DB,
+         caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
+    theme(panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
+          panel.grid.minor.y = element_line(color = "lightgray",linetype="dotted"),
+          axis.line.x = element_line(color = "black"),
+          axis.line.y = element_line(color = "black"),
+          axis.text = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          axis.title = element_text(size = sz),
+          plot.subtitle = element_text(size = sz-2,hjust=0.5),
+          plot.caption = element_text(face="italic",size = sz-4,hjust=0),
+          plot.title = element_text(hjust=0.5,size = sz+2),
+#          plot.margin=unit(c(1,1,1.5,1.2),"cm"),
+          
+          # For transparent background
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          panel.border = element_rect(colour = "black", fill = "transparent"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          ) 
 }
 
 ################################################################################
@@ -810,7 +934,7 @@ load_dur <- function(year1, year2, case) {
     )
 }
 
-tech_cap <- function(yearstart, yearend, case) {
+tech_cap <- function(year1, year2, case) {
   # Plots the capacity factor by technology for AESO and Sim
   # Like AESO Market Report 2021 Figure 15
   
@@ -832,7 +956,7 @@ tech_cap <- function(yearstart, yearend, case) {
   
   Sim <- Hour %>%
     filter(Run_ID == case,
-           ID == "LTO_Coal" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
+           ID == "LTO_Coal" | ID == "AB_NGCONV" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
            ID == "AB_SCCT_noncogen" | ID == "LTO_Hydro" | ID == "LTO_Other" | 
            ID == "LTO_Wind" | ID == "LTO_Solar") %>%
     group_by(Report_Year, ID) %>%
@@ -841,17 +965,17 @@ tech_cap <- function(yearstart, yearend, case) {
   
   colnames(Sim) <- c("Year", "Plant_Type", "Cap", "sit")
 
-  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("LTO_Coal", "AB_CCCT_noncogen", "LTO_Cogen",
+  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("LTO_Coal", "AB_NGCONV", "AB_CCCT_noncogen", "LTO_Cogen",
                                       "AB_SCCT_noncogen", "LTO_Hydro", "LTO_Other", 
                                       "LTO_Wind", "LTO_Solar"))
-  levels(Sim$Plant_Type) <- c("COAL", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
+  levels(Sim$Plant_Type) <- c("COAL", "NGCONV", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
                        "WIND", "SOLAR")
   
   total <- rbind(Sim,Act)
   
   total <- total %>%
-    filter(Year >= yearstart,
-           Year <= yearend)
+    filter(Year >= year1,
+           Year <= year2)
   
   sz <- 15
   
@@ -1339,4 +1463,112 @@ AESOSim <- function(year1,year2,case) {
 #  plot_grid(p.c,p.y,p.t,
 #            ncol = 1, align = "v", axis = "l",
 #            rel_heights = c(2,1.5,2))
+}
+
+price_comp <- function(year1,year2,case) {
+  
+  sz <- 14
+  
+  p.c <- comp_dur(year1,year2,case) +
+    theme(axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, hjust=1, size = sz),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz-2),
+          axis.title.x = element_blank())
+  p.y <- year_pool(year1,year2,case) + 
+    theme(axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, hjust=1, size = sz),
+          
+          legend.text = element_text(size = sz-2),
+          plot.title = element_blank(),
+          plot.subtitle = element_blank(),
+          axis.title.x = element_blank(),
+          legend.position = "right")
+  p.t <- capture_price(year1,year2,case) +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(-50,200),
+                       breaks = seq(-50,200, by = 50)
+    ) +
+    theme(axis.text = element_text(size = sz-2),
+          axis.title = element_text(size = sz),
+          axis.line = element_line(color = "black"),
+          axis.text.x = element_text(angle = 90, vjust=0.5, hjust=1, size = sz-2),
+          
+          legend.text = element_text(size = sz-2),
+          plot.title = element_blank(),
+          plot.subtitle = element_blank(),
+          plot.caption = element_blank(),
+          legend.position = "right")
+  
+  p.c + p.y + p.t + plot_layout(design = "A
+                                B
+                                C") &
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          panel.border = element_rect(colour = "black", fill = "transparent"))
+  
+  #  plot_grid(p.c,p.y,p.t,
+  #            ncol = 1, align = "v", axis = "l",
+  #            rel_heights = c(2,1.5,2))
+}
+
+gen_comp <- function(year1,year2,case) {
+  
+  sz <- 14
+  
+  p.c <- tot_intertie(year1,year2,case) +
+    theme(axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, hjust=1, size = sz),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz-2),
+          axis.title.x = element_blank())
+  p.y <- tech_cap(year1,year2,case) + 
+    theme(axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, hjust=1, size = sz),
+          
+          legend.text = element_text(size = sz-2),
+          plot.title = element_blank(),
+          plot.subtitle = element_blank(),
+          axis.title.x = element_blank(),
+          legend.position = "right")
+  p.t <- tot_gen(year1,year2,case) +
+#    scale_y_continuous(expand=c(0,0),
+#                       limits = c(-50,200),
+#                       breaks = seq(-50,200, by = 50)
+#    ) +
+    theme(axis.text = element_text(size = sz-2),
+          axis.title = element_text(size = sz),
+          axis.line = element_line(color = "black"),
+          axis.text.x = element_text(angle = 90, vjust=0.5, hjust=1, size = sz-2),
+          
+          legend.text = element_text(size = sz-2),
+          plot.title = element_blank(),
+          plot.subtitle = element_blank(),
+          plot.caption = element_blank(),
+          legend.position = "right")
+  
+  p.c + p.y + p.t + plot_layout(design = "A
+                                B
+                                C") &
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          panel.border = element_rect(colour = "black", fill = "transparent"))
+  
+  #  plot_grid(p.c,p.y,p.t,
+  #            ncol = 1, align = "v", axis = "l",
+  #            rel_heights = c(2,1.5,2))
 }

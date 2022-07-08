@@ -45,6 +45,8 @@
       # Filter the data by resource
       {Coal <- inputdata %>%
         filter(ID=="LTO_Coal")
+      NGConv <- inputdata %>%
+        filter(ID=="AB_NGCONV")
       SCCT  <- inputdata %>%
         filter(ID=="AB_SCCT_noncogen")
       Cogen  <- inputdata %>%
@@ -64,11 +66,11 @@
       }
       
       # Combine the grouped data
-      {case <- rbind(Coal, Cogen, SCCT, CCCT, Hydro, Solar, Wind, Storage, Other)
-        case$ID <- factor(case$ID, levels=c("LTO_Coal", "AB_CCCT_noncogen", "LTO_Cogen",
+      {case <- rbind(Coal, NGConv, Cogen, SCCT, CCCT, Hydro, Solar, Wind, Storage, Other)
+        case$ID <- factor(case$ID, levels=c("LTO_Coal", "AB_NGCONV", "AB_CCCT_noncogen", "LTO_Cogen",
                                             "AB_SCCT_noncogen", "LTO_Hydro", "LTO_Other", 
                                             "LTO_Wind", "LTO_Solar", "LTO_Storage"))
-        levels(case$ID) <- c("COAL", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
+        levels(case$ID) <- c("COAL", "NGCONV", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
                              "WIND", "SOLAR", "STORAGE")
       }
       return(case)
@@ -100,8 +102,8 @@
       rbind(.,Import) %>%
       filter(Run_ID == case)
     
-    data$ID <- factor(data$ID, levels=c("Import", "COAL", "COGEN", "SCGT", "NGCC", 
-                                        "HYDRO", "OTHER",
+    data$ID <- factor(data$ID, levels=c("Import", "COAL", "NGCONV", "COGEN", 
+                                        "SCGT", "NGCC", "HYDRO", "OTHER",
                                         "WIND", "SOLAR", "STORAGE"))
     
     #    data$date <- as.POSIXct(data$date, tz = "MST")
@@ -565,7 +567,7 @@
       geom_bar(position="stack", stat="identity", alpha=0.6, colour = "black") +
       theme_bw() +
       theme(panel.grid = element_blank(),  
-            legend.position ="none"
+            #legend.position ="none"
             #          legend.justification = c(0,0.5),
             #          legend.position = "top"
       ) +
@@ -603,7 +605,7 @@
       geom_bar(position="stack", stat="identity", alpha=0.6, colour = "black") +
       theme_bw() +
       theme(panel.grid = element_blank(), 
-            legend.position ="none"
+            #legend.position ="none"
       ) +
       labs(x = "Date", y = "Capacity Built \n(MW)", fill = "Fuel Type") +
       scale_y_continuous(expand=c(0,0),
@@ -689,7 +691,8 @@
         values = c("Hypothetical"="forestgreen", "AESO Queue"="gray"),
         guide = "none") +
       scale_y_continuous(expand = c(0,0),
-                         limits = c(0,(max(data$Units_Built)+1))) +
+                         #limits = c(0,(max(data$Units_Built)+1))
+                         ) +
       theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
             panel.background = element_rect(fill = "transparent"),
             panel.grid.major.x = element_blank(),

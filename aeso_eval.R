@@ -14,7 +14,7 @@ plnt_tr <- function(Asset_ID) {
 
 Week_act <- function(year,month,day) {
   
-  colours = c("darkslateblue", "grey", "darkslategrey", "coral4", "goldenrod4", 
+  colours = c("darkslateblue", "black", "grey", "darkslategrey", "coral4", "goldenrod4", 
               "darkcyan", "dodgerblue", "forestgreen", "gold", "cyan")
   
   wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
@@ -42,6 +42,7 @@ Week_act <- function(year,month,day) {
   {
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "IMPORT", after = Inf)
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "COAL", after = Inf)
+    WK$Plant_Type<-fct_relevel(WK$Plant_Type, "NGCONV", after = Inf)
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "COGEN", after = Inf)
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "SCGT", after = Inf)
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "NGCC", after = Inf)
@@ -49,14 +50,15 @@ Week_act <- function(year,month,day) {
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "OTHER", after = Inf)
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "WIND", after = Inf)
     WK$Plant_Type<-fct_relevel(WK$Plant_Type, "SOLAR", after = Inf)
+    WK$Plant_Type<-fct_relevel(WK$Plant_Type, "STORAGE", after = Inf)
   }
   
-  WK$Plant_Type <- factor(WK$Plant_Type, levels=c("IMPORT", "COAL", "COGEN", 
+  WK$Plant_Type <- factor(WK$Plant_Type, levels=c("IMPORT", "COAL", "NGCONV", "COGEN", 
                                                   "SCGT", "NGCC", "HYDRO", 
-                                                  "OTHER", "WIND", "SOLAR"))
+                                                  "OTHER", "WIND", "SOLAR", "STORAGE"))
   
-  levels(WK$Plant_Type) <- c("Import","Coal", "Cogen", "SCGT", "NGCC", "Hydro", 
-                             "Other", "Wind", "Solar")
+  levels(WK$Plant_Type) <- c("Import","Coal", "NGConv", "Cogen", "SCGT", "NGCC", "Hydro", 
+                             "Other", "Wind", "Solar", "Storage")
   
   dmd <- demand %>%
     filter(time >= wk_st & time <= wk_end)

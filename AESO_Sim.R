@@ -107,11 +107,77 @@
 }
 
 ################################################################################
+# Load AESO Data
+################################################################################
+
+{
+  setwd("D:/Documents/Education/Masters Degree/Datasets/Market")
+  
+  load("nrgstream_gen.RData") 
+  nrgstream_gen <- nrgstream_gen %>% rename(time=Time)
+  #    merit <- read_csv("student_data_2021_Jul_23_14_09.csv.gz")
+  #    merit <- read_csv("student_data_2022_May_05_15_19.csv.gz")
+  #    saveRDS(merit, file = "Leach_MeritData.RData")
+  merit <- readRDS("Leach_MeritData.RData")
+  #    load("Leach_MeritData.RData")
+  merit_filt <- filter(merit, 
+                       date >= as.Date("2017-01-1"))
+  rm(merit)
+  
+  setwd("D:/Documents/GitHub/AuroraEval")
+  
+  #    errors<-nrgstream_gen %>% filter(is.na(Price),date<Sys.Date())
+  #    gen_errors<-nrgstream_gen %>% filter(is.na(gen),date<Sys.Date())
+  
+  nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$gen),] 
+  nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$time),] 
+  
+  demand <- nrgstream_gen %>%
+    group_by(time) %>%
+    summarise(Demand = median(Demand), 
+              Price = median(Price),
+              AIL = median(AIL))
+  sub_samp<-filter(nrgstream_gen, time >= as.Date("2017-01-1"))
+  rm(nrgstream_gen)
+  
+  trade_excl<-c("AB - WECC Imp Hr Avg MW", 
+                "AB - WECC Exp Hr Avg MW",
+                "AB - WECC Imp/Exp Hr Avg MW")
+  
+  df1 <- sub_samp %>% 
+    filter(! NRG_Stream %in% trade_excl)%>% 
+    group_by(Plant_Type,time) %>% 
+    summarise(meancap = mean(Cap_Fac),
+              total_gen=sum(gen,na.rm = T),
+              total_rev=sum(Revenue,na.rm = T),
+              price_mean=mean(Price),
+              heatrt_mean=mean(Heat.Rate)) %>% 
+    ungroup()
+  
+  df1$Day <- date(df1$time)
+  df1$Year <- as.factor(year(df1$time))
+  
+  # Identify the Plant Types
+  ################################################################################
+  gen_set<-c("COAL","NGCONV","COGEN","HYDRO","NGCC", "OTHER", "SCGT","SOLAR","IMPORT","EXPORT","WIND","STORAGE")
+  
+  df1a <- df1 %>%
+    filter(Plant_Type %in% gen_set,year(time)<2022)
+  
+  df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "OTHER",after=Inf)
+  df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "HYDRO",after=Inf)
+  df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "WIND",after=Inf)
+  df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "SOLAR",after=Inf)
+  df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "IMPORT",after=Inf)
+  df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "EXPORT",after=Inf)
+}
+
+################################################################################
 # Connect to SQL
 ################################################################################
 
 {
-  DB <- "Jun_28b_2022"
+  DB <- "Jul_07_2022"
   # Connect to SQL database
   ################################################################################
   con <- dbConnect(odbc(),
@@ -177,7 +243,7 @@
       # Set legend variables
       colours = c("darkslateblue", "grey", "darkslategrey", "coral4", "goldenrod4", 
                   "dodgerblue", "forestgreen", "gold", "darkolivegreen1", "cyan")
-      colours1 = c("darkslateblue", "grey", "darkslategrey", "coral4", "goldenrod4", 
+      colours1 = c("darkslateblue", "black", "grey", "darkslategrey", "coral4", "goldenrod4", 
                    "darkcyan", "dodgerblue", "forestgreen", "gold", "cyan")
       colours2 = c("grey", "darkslategrey", "coral4", "goldenrod4", 
                    "dodgerblue", "darkcyan", "forestgreen", "gold", "cyan")
@@ -242,73 +308,11 @@
    }
 }
 
-################################################################################
-# Load AESO Data
-################################################################################
-      
-  {
-    setwd("D:/Documents/Education/Masters Degree/Datasets/Market")
-    
-    load("nrgstream_gen.RData") 
-    nrgstream_gen <- nrgstream_gen %>% rename(time=Time)
-#    merit <- read_csv("student_data_2021_Jul_23_14_09.csv.gz")
-#    merit <- read_csv("student_data_2022_May_05_15_19.csv.gz")
-#    saveRDS(merit, file = "Leach_MeritData.RData")
-    merit <- readRDS("Leach_MeritData.RData")
-#    load("Leach_MeritData.RData")
-    merit_filt <- filter(merit, 
-                         date >= as.Date("2017-01-1"))
-    rm(merit)
-    
-    setwd("D:/Documents/GitHub/AuroraEval")
-    
-#    errors<-nrgstream_gen %>% filter(is.na(Price),date<Sys.Date())
-#    gen_errors<-nrgstream_gen %>% filter(is.na(gen),date<Sys.Date())
-    
-    nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$gen),] 
-    nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$time),] 
-    
-    demand <- nrgstream_gen %>%
-      group_by(time) %>%
-      summarise(Demand = median(Demand), 
-                Price = median(Price),
-                AIL = median(AIL))
-    sub_samp<-filter(nrgstream_gen, time >= as.Date("2017-01-1"))
-    rm(nrgstream_gen)
-    
-    trade_excl<-c("AB - WECC Imp Hr Avg MW", 
-                  "AB - WECC Exp Hr Avg MW",
-                  "AB - WECC Imp/Exp Hr Avg MW")
-    
-    df1 <- sub_samp %>% 
-      filter(! NRG_Stream %in% trade_excl)%>% 
-      group_by(Plant_Type,time) %>% 
-      summarise(meancap = mean(Cap_Fac),
-                total_gen=sum(gen,na.rm = T),
-                total_rev=sum(Revenue,na.rm = T),
-                price_mean=mean(Price),
-                heatrt_mean=mean(Heat.Rate)) %>% 
-      ungroup()
-    
-    df1$Day <- date(df1$time)
-    df1$Year <- as.factor(year(df1$time))
-    
-    # Identify the Plant Types
-    ################################################################################
-    gen_set<-c("COAL","COGEN","HYDRO","NGCC", "OTHER", "SCGT","SOLAR","IMPORT","EXPORT","WIND")
-    
-    df1a <- df1 %>%
-      filter(Plant_Type %in% gen_set,year(time)<2022)
-    
-    df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "OTHER",after=Inf)
-    df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "HYDRO",after=Inf)
-    df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "WIND",after=Inf)
-    df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "SOLAR",after=Inf)
-    df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "IMPORT",after=Inf)
-    df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "EXPORT",after=Inf)
-  }
-
 AESO_Sim(2021,03,01,BC)
+
+price_comp(2020,2021,BC)
+
+gen_comp(2020,2021,BC)
 
 AESOSim(2020,2021,BC)
 
