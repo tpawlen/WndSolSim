@@ -118,7 +118,7 @@
     #    WK <- HrTime(data,year,month,day)
     ZPrice <- HrTime(ZH,year,month,day)
     Expo <- HrTime(Export,year,month,day)
-    WK$MX <- ZPrice$Demand + Expo$Output_MWH
+    WK$MX <- ZPrice$Demand - Expo$Output_MWH
     
     # Set the max and min for the plot
     MX <- plyr::round_any(max(abs(WK$MX)), 100, f = ceiling)
