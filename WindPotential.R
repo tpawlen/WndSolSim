@@ -7,7 +7,7 @@
 
 library(XML)
 library(raster)
-
+{
 {
   
   setwd("C:/Users/pawlench/Documents/GitHub/WndSolSim")
@@ -29,7 +29,7 @@ colnames(wind_pot) <- x
 {
   maxLat <- 60
   maxLon <- -120
-  minLat <- 49.00
+  minLat <- 49.01
   minLon <- -110.02
   
   totLat <- maxLat-minLat
@@ -74,7 +74,7 @@ x <- c('Latitude', 'Longitude', 'Mean Wind Speed (m/s)')
 colnames(wind_prof) <- x
 row.names(wind_prof) <- 1:nrow(wind_prof)
 }
-
+}
 # Run for loop to enter a series of coordinates in Canada's Wind Atlas and save
 # the Annual Mean Wind Speed. THIS TAKES A LONG TIME AND A LOT OF PROCESSING 
 # POWER. At the end, data will be saved to a RDS in a location printed on screen
@@ -82,7 +82,7 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
   # Note the start time
   old <- Sys.time()
   {  
-  for(i in 65525:nrow(wind_prof)) {
+  for(i in 31374:nrow(wind_prof)) {
     tempold <- Sys.time()
     url <- paste(cons1, wind_prof[i,1], cons2, wind_prof[i,2], sep = "")
     wind <- readHTMLTable(url,which=1)
@@ -99,7 +99,7 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
 
      
    # Creates an RDS file with the entire dataset.
-  saveRDS(wind_prof, file = paste("WindAtlas_Data02", res, sep = "_"))
+  saveRDS(wind_prof, file = paste("WindAtlas_Data12", res, sep = "_"))
   
   # Prints the location of the file.
   getwd()
@@ -108,4 +108,4 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
   New <- Sys.time() - old
   print(New)
   }
-     
+          
