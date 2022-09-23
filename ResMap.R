@@ -55,21 +55,35 @@ legText <- 12
 {
 wind_profile00 <- readRDS("WindAtlas_Data00_0.05")
 colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile00 <- readRDS("WindAtlas_Data01_0.05")
+colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile00 <- readRDS("WindAtlas_Data02_0.05")
+colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile00 <- readRDS("WindAtlas_Data03_0.05")
+colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile04 <- readRDS("WindAtlas_Data04_0.05")
 colnames(wind_profile04) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile00 <- readRDS("WindAtlas_Data10_0.05")
+colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile11 <- readRDS("WindAtlas_Data11_0.05")
 colnames(wind_profile11) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile00 <- readRDS("WindAtlas_Data12_0.05")
+colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile13 <- readRDS("WindAtlas_Data13_0.05")
 colnames(wind_profile13) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile00 <- readRDS("WindAtlas_Data20_0.05")
+colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile22 <- readRDS("WindAtlas_Data22_0.05")
 colnames(wind_profile22) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile00 <- readRDS("WindAtlas_Data30_0.05")
+colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile00 <- readRDS("WindAtlas_Data31_0.05")
+colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile33 <- readRDS("WindAtlas_Data33_0.05")
 colnames(wind_profile33) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile31 <- readRDS("WindAtlas_Data31_0.05")
-colnames(wind_profile31) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile44 <- readRDS("WindAtlas_Data44_0.05")
+wind_profile44 <- readRDS("WindAtlas_Data40_0.05")
 colnames(wind_profile44) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile40 <- readRDS("WindAtlas_Data40_0.05")
+wind_profile40 <- readRDS("WindAtlas_Data44_0.05")
 colnames(wind_profile40) <- c('Latitude', 'Longitude', 'Wind')
 
 wind_profile <- rbind(wind_profile00, wind_profile04, wind_profile11, 
@@ -140,7 +154,7 @@ alberta_ellipsoid1 =
 active <- wind_farm %>%
   filter(Status == "Active")
 simple <- wind_sim %>%
-  filter(Status != "Planning")
+  filter(Status != "Proposed")
 
 ################################################################################
 ################################################################################
@@ -176,10 +190,17 @@ AB <- ggplot() +
 Act_wind <- AB + geom_point(data = active,
                 aes(x= Longitude, y = Latitude, size = Capacity), 
                 shape = 16, color = "black") +
-  ggtitle("Active Wind Farms") +
+#  ggtitle("Active Wind Farms") +
   theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
         legend.text = element_text(size = legText),
         legend.title = element_text(size = legTitle)) 
+
+################################################################################
+# Save map as png
+################################################################################
+
+Act_wind
+ggsave(path = "images", filename = "windfarmactive.png", bg = "transparent")
 
 ################################################################################
 ################################################################################
@@ -195,7 +216,7 @@ AESO_wind <- AB + geom_point(data = wind_farm,
   scale_color_manual(values = c("black", "grey39"), 
                      labels = labs1) +
   guides(shape = guide_legend(override.aes = list(size = 5))) +
-  ggtitle("Active and Planned Wind Farms") +
+#  ggtitle("Active and Queued Wind Farms") +
   theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
         legend.text = element_text(size = legText),
         legend.title = element_text(size = legTitle)) 
@@ -204,6 +225,7 @@ AESO_wind <- AB + geom_point(data = wind_farm,
 # Save map as png
 ################################################################################
 
+AESO_wind
 ggsave(path = "images", filename = "windfarmlocations.png", bg = "transparent")
 
 ################################################################################

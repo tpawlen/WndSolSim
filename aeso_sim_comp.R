@@ -20,75 +20,562 @@ AESO_PrOt <- function(year,month,day) {
 }
 
 ################################################################################
-# Plot comparison between actual and simulated data
-################################################################################
-
-AESO_Sim <- function(year,month,day,case) {
-  SimP <- week_price(year,month,day,case)
-  ActP <- wkPrice(year,month,day)
-  SimO <- Week1(year,month,day,case)
-  ActO <- Week_act(year,month,day)
-  
-  MXP <- plyr::round_any(
-    max(layer_scales(SimP)$y$range$range,layer_scales(ActP)$y$range$range),
-    10, f = ceiling)
-  MNP <- plyr::round_any(
-    min(layer_scales(SimP)$y$range$range,layer_scales(ActP)$y$range$range),
-    10, f = floor)  
-  MXO <- plyr::round_any(
-    max(layer_scales(SimO)$y$range$range,layer_scales(ActO)$y$range$range),
-    100, f = ceiling)
-  MNO <- plyr::round_any(
-    min(layer_scales(SimO)$y$range$range,layer_scales(ActO)$y$range$range),
-    100, f = floor)
-  
-  legend <- gtable_filter(ggplotGrob(Week1(year,month,day,case)), "guide-box")
-  
-  sz <- 15
-  
-  ggarrange(arrangeGrob(plot_grid(week_price(year,month,day,case) + 
-                                    labs(title = paste0("Simulated Data for ",year),
-                                         subtitle = paste0("(",DB,")")) +
-                                    theme(axis.title.x=element_blank(),
-                                          axis.text.x=element_blank(),
-                                          legend.position ="none",
-                                          plot.title = element_text(hjust = 0.5, size = sz),
-                                          plot.subtitle = element_text(hjust = 0.5, size = sz-2, face="italic")) + 
-                                    scale_y_continuous(expand=c(0,0), limits = c(MNP,MXP), 
-                                                       breaks = pretty_breaks(4)),
-                                  Week1(year,month,day,case)+
-                                    theme(legend.position ="none") + 
-                                    scale_y_continuous(expand=c(0,0), limits = c(MNO,MXO), 
-                                                       breaks = pretty_breaks(4)), 
-                                  ncol = 1, align="v", axis = "l",
-                                  rel_heights = c(1,2.5)),
-                        
-                        plot_grid(wkPrice(year,month,day) + 
-                                    labs(title = paste0("AESO Data for ",year),
-                                         subtitle = "NRGStream Data") +
-                                    theme(axis.title=element_blank(),
-                                          axis.text.x=element_blank(),
-                                          legend.position ="none",
-                                          plot.title = element_text(hjust = 0.5, size = sz),
-                                          plot.subtitle = element_text(hjust = 0.5, size = sz-2, face="italic")) + 
-                                    scale_y_continuous(expand=c(0,0), limits = c(MNP,MXP), 
-                                                       breaks = pretty_breaks(4)),
-                                  Week_act(year,month,day)+
-                                    theme(legend.position ="none",
-                                          axis.title.y=element_blank())+
-                                    scale_y_continuous(expand=c(0,0), limits = c(MNO,MXO), 
-                                                       breaks = pretty_breaks(4)), 
-                                  ncol = 1, align="v", axis = "l",
-                                  rel_heights = c(1,2.5)),
-                        ncol=2, widths = c(1.05,1)),
-            
-            legend,
-            ncol=2, widths =c(5,1))
-}
-
-################################################################################
 # Plot difference between simulated and actual pool price
 ################################################################################
+
+Weekly <- function(year, month, day, case) {
+  
+  wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
+  wk_end <- as.POSIXct(paste(day+14,month,year, sep = "/"), format="%d/%m/%Y")
+  
+  # Filters for the desired case study
+  Sim <- Hour %>%
+    
+    sim_filt1(.) %>%
+    subset(., select=-c(Report_Year,Capacity_Factor)) %>%
+    rbind(.,Import) %>%
+    filter(Run_ID == case, 
+           date >= wk_st, 
+           date <= wk_end) %>%
+    subset(., select=-c(Run_ID)) %>%
+    mutate(sit = paste0("Simulation ",DB))
+  
+  # Select only a single week
+  #    WK <- HrTime(data,year,month,day)
+  ZPrice <- ZH %>%
+    filter(Run_ID == case, 
+           date >= wk_st, 
+           date <= wk_end) %>%
+    subset(., select = c(date, Demand)) %>%
+    mutate(sit = paste0("Simulation ",DB))
+  #Expo <- HrTime(Export,year,month,day)
+  #Sim$MX <- ZPrice$Demand - Expo$Output_MWH
+  
+  df1a$time <- as.POSIXct(df1a$time, tz = "MST")
+  
+  # Select only a single week
+  ##############################################################################
+  WKa <- df1a %>%
+    filter(Plant_Type != "EXPORT" & Plant_Type != "IMPORT") %>%
+    filter(time >= wk_st, time <= wk_end)
+  
+  WKIM <- df1a %>%
+    filter(Plant_Type == "IMPORT") %>%
+    filter(time >= wk_st & time <= wk_end)
+  
+  WKIM$total_gen <- WKIM$total_gen * -1
+  
+  Act <- rbind(WKIM, WKa) %>%
+    subset(., select = c(time, total_gen, Plant_Type)) %>%
+    rename(date = time, Output_MWH = total_gen, ID = Plant_Type) %>%
+    mutate(sit = "NRG Stream data")
+  
+  WK <- rbind(Sim,Act)
+  
+  {
+    WK$ID<-fct_relevel(WK$ID, "IMPORT", after = Inf)
+    WK$ID<-fct_relevel(WK$ID, "COAL", after = Inf)
+    WK$ID<-fct_relevel(WK$ID, "NGCONV", after = Inf)
+    WK$ID<-fct_relevel(WK$ID, "COGEN", after = Inf)
+    WK$ID<-fct_relevel(WK$ID, "SCGT", after = Inf)
+    WK$ID<-fct_relevel(WK$ID, "NGCC", after = Inf)
+    WK$ID<-fct_relevel(WK$ID, "HYDRO", after = Inf)
+    WK$ID<-fct_relevel(WK$ID, "OTHER", after = Inf)
+    WK$ID<-fct_relevel(WK$ID, "WIND", after = Inf)
+    WK$ID<-fct_relevel(WK$ID, "SOLAR", after = Inf)
+    WK$ID<-fct_relevel(WK$ID, "STORAGE", after = Inf)
+  }
+  
+  WK$ID <- factor(WK$ID, levels=c("IMPORT", "COAL", "NGCONV", "COGEN", 
+                                                  "SCGT", "NGCC", "HYDRO", 
+                                                  "OTHER", "WIND", "SOLAR", "STORAGE"))
+  
+  levels(WK$ID) <- c("Import","Coal", "NGConv", "Cogen", "SCGT", "NGCC", "Hydro", 
+                             "Other", "Wind", "Solar", "Storage")
+  
+  dmd <- demand %>%
+    filter(time >= wk_st & time <= wk_end) %>%
+    rename(date = time) %>%
+    subset(., select = c(date,Demand)) %>%
+    mutate(sit = "NRG Stream data")
+  
+  line <- rbind(dmd,ZPrice)
+  
+  # Set the max and min for the plot
+#  MX <- plyr::round_any(max(abs(Act$MX)), 100, f = ceiling)
+#  MN <- plyr::round_any(min(Act$Output_MWH), 100, f = floor)
+  
+  # Plot the data    
+  ggplot() +
+    geom_area(data = WK, aes(x = date, y = Output_MWH, fill = ID), 
+              alpha=0.6, size=.5, colour="black") +
+    
+    # Add hourly load line
+    geom_line(data = line, 
+              aes(x = date, y = Demand), size=2, colour = "black") +
+    
+    facet_grid(~sit) +
+    
+    scale_x_datetime(expand=c(0,0)) +
+    
+    # Set the theme for the plot
+    theme_bw() +
+    theme(panel.grid = element_blank(),
+          legend.position = "right",
+    ) +
+    theme(axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          text = element_text(size= 15)
+    ) +
+    scale_y_continuous(expand=c(0,0), 
+                       #limits = c(MN,MX), 
+                       #breaks = seq(MN, MX, by = MX/4)
+                       ) +
+    labs(x = "Date", y = "Output (MWh)", fill = "Resource") +
+    scale_fill_manual(values = colours1)
+}
+
+Weekly_price <- function(year, month, day,case) {
+  
+  wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
+  wk_end <- as.POSIXct(paste(day+14,month,year, sep = "/"), format="%d/%m/%Y")
+  
+  # Filters for the desired case study
+  Sim <- ZH %>%
+    filter(Run_ID == case, 
+           date >= wk_st, 
+           date <= wk_end) %>%
+    subset(., select = c(date, Price)) %>%
+    mutate(sit = paste0("Simulation ",DB))
+  
+  Act <- demand %>%
+    filter(time >= wk_st & time <= wk_end) %>%
+    rename(date = time) %>%
+    subset(., select = c(date, Price)) %>%
+    mutate(sit = "NRG Stream data")
+  
+  wk_Price <- rbind(Sim,Act)
+  
+  # Set the max and min for the plot
+  MX <- plyr::round_any(max(abs(wk_Price$Price)), 10, f = ceiling)
+  MN <- plyr::round_any(min(abs(wk_Price$Price)), 10, f = floor)
+  
+  # Plot the data    
+  ggplot() +
+    geom_line(data = wk_Price, 
+              aes(x = date, y = Price), 
+              size = 1.5, colour = "red") +
+    
+    facet_grid(~sit) +
+    
+    theme_bw() +
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          text = element_text(size= 15)
+    ) +
+    labs(y = "Pool Price \n$/MWh", fill = "Resource") +
+    scale_x_datetime(expand=c(0,0)) +
+    scale_y_continuous(expand=c(0,0), 
+                       limits= c(MN,MX),
+                       #                       labels = label_number(accuracy = 1),
+                       breaks = seq(MN, MX, by = MX/4)
+    )
+}
+
+price_interval <- function(year1, year2, case) {
+  assign_peaks<-function(data_orig,time_var=time){
+    #default is that we're receiving a data_frame with time as the time variable
+    #create temp_time with whatever the time variable might be, then use that to create stats and peaks
+    #modify data_sent so you have a data-frame with only the time varible
+    #data_mod<-data_orig %>% mutate_(temp_time=`time_var`) %>% select(temp_time)
+    temp_time<- enquo(time_var)
+    Yr<- enquo(year)
+    data_mod<-data_orig%>% select(!!temp_time)
+    #first, figure out the holidays
+    #Holidays:
+    #xNew Year's Day  January 1
+    #xAlberta Family Day   Third Monday in February
+    #xGood Friday   Friday before Easter
+    #Victoria Day  Monday before May 25
+    #xCanada Day July 1, except when it falls on a Sunday, then it is July 2
+    #xLabour Day  First Monday in September
+    #xThanksgiving Day  Second Monday in October
+    #xRemembrance Day   November 11
+    #xChristmas Day   December 25
+    holiday_list<-c("Christmas","NYD","CDA_Day","Rem_Day","Labour_Day","Good_Friday","Family_Day",  
+                    "Thanksgiving", "Victoria_Day")
+    data_mod<-data_mod%>%mutate(
+      Christmas=ifelse(month(!!temp_time)==12 & day(!!temp_time)==25,T,F),
+      NYD=ifelse(month(!!temp_time)==1 & day(!!temp_time)==1,T,F),
+      CDA_Day=ifelse(month(!!temp_time)==7 & day(!!temp_time)==1 & wday(!!temp_time,label = T)!="Sun" ,T,F), #Canada Day Holiday if it's not a Sunday
+      CDA_Day=ifelse(month(!!temp_time)==7 & day(!!temp_time)==2 & wday(!!temp_time,label = T)=="Mon" ,T,F), #Canada Day Stat if the 2nd is a monday
+      Rem_Day=ifelse(month(!!temp_time)==11 & day(!!temp_time)==11,T,F),
+      Labour_Day=ifelse(month(!!temp_time)==9 & day(!!temp_time)<=7 & wday(!!temp_time,label = T)=="Mon",T,F), #first Monday in September
+      Good_Friday=ifelse(date(!!temp_time)==as.Date(Easter(year(!!temp_time)))-days(2),T,F),
+      #Family day - third monday in february so earliest it can be is day 15, latest is day 21
+      Family_Day=ifelse(month(!!temp_time)==2 & day(!!temp_time)<=21 & day(!!temp_time)>=15 & wday(!!temp_time,label = T)=="Mon",T,F), #third Monday in Feb
+      #Thanksgiving day - second monday in Oct so earliest it can be is day 8, latest is day 14
+      Thanksgiving=ifelse(month(!!temp_time)==10 & day(!!temp_time)<=14 & day(!!temp_time)>=8 & wday(!!temp_time,label = T)=="Mon",T,F), #second Monday in Oct
+      #Victoria day - monday before May 25, so earliest it can be is day 18, latest is day 24
+      Victoria_Day=ifelse(month(!!temp_time)==5 & day(!!temp_time)<=24 & day(!!temp_time)>=18 & wday(!!temp_time,label = T)=="Mon",T,F) #Monday before May 25
+    ) %>% 
+      mutate(
+        stat = select(., holiday_list) %>% rowSums()>0
+      )
+    #On-Peak: hour ending HE8 to HE23 Monday through Saturday, excluding Sundays and NERC holidays
+    #Off-Peak: HE1 to HE7 and HE24 Monday through Saturday, and all hours on Sundays and NERC holidays
+    #Extended Peak: HE8 to HE23 every day in the contract period
+    #Extended Off-Peak: HE1 to HE7 and HE24 every day in the contract period
+    #Super Peak: HE17 to HE22 each day in the contract period
+    #for AS, AESO does AM super peak HE 6, 7, 8 and a winter PM Super Peak (HE 17-34, in Nov, Dec, Jan)
+    data_mod<-data_mod%>%mutate(
+      on_peak=ifelse(wday(!!temp_time,label = T)!="Sun" & stat==F & hour(!!temp_time)>=8 & hour(!!temp_time)<=23,T,F), #Peak hours, not stat or Sunday
+      off_peak=ifelse(wday(!!temp_time,label = T)=="Sun" | stat==T | hour(!!temp_time)>=24 | hour(!!temp_time)<=7,T,F), #Off-Peak hours, stat or Sunday
+      ext_peak=ifelse(hour(!!temp_time)>=8 & hour(!!temp_time)<=23,T,F), #Ext Peak hours
+      ext_off_peak=ifelse(hour(!!temp_time)<8 & hour(!!temp_time)>23,T,F), #Ext Off Peak hours
+      super_peak=ifelse(hour(!!temp_time)>=17 & hour(!!temp_time)<=22,T,F), #Super Peak hours
+    )
+    #return indicators for stats and peaks - same # of rows as data sent
+    data_mod<-data_mod %>% select(stat,on_peak,off_peak,ext_peak,ext_off_peak,super_peak)
+    bind_cols(data_orig,data_mod)
+  }
+  
+  assign_date_time_days<-function(data_sent,time_var=time){
+    quo_time<- enquo(time_var)
+    data_sent %>%
+      mutate(year=year(!!quo_time),
+             month=month(!!quo_time), #month dummies
+             month_fac=factor(month.abb[month],levels = month.abb),
+             day=day(!!quo_time),
+             wday=wday(!!quo_time,label=T),
+             hour=hour(!!quo_time),
+             temp_time=NULL
+      )
+  }
+  
+  dataAct <- merit_filt %>%
+    filter(year >= year1 & year <= year2) %>%
+    mutate(time = as.POSIXct(paste0(year,"-",month,"-",day," ",he,":00:00"), "%Y-%m-%d %H:%M:%S", tz = "UTC"))%>%
+    group_by(date,year,he,time)%>%
+    summarize(actual_ail = median(actual_ail),
+              actual_posted_pool_price = median(actual_posted_pool_price))%>%
+    ungroup()
+  
+  dataSim <- ZH %>%
+    mutate(year = year(date),
+           time = date) %>%
+    filter(year >= year1 & year <= year2,
+           Run_ID == case)
+  
+  peak_data_Sim<-dataSim %>%
+    #    filter(!is.na(actual_posted_pool_price),!is.na(actual_ail))%>%
+    assign_date_time_days()%>%
+    assign_peaks()%>%
+    group_by(year,month) %>%
+    summarize(ail=mean(Demand,na.rm = T),peak_ail=max(Demand),trough_ail=min(Demand),
+              q75_price=quantile(Price, probs=c(.95)),
+              q25_price=quantile(Price, probs=c(.05)),
+              q75_ail=quantile(Demand, probs=c(.95)),
+              q25_ail=quantile(Demand, probs=c(.05)),
+              mean_peak_price=sum(Price*Demand*(on_peak==TRUE),
+                                  na.rm = T)/sum(Demand*(on_peak==TRUE),
+                                                 na.rm = T),
+              mean_off_peak_price=sum(Price*Demand*(on_peak==FALSE),
+                                      na.rm = T)/sum(Demand*(on_peak==FALSE),
+                                                     na.rm = T),
+              mean_peak_ail=sum(Demand*(on_peak==TRUE),
+                                na.rm = T)/sum((on_peak==TRUE),
+                                               na.rm = T),
+              mean_off_peak_ail=sum(Demand*(on_peak==FALSE),
+                                    na.rm = T)/sum((on_peak==FALSE),
+                                                   na.rm = T),
+              mean_price=sum(Price*Demand,
+                             na.rm = T)/sum(Demand,na.rm = T),
+              peak_price=max(Price),
+              trough_price=min(Price)
+    )%>%  
+    mutate(date=ymd(paste(year,month,1,sep="-")),
+           sit = paste0("Simulation ",DB))
+  
+  peak_data_Act<-forecast_data %>%
+    mutate(year = year(time))%>%
+    filter(!is.na(actual_posted_pool_price),!is.na(actual_ail),
+           year >= year1 & year <= year2)%>%
+    assign_date_time_days()%>%
+    assign_peaks()%>%
+    group_by(year,month) %>%
+    summarize(ail=mean(actual_ail,na.rm = T),peak_ail=max(actual_ail),trough_ail=min(actual_ail),
+              q75_price=quantile(actual_posted_pool_price, probs=c(.95)),
+              q25_price=quantile(actual_posted_pool_price, probs=c(.05)),
+              q75_ail=quantile(actual_ail, probs=c(.95)),
+              q25_ail=quantile(actual_ail, probs=c(.05)),
+              mean_peak_price=sum(actual_posted_pool_price*actual_ail*(on_peak==TRUE),
+                                  na.rm = T)/sum(actual_ail*(on_peak==TRUE),
+                                                 na.rm = T),
+              mean_off_peak_price=sum(actual_posted_pool_price*actual_ail*(on_peak==FALSE),
+                                      na.rm = T)/sum(actual_ail*(on_peak==FALSE),
+                                                     na.rm = T),
+              mean_peak_ail=sum(actual_ail*(on_peak==TRUE),
+                                na.rm = T)/sum((on_peak==TRUE),
+                                               na.rm = T),
+              mean_off_peak_ail=sum(actual_ail*(on_peak==FALSE),
+                                    na.rm = T)/sum((on_peak==FALSE),
+                                                   na.rm = T),
+              mean_price=sum(actual_posted_pool_price*actual_ail,
+                             na.rm = T)/sum(actual_ail,na.rm = T),
+              peak_price=max(actual_posted_pool_price),
+              trough_price=min(actual_posted_pool_price)
+    )%>%  
+    mutate(date=ymd(paste(year,month,1,sep="-")),
+           sit = "Actual")
+  
+  peak_data <- rbind(peak_data_Sim,peak_data_Act)
+  
+  top_panel<-ggplot(peak_data) +
+    geom_line(aes(date,mean_price,linetype="A",color=sit),size=.85)+#,color="black")+
+    geom_line(aes(date,mean_off_peak_price,linetype="B",color=sit),size=.85)+#,color="blue")+
+    geom_ribbon(aes(date,ymax=q75_price,ymin=q25_price,fill=sit,color=sit),alpha=.5)+
+    #  facet_grid(rows = vars(sit)) +
+    #geom_col(aes(time,actual_posted_pool_price,fill=on_peak,colour=on_peak),size=.8)+
+    scale_color_manual("",values = c("black","royalblue4"))+
+    scale_fill_manual("",values = c("grey50","royalblue"),
+                      labels=c("Two-tailed 90th percentile range Actual",
+                               "Two-tailed 90th percentile range Simulation"))+
+    scale_linetype_manual("",values = c("solid","11"),
+                          labels=c("Peak \nperiod average","Off-peak \nperiod average"))+
+    scale_x_date(expand=c(0,0),breaks="3 month",labels = date_format("%b\n%Y",tz="America/Denver"))+
+    scale_y_continuous(expand=c(0,0))+
+    #  paper_theme()+
+    expand_limits(y=0)+ #make sure you get the zero line
+    guides(linetype = guide_legend(override.aes = list(color = c("black","blue"))),color="none")+
+    theme_bw() +
+    theme(legend.position="right",
+          #        axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          text = element_text(size= 15)
+          #legend.margin=margin(c(0,0,0,0),unit="cm")
+          #legend.text = element_text(colour="black", size = 12, face = "bold")
+          #axis.title.y = element_text(margin = margin(t = 0, r = 5, b = 0, l = 0, unit = "pt")
+    )+
+    labs(y="Pool Prices ($/MWh)",x="",
+         #title=paste("Alberta Hourly Wholesale Power Prices and Alberta Internal Load",sep=""),
+         #subtitle=paste(month.name[month(period_start)],", ",year(period_start)," to ",month.name[month(end_date)],", ",year(end_date),sep="")
+         NULL) + 
+    guides(fill=guide_legend(nrow=2,byrow=TRUE))
+  top_panel
+  
+}
+
+Weekly_line <- function(year, month, day, case) {
+  
+  # Select only a single week
+  ##############################################################################
+  wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
+  wk_end <- as.POSIXct(paste(day+14,month,year, sep = "/"), format="%d/%m/%Y")
+  
+  # Filters Simulated data for the desired case study
+  ##############################################################################
+  Sim <- Hour %>%
+    sim_filt1(.) %>%
+    subset(., select=-c(Report_Year,Capacity_Factor)) %>%
+    rbind(.,Import) %>%
+    filter(Run_ID == case,
+           date >= wk_st, date <= wk_end) %>%
+    subset(., select = -c(Run_ID)) %>%
+    mutate(sit = paste0("Simulation ",DB))
+  
+  # Filters NRG Stream data for the desired case study
+  ##############################################################################
+  df1a$time <- as.POSIXct(df1a$time, tz = "MST")
+  
+  WKa <- df1a %>%
+    filter(Plant_Type != "EXPORT" & Plant_Type != "IMPORT") %>%
+    filter(time >= wk_st, time <= wk_end)
+  
+  WKIM <- df1a %>%
+    filter(Plant_Type == "IMPORT") %>%
+    filter(time >= wk_st & time <= wk_end)
+  
+  WKIM$total_gen <- WKIM$total_gen * -1
+  
+  Act <- rbind(WKIM, WKa) %>%
+    rename(date = time, ID = Plant_Type, Output_MWH = total_gen) %>%
+    subset(., select = c(ID, date, Output_MWH)) %>%
+    mutate(sit = "NRG Stream data")
+  
+  total <- rbind(Act,Sim)
+  
+  {
+    total$ID<-fct_relevel(total$ID, "IMPORT", after = Inf)
+    total$ID<-fct_relevel(total$ID, "COAL", after = Inf)
+    total$ID<-fct_relevel(total$ID, "NGCONV", after = Inf)
+    total$ID<-fct_relevel(total$ID, "COGEN", after = Inf)
+    total$ID<-fct_relevel(total$ID, "SCGT", after = Inf)
+    total$ID<-fct_relevel(total$ID, "NGCC", after = Inf)
+    total$ID<-fct_relevel(total$ID, "HYDRO", after = Inf)
+    total$ID<-fct_relevel(total$ID, "OTHER", after = Inf)
+    total$ID<-fct_relevel(total$ID, "WIND", after = Inf)
+    total$ID<-fct_relevel(total$ID, "SOLAR", after = Inf)
+    total$ID<-fct_relevel(total$ID, "STORAGE", after = Inf)
+  }
+  
+  total$ID <- factor(total$ID, levels=c("IMPORT", "COAL", "NGCONV", "COGEN", 
+                                       "SCGT", "NGCC", "HYDRO", "OTHER",
+                                       "WIND", "SOLAR", "STORAGE"))
+  
+  levels(total$ID) <- c("Import","Coal", "NGConv", "Cogen", "SCGT", "NGCC", "Hydro", 
+                             "Other", "Wind", "Solar", "Storage")
+  
+  # Set the max and min for the plot
+  MX <- plyr::round_any(max(abs(total$Output_MWH)), 100, f = ceiling)
+  MN <- plyr::round_any(min(total$Output_MWH), 100, f = floor)
+  
+  # Plot the data    
+  ggplot() +
+    geom_line(data = total, aes(x = date, y = Output_MWH, color = ID), 
+              #                alpha=0.8, 
+              size=2) +
+    
+    facet_grid(~sit) +
+    
+    # Add hourly load line
+    #      geom_line(data = ZPrice, 
+    #                aes(x = date, y = Demand), size=2, colour = "black") +
+    scale_x_datetime(expand=c(0,0),
+                     breaks = "3 days") +
+    
+    # Set the theme for the plot
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid = element_blank(),
+          legend.position = "right",
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          text = element_text(size= 15)
+    ) +
+    scale_y_continuous(expand=c(0,0), 
+                       limits = c(MN,MX), 
+                       breaks = seq(MN, MX, by = MX/4)
+    ) +
+    labs(x = "Date", y = "Output (MWh)", color = "Resource") +
+    scale_color_manual(values = colours1)
+}
+
+Fossil_line <- function(year, month, day, case) {
+  
+  # Select only a single week
+  ##############################################################################
+  wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
+  wk_end <- as.POSIXct(paste(day+14,month,year, sep = "/"), format="%d/%m/%Y")
+  
+  # Filters Simulated data for the desired case study
+  ##############################################################################
+  Sim <- Hour %>%
+    sim_filt1(.) %>%
+    subset(., select=-c(Report_Year,Capacity_Factor)) %>%
+    rbind(.,Import) %>%
+    filter(Run_ID == case,
+           date >= wk_st, date <= wk_end
+           ) %>%
+    subset(., select = -c(Run_ID)) %>%
+    mutate(sit = paste0("Simulation ",DB))
+  
+  # Filters NRG Stream data for the desired case study
+  ##############################################################################
+  df1a$time <- as.POSIXct(df1a$time, tz = "MST")
+  
+  WKa <- df1a %>%
+    filter(Plant_Type != "EXPORT" & Plant_Type != "IMPORT") %>%
+    filter(time >= wk_st, time <= wk_end)
+  
+  WKIM <- df1a %>%
+    filter(Plant_Type == "IMPORT") %>%
+    filter(time >= wk_st & time <= wk_end)
+  
+  WKIM$total_gen <- WKIM$total_gen * -1
+  
+  Act <- rbind(WKIM, WKa) %>%
+    rename(date = time, ID = Plant_Type, Output_MWH = total_gen) %>%
+    subset(., select = c(ID, date, Output_MWH)) %>%
+    mutate(sit = "NRG Stream data")
+  
+  total <- rbind(Act,Sim) %>%
+    filter(ID == "COAL" | ID == "NGCONV" | ID == "COGEN" |
+             ID == "SCGT" | ID == "NGCC")
+  
+  {
+    total$ID<-fct_relevel(total$ID, "COAL", after = Inf)
+    total$ID<-fct_relevel(total$ID, "NGCONV", after = Inf)
+    total$ID<-fct_relevel(total$ID, "COGEN", after = Inf)
+    total$ID<-fct_relevel(total$ID, "SCGT", after = Inf)
+    total$ID<-fct_relevel(total$ID, "NGCC", after = Inf)
+  }
+  
+  total$ID <- factor(total$ID, levels=c("IMPORT", "COAL", "NGCONV", "COGEN", 
+                                        "SCGT", "NGCC", "HYDRO", "OTHER",
+                                        "WIND", "SOLAR", "STORAGE"))
+  
+  levels(total$ID) <- c("Import","Coal", "NGConv", "Cogen", "SCGT", "NGCC", "Hydro", 
+                        "Other", "Wind", "Solar", "Storage")
+  
+  # Set the max and min for the plot
+  MX <- plyr::round_any(max(abs(total$Output_MWH)), 100, f = ceiling)
+  MN <- plyr::round_any(min(total$Output_MWH), 100, f = floor)
+  
+  # Plot the data    
+  ggplot() +
+    geom_line(data = total, aes(x = date, y = Output_MWH, color = ID), 
+              #                alpha=0.8, 
+              size=2) +
+    
+    facet_grid(~sit) +
+    
+    # Add hourly load line
+    #      geom_line(data = ZPrice, 
+    #                aes(x = date, y = Demand), size=2, colour = "black") +
+    scale_x_datetime(expand=c(0,0),
+                     breaks = "3 days") +
+    
+    # Set the theme for the plot
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid = element_blank(),
+          legend.position = "right",
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          text = element_text(size= 15)
+    ) +
+    scale_y_continuous(expand=c(0,0), 
+                       limits = c(MN,MX), 
+                       breaks = seq(MN, MX, by = MX/4)
+    ) +
+    labs(x = "Date", y = "Output (MWh)", color = "Resource") +
+    scale_color_manual(values = c("black", "grey", "darkslategrey", "coral4", "goldenrod4"))
+}
 
 rev_dur <- function(year1, year2, type, case) {
   # Plots revenue duration plot by plant type, comparing simulated and AESO
@@ -172,6 +659,125 @@ rev_dur <- function(year1, year2, type, case) {
                        labels = percent) +
     scale_y_continuous(expand=c(0,0)
     )
+}
+
+seas_price <- function(year1, year2, case) {
+    # Plots the Pool Price duration vs percentile for AESO and Sim for a specific season
+    # Like AESO Market Report 2021 Figures 2 and 3
+    
+    # Load and filter Simulation data, 
+    # Calculate the percentage of time
+    # Create column 'sit' to indicate Simulation
+  
+  WS1 <- as.Date(paste0(year1,"-1-01"), format = "%Y-%m-%d") # Winter Solstice
+  SE1 <- as.Date(paste0(year1,"-3-15"),  format = "%Y-%m-%d") # Spring Equinox
+  SS1 <- as.Date(paste0(year1,"-6-15"),  format = "%Y-%m-%d") # Summer Solstice
+  FE1 <- as.Date(paste0(year1,"-9-15"),  format = "%Y-%m-%d") # Fall Equinox  
+  
+  
+  WS2 <- as.Date(paste0(year2-1,"-12-15"), format = "%Y-%m-%d") # Winter Solstice
+  SE2 <- as.Date(paste0(year2,"-3-15"),  format = "%Y-%m-%d") # Spring Equinox
+  SS2 <- as.Date(paste0(year2,"-6-15"),  format = "%Y-%m-%d") # Summer Solstice
+  FE2 <- as.Date(paste0(year2,"-9-15"),  format = "%Y-%m-%d") # Fall Equinox  
+  WS3 <- as.Date(paste0(year2,"-12-15"), format = "%Y-%m-%d") # Winter Solstice
+  
+  totSim <- ZoneH %>%
+      filter(Report_Year >= (year1) & 
+               Report_Year <= year2,
+             Name == "WECC_Alberta",
+             Run_ID == case, 
+             Condition != "Average") %>%
+      group_by(Condition, Report_Year) %>%
+      mutate(perc = 1-ecdf(Price)(Price)) %>%
+      subset(., select=c(date, Condition, Report_Year, Price, perc)) %>%
+      rename(Year = Report_Year) %>%
+      ungroup() %>%
+      mutate(sit = "Simulated")
+    
+    # Load and filter AESO data, 
+    # Calculate the percentage of time
+    # Create column 'sit' to indicate Actual AESO data
+    Actual <- na.omit(demand)
+    Actual$Year <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%Y")
+    Actual$Hour <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%H")
+    
+    totAct <- Actual %>%
+      filter(Year >= (year1), 
+             Year <= year2,) %>%
+      mutate(Condition = if_else(between(Hour, 08, 23), 
+                                 "On-Peak WECC", "Off-Peak WECC")) %>%
+      group_by(Year, Condition) %>%
+      mutate(perc = 1-ecdf(Price)(Price)) %>%
+      subset(., select=c(time, Condition, Year, Price, perc)) %>%
+      ungroup() %>%
+      mutate(sit = "Actual") %>%
+      rename(date = time)
+    
+    # Combine Actual and Simulation data
+    total <- rbind(totSim,totAct)
+    
+    WinterTot <- total %>%
+      filter(date >= WS1 & date <= SE1 |
+               date >= WS2 & date <= SE2) %>%
+      mutate(Season = "Winter")
+    
+    SpringTot <- total %>%
+      filter(date >= SE1 & date <= SS1 |
+               date >= SE2 & date <= SS2) %>%
+      mutate(Season = "Spring")
+    
+    SummerTot <- total %>%
+      filter(date >= SS1 & date <= FE1 |
+               date >= SS2 & date <= FE2) %>%
+      mutate(Season = "Summer")
+    
+    FallTot <- total %>%
+      filter(date >= FE1 & date <= WS2 |
+               date >= FE2 & date <= WS3) %>%
+      mutate(Season = "Fall")
+    
+    total <- rbind(WinterTot, SpringTot, SummerTot, FallTot) #%>%
+#      filter(Season == season)
+    
+    # Set font size for plot
+    sz <- 15
+    
+    ggplot() +
+      geom_line(data = total, 
+                aes(x = perc, y = Price, colour = Year, linetype = sit), size = 1) +
+      facet_grid(Condition ~ Season) +#cols = vars(Condition)) +
+      theme_bw() +
+      theme(axis.text = element_text(size = sz),
+            axis.text.x = element_text(angle = 45, hjust=1, size = sz),
+            axis.title = element_text(size = sz),
+            plot.title = element_text(size = sz+2),
+            legend.text = element_text(size = sz),
+            
+            # For transparent background
+            panel.grid = element_blank(),
+            legend.title = element_blank(),
+            panel.background = element_rect(fill = "transparent"),
+            panel.grid.major.x = element_blank(),
+            panel.grid.minor.x = element_blank(),
+            panel.spacing = unit(1.5, "lines"),
+            plot.background = element_rect(fill = "transparent", color = NA),
+            legend.key = element_rect(colour = "transparent", fill = "transparent"),
+            legend.background = element_rect(fill='transparent'),
+            legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+            aspect.ratio = 2/3
+      ) +
+      labs(y = "Pool Price$/MWh", 
+           x = "Percentage of Time", 
+           title = "Seasonal AESO Data vs Simulation",
+           subtitle = DB) +
+      scale_color_manual(values = c("goldenrod1", "forestgreen", "cornflowerblue",
+                                    "firebrick","gray60", "orange")) +
+      scale_x_continuous(expand=c(0,0), 
+                         limits = c(0,1.1),
+                         labels = percent) +
+      scale_y_continuous(expand=c(0,0)
+      ) #+
+      #coord_fixed(ratio = 10)
 }
 
 year_comp <- function(year,case) {
@@ -431,7 +1037,7 @@ tot_gen <- function(year1, year2, case) {
           legend.background = element_rect(fill='transparent'),
           legend.box.background = element_rect(fill='transparent', colour = "transparent"),
     ) +
-    labs(y = "Total Yearly Generation (GW)", 
+    labs(y = "Total Yearly Generation (GWh)", 
          title = "Yearly total generation AESO Data vs Simulation",
          subtitle = DB) +
     scale_fill_manual(values = AESO_colours) +
@@ -442,6 +1048,122 @@ tot_gen <- function(year1, year2, case) {
                        limits = c(-12000,40000)
                        #                       breaks = seq(0,1, by = 0.2)
     )
+}
+
+market_share <- function(year1, year2, case) {
+  # Plots the year-end generation by technology for AESO and Sim
+  
+  Act <- sub_samp %>%
+    filter(! NRG_Stream %in% trade_excl,
+           year(time) >= year1,
+           year(time) <= year2,
+           Plant_Type == "COAL" | Plant_Type == "NGCONV" | Plant_Type == "COGEN" | Plant_Type == "NGCC" |
+             Plant_Type == "SCGT" | Plant_Type == "HYDRO" | Plant_Type == "OTHER" |
+             Plant_Type == "WIND" | Plant_Type == "SOLAR" | Plant_Type == "STORAGE" |
+             Plant_Type == "IMPORT" 
+    ) %>%
+    mutate(Year = as.factor(year(time))) %>%
+    group_by(Year, Plant_Type) %>%
+    summarise(gen = abs(sum(gen))) %>%
+    ungroup() %>%
+    group_by(Year)%>%
+    summarise(share = gen/sum(gen),
+              Plant_Type = Plant_Type) %>%
+    mutate(sit = "Actual")
+  
+  Act <- na.omit(Act)
+  
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "IMPORT",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "HYDRO",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "WIND",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "SOLAR",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "OTHER",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "STORAGE",after=Inf)
+  
+  
+  Imp <- ZH %>%
+    mutate(Year = year(date)) %>%
+    filter(Year >= year1,
+           Year <= year2,
+    ) %>%
+    group_by(Year) %>%
+    summarise(gen = sum(Imports)) %>%
+    mutate(Plant_Type = "IMPORT", sit = "Simulation")
+  
+  Sim <- Hr %>%
+    filter(Run_ID == case,
+           Report_Year >= year1,
+           Report_Year <= year2,
+           ID == "LTO_Coal" | ID == "AB_NGCONV" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
+             ID == "AB_SCCT_noncogen" | ID == "LTO_Hydro" | ID == "LTO_Other" | 
+             ID == "LTO_Wind" | ID == "LTO_Solar" | ID == "LTO_Storage"
+    ) %>%
+    mutate(Plant_Type = ID, Year = Report_Year) %>%
+    group_by(Year, Plant_Type) %>%
+    summarise(gen = abs(sum(Output)))
+  
+  Sim <- rbind(Sim, Imp)%>%#, Exp) %>%
+    group_by(Year)%>%
+    summarise(share = gen/sum(gen),
+              Plant_Type = Plant_Type) %>%
+    mutate(sit = "Simulation")
+  
+  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("IMPORT","LTO_Coal", "AB_NGCONV", "AB_CCCT_noncogen", "LTO_Cogen",
+                                                    "AB_SCCT_noncogen", "LTO_Hydro", "LTO_Other", 
+                                                    "LTO_Wind", "LTO_Solar", "LTO_Storage"))#"EXPORT", 
+  
+  levels(Sim$Plant_Type) <- c("IMPORT", "COAL", "NGCONV", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
+                              "WIND", "SOLAR", "STORAGE")#"EXPORT", 
+  
+  Sim$Year <- as.factor(Sim$Year)
+  
+  total <- rbind(Sim,Act)
+  
+  sz <- 15
+  
+  # Plot the data
+  ggplot(total,
+         aes(Year,share,colour=sit,fill=sit),
+         alpha=0.8)+
+    geom_col(aes(Plant_Type,share,colour=sit,fill=sit),
+             size=1.5,position = position_dodge(width = .9),width = .6)+
+    geom_hline(yintercept=0, linetype="solid", color="gray",size=1)+
+    scale_color_manual("",values=c("grey50","royalblue"))+
+    scale_fill_manual("",values=c("grey50","royalblue"))+
+    facet_grid(~Year) +
+    scale_y_continuous(expand=c(0,0),
+                       labels = scales::percent,
+                       limits = c(0,0.4),
+                       breaks = seq(0,0.5,by = 0.1)
+    ) +
+    labs(x="",y="Percentage of Market",
+         title=paste0("Market Share by Technology (%, ",year1,"-",year2,")"),
+         subtitle = DB,
+         caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
+    theme(panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
+          panel.grid.minor.y = element_line(color = "lightgray",linetype="dotted"),
+          axis.line.x = element_line(color = "black"),
+          axis.line.y = element_line(color = "black"),
+          axis.text = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          axis.title = element_text(size = sz),
+          plot.subtitle = element_text(size = sz-2,hjust=0.5),
+          plot.caption = element_text(face="italic",size = sz-4,hjust=0),
+          plot.title = element_text(hjust=0.5,size = sz+2),
+          #          plot.margin=unit(c(1,1,1.5,1.2),"cm"),
+          
+          # For transparent background
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          panel.border = element_rect(colour = "black", fill = "transparent"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) 
+  
 }
 
 tot_intertie <- function(year1, year2, case) {
@@ -522,10 +1244,10 @@ tot_intertie <- function(year1, year2, case) {
           legend.background = element_rect(fill='transparent'),
           legend.box.background = element_rect(fill='transparent', colour = "transparent"),
     ) +
-    labs(y = "Total Yearly Generation (GW)", 
+    labs(y = "Total Yearly Generation (GWh)", 
          title = "Yearly total intertie \nAESO Data vs Simulation",
          subtitle = DB) +
-    scale_fill_manual(values = AESO_colours) +
+    scale_fill_manual(values = c("grey50","royalblue")) +
     #    scale_x_continuous(expand=c(0,0), 
     #                       limits = c(0,1.1),
     #                       labels = percent) +
@@ -565,7 +1287,7 @@ capture_price <- function(year1, year2, case) {
            year(date) <= year2,
            Output_MWH >= 0,
            Run_ID == case,
-           ID == "LTO_Coal" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
+           ID == "LTO_Coal" | ID == "AB_NGCONV" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
              ID == "AB_SCCT_noncogen" | ID == "LTO_Hydro" | ID == "LTO_Other" | 
              ID == "LTO_Wind" | ID == "LTO_Solar" | ID == "LTO_Storage"
     ) %>%
@@ -603,13 +1325,13 @@ capture_price <- function(year1, year2, case) {
               p_mean=mean(price_mean, na.rm = TRUE)) %>%
     mutate(sit = "Simulation")
   
-  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("LTO_Coal","AB_CCCT_noncogen", 
+  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("LTO_Coal", "AB_NGCONV", "AB_CCCT_noncogen", 
                                                     "LTO_Cogen","AB_SCCT_noncogen",
                                                     "LTO_Hydro","LTO_Other", 
                                                     "LTO_Wind","LTO_Solar",
                                                     "LTO_Storage","EXPORT","IMPORT"))
   
-  levels(Sim$Plant_Type) <- c("COAL", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
+  levels(Sim$Plant_Type) <- c("COAL", "NGCONV", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
                               "WIND", "SOLAR", "STORAGE", "EXPORT", "IMPORT")
   
   total <- rbind(Sim,Act)
@@ -623,12 +1345,12 @@ capture_price <- function(year1, year2, case) {
     geom_col(aes(Plant_Type,capture-p_mean,colour=sit,fill=sit),
              size=1.5,position = position_dodge(width = .9),width = .6)+
     geom_hline(yintercept=0, linetype="solid", color="gray",size=1)+
-    scale_color_manual("",values=AESO_colours)+
-    scale_fill_manual("",values=AESO_colours)+
+    scale_color_manual("",values=c("grey50","royalblue"))+
+    scale_fill_manual("",values=c("grey50","royalblue"))+
     facet_grid(~Year) +
     scale_y_continuous(expand=c(0,0),
-                       limits = c(-50,200),
-                       breaks = seq(-40,200, by = 20)
+#                       limits = c(-50,100),
+#                       breaks = seq(-40,100, by = 20)
     ) +
     labs(x="",y="Revenue Relative to \nMean Price ($/MWh)",
          title=paste0("Energy Price Capture Differential ($/MWh, ",year1,"-",year2,")"),
@@ -658,6 +1380,64 @@ capture_price <- function(year1, year2, case) {
           legend.box.background = element_rect(fill='transparent', colour = "transparent"),
           ) 
 }
+
+year_price <- function(year,case) {
+  # Filters for the desired case study
+  data <- ZH %>%
+    filter(Run_ID == case,
+           date >= paste(year,"-01-01 00:00:00", sep = "") & 
+             date <= 
+             paste(year,"-12-31 00:00:00", sep = "")) %>%
+    subset(., select = c(date,Price)) %>%
+    mutate(sit = "Simulation")
+  
+  yr_st <- as.POSIXct(paste("01","01",year, sep = "/"), format="%d/%m/%Y")
+  yr_end <- as.POSIXct(paste("31","12",year, sep = "/"), format="%d/%m/%Y")
+  
+  price_YR <- demand %>%
+    filter(time >= yr_st & time <= yr_end) %>%
+    mutate(date = time) %>%
+    subset(., select = c(date,Price)) %>%
+    mutate(sit = "Actual")
+  
+  Price <- rbind(data,price_YR)
+  
+  # Set the max and min for the plot
+  MX <- plyr::round_any(
+    max(Price$Price),
+    10, f = ceiling)
+  MN <- plyr::round_any(
+    min(Price$Price),
+    10, f = floor)
+  
+  sz = 15
+  
+  # Plot the data    
+  ggplot() +
+    geom_line(data = Price, 
+              aes(x = date, y = Price, color = sit), 
+              size = 1.5) +
+    theme_bw() +
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          text = element_text(size= 15),
+          plot.title = element_text(size = sz+2),
+          plot.subtitle = element_text(size = sz-2),
+          axis.title.x = element_blank(),
+          aspect.ratio = 2/6
+    ) +
+    labs(y = "Pool Price \n$/MWh", color = "Data Set",
+         title = "Yearly total intertie \nAESO Data vs Simulation",
+         subtitle = DB) +
+    scale_x_datetime(expand=c(0,0)) +
+    scale_y_continuous(expand=c(0,0), 
+                       limits= c(MN,MX),
+                       #                       labels = label_number(accuracy = 1),
+                       breaks = seq(MN, MX, by = MX/4)
+    ) + 
+    scale_color_manual(values = c("black", "red"))
+ }
 
 ################################################################################
 # Plot charts shown in AESO 2021 Market Report
@@ -1006,7 +1786,7 @@ tech_cap <- function(year1, year2, case) {
     labs(y = "Capacity Factor", 
          title = "AESO Data vs Simulation",
          subtitle = DB) +
-    scale_fill_manual(values = c("black", "gray60"
+    scale_fill_manual(values = c("grey50","royalblue"
 #      "goldenrod1", "forestgreen"
 #                                 "darkseagreen", "cornflowerblue",
 #                                  "firebrick","gray60", "forestgreen"
@@ -1024,40 +1804,518 @@ margin <- function(year1, year2, case) {
   # Plots the marginal price-setting technology for AESO and Sim
   # Like AESO Market Report 2021 Figure 19
   
-  totZone <- ZoneH %>%
+#  MargSim <- Year %>%
+#    filter(Run_ID == case,
+#           Condition == "Average",
+#           ID == "LTO_Coal" | ID == "AB_NGCONV" | ID == "AB_SCCT_noncogen" |
+#           ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | ID == "LTO_Other" |
+#           ID == "LTO_Hydro" | ID == "LTO_Solar" | ID == "LTO_Storage" | 
+#           ID == "LTO_Wind" | ID == "Intertie") %>%
+#    subset(.,select=c(ID,Report_Year,Condition,Percent_Marginal))
+#    filter(Condition )
+    
+  cogen <- c("ALS1", "APS1", "BCR2", "BCRK", "BFD1", "CL01", "CNR5", "COD1", 
+             "DOWG", "EC04", "FH1", "HMT1", "HRT1", "IOR1", "IOR2", "JOF1",
+             "MEG1", "MKR1", "MKRC", "MUL1", "NX02", "PR1", "PW01", "RL1", 
+             "SCL1", "SCR1", "SCR5", "SCR6", "SDH1", "TC01", "TC02", "TLM2", 
+             "UOC1", "UOA1", "IOR3", "IOR4", "SHCG", "PEC1", "CRG1")
+  
+  ngcc <- c("CAL1", "CMH1", "EC01", "EGC1", "FNG1", "NX01", "Cascade")
+  
+  scgt <- c("ALP1", "ALP2", "ANC1", "BHL1", "CRS1", "CRS2", "CRS3", "DRW1", 
+            "ENC1", "ENC2", "ENC3", "GEN5", "GEN6", "HSM1", "ME02", "ME03", 
+            "ME04", "MFG1", "NAT1", "NPC1", "NPC2", "NPC3", "NPP1", "PH1", "PMB1",
+            "RB5", "SET1",  "VVW1", "VVW2", "WCD1"
+            )
+  
+  coal <- c("BR3", "BR4", "BR5", "GN1", "GN2", "GN3", "HRM", "KH1", "KH2", 
+            "KH3", "SD2", "SD3", "SD4", "SD5", "SD6", "SH1", "SH2")
+  
+  hydro <- c("BIG", "BOW1", "BRA", "CHIN", "DKSN", "ICP1", "OMRH", "RYMD", "TAY1")
+  
+  ngconv <- c("Retrofit")
+  
+  other <- c("AFG1", "BON1", "CCMH", "DAI1", "DV1", "EAGL", "GPEC", "GOC1", "NRG3", 
+             "SLP1", "SRL1", "WEY1", "WST1", "WWD1")
+  
+  solar <- c("BSC1", "HUL1", "INF1", "VXH1", "BRD1", "BUR1", "CLR1", "CLR2", 
+             "SUF1", "WEF1", "JER1", "HYS1", "BRK1", "BRK2", "COL1", "CRD2", 
+             "CRD1", "MON1", "NMK1", "STR1", "STR2", "TVS1", "EPS1", "VCN1", 
+             "KKP1", "KKP2", "MIC1", "CLY1", "CLY2", "TRH1", "Tilley", "Coulee",
+             "Enchant", "Stavely")
+  
+  wind <- c("CRE3", "CR1", "AKE1", "IEW1", "KHW1", "SCR2", "TAB1", "GWW1", "SCR3", 
+            "BTR1", "OWF1", "IEW2", "SCR4", "CRR2", "NEP1", "HAL1", "BUL1", 
+            "BUL2", "BSR1", "CRR1", "RIV1", "WHT1", "ARD1", "WRW1", "WHT2", 
+            "RTL1", "WHE1", "FMG1", "JNR1", "JNR2", "JNR3", "HHW1", "Garden", 
+            "Cypress", "Buffalo", "Grizzly", "Lanfine")
+  
+  storage <- c("*CRS", "*GN1&2", "ERV1", "ERV2", "ERV3", "SUM1")
+  
+  Sim <- ZoneH %>%
     filter(Report_Year >= year1 & 
              Report_Year <= year2,
            Run_ID == case, 
            Condition != "Average") %>%
-    mutate(Name = Marginal_Resource) %>%
-    subset(.,select=c(date,Name,Price))
+    mutate(Name = Marginal_Resource,
+           Year = Report_Year,
+#           Plant_Type = "Group"
+           ) %>%
+    subset(.,select=c(date,Name,Price,Year)) %>%
+    mutate(Plant_Type = case_when(
+      grepl(paste(cogen,collapse="|"), x=Name) ~ "COGEN",
+      grepl(paste(ngcc,collapse="|"), x=Name) ~ "NGCC",
+      grepl(paste(scgt,collapse="|"), x=Name) ~ "SCGT",
+      grepl(paste(coal,collapse="|"), x=Name) ~ "COAL",
+      grepl(paste(hydro,collapse="|"), x=Name) ~ "HYDRO",
+      grepl(paste(ngconv,collapse="|"), x=Name) ~ "NGCONV",
+      grepl(paste(other,collapse="|"), x=Name) ~ "OTHER",
+      grepl(paste(solar,collapse="|"), x=Name) ~ "SOLAR",
+      grepl(paste(wind,collapse="|"), x=Name) ~ "WIND",
+      grepl(paste(storage,collapse="|"), x=Name) ~ "STORAGE",
+      grepl("Intertie", x=Name) ~ "INTERTIE"
+    )) %>%
+    group_by(Plant_Type,Year) %>%
+    summarise(freq = n()) %>%
+    ungroup() %>%
+    group_by(Year) %>%
+    mutate(tot = sum(freq),
+           perc = freq/tot*100,
+           sit = "Simulation") %>%
+    ungroup() 
+    
+  Sim <- na.omit(Sim)  
+   
+#  totHour <- RHour %>%
+#    filter(Report_Year >= year1 & 
+#             Report_Year <= year2,
+#           Percent_Marginal == 100,
+#           Run_ID == case) %>%
+#    subset(.,select=c(date,Name,Dispatch_Cost,Incr_Cost,Primary_Fuel,Percent_Marginal,Zone))
   
-  totHour <- RHour %>%
-    filter(Report_Year >= year1 & 
-             Report_Year <= year2,
-           Run_ID == case) %>%
-    subset(.,select=c(date,Name,Dispatch_Cost,Incr_Cost,Primary_Fuel,Percent_Marginal,Zone))
+#  Sim <- Hr %>%
+#    filter(Report_Year >= year1 & 
+#             Report_Year <= year2,
+#           Run_ID == case, 
+#           Name != "Alberta",
+#           Percent_Marginal == 100) %>%
+#    subset(.,select=c(Name,Time_Period,ID,date))
+  
+#  SimComb <- merge(Sim,totZone, by=c("date",))
 
-  data1 <- left_join(totZone, totHour, by=c("date","Name")) 
+#  data1 <- left_join(totZone, totHour, by=c("date","Name")) 
   
-  data1 <- data1 %>%
-    group_by(Name, Report_Year) %>%
-    mutate(perc = 1-ecdf(Price)(Price)) #%>%
+#  data1 <- data1 %>%
+#    group_by(Name, Report_Year) %>%
+#    mutate(perc = 1-ecdf(Price)(Price)) #%>%
   
   Sample <- merit_filt %>%
     filter(year >= year1,
-           year <= year2)
+           year <= year2) %>%
+    subset(.,select=c(date,year,he,asset_id,AESO_Name,Plant_Type,price,
+                      actual_posted_pool_price,merit,dispatched_mw)) %>%
+    mutate(Year = year)
   
   Act <- Sample %>%
     filter(dispatched_mw != 0) %>%
     group_by(date, he) %>%
     slice_max(n=1,merit) %>%
     ungroup() %>%
-    group_by(year) %>%
-    mutate(tot = n()) %>%
-    ungroup()# %>%
-    group_by(Plant_Type, year) %>%
-    summarise(count = n(), percent = count/tot)
+    group_by(Year,Plant_Type) %>%
+    summarise(freq = n()) %>%
+    ungroup() %>%
+    group_by(Year) %>%
+    mutate(tot = sum(freq), 
+           perc = freq/tot*100,
+           sit = "Actual")
+  
+  total <- rbind(Sim,Act)
+  
+  # Reorder the factors for plotting
+  total$Plant_Type<-fct_relevel(total$Plant_Type, "NGCC",after=Inf)
+  total$Plant_Type<-fct_relevel(total$Plant_Type, "SCGT",after=Inf)
+  total$Plant_Type<-fct_relevel(total$Plant_Type, "COGEN",after=Inf)
+  total$Plant_Type<-fct_relevel(total$Plant_Type, "INTERTIE",after=Inf)
+  total$Plant_Type<-fct_relevel(total$Plant_Type, "NGCONV",after=Inf)
+  total$Plant_Type<-fct_relevel(total$Plant_Type, "STORAGE",after=Inf)
+  total$Plant_Type<-fct_relevel(total$Plant_Type, "HYDRO",after=Inf)
+  total$Plant_Type<-fct_relevel(total$Plant_Type, "OTHER",after=Inf)
+  total$Plant_Type<-fct_relevel(total$Plant_Type, "WIND",after=Inf)
+  
+  sz <- 12
+  
+  # Plot the data
+  ggplot(total,
+         aes(Plant_Type,perc,colour=sit,fill=sit),
+         alpha=0.8)+
+    geom_col(aes(Plant_Type,perc,colour=sit,fill=sit),
+             size=1.5,position = position_dodge(width = .9),width = .6)+
+    geom_hline(yintercept=0, linetype="solid", color="gray",size=1)+
+    scale_color_manual("",values=c("grey50","royalblue"))+
+    scale_fill_manual("",values=c("grey50","royalblue"))+
+    facet_grid(~Year) +
+    scale_y_continuous(expand=c(0,0),
+                       #                       limits = c(-50,100),
+                       #                       breaks = seq(-40,100, by = 20)
+    ) +
+    labs(x="",y="Percentage of Time",
+         title="Annual marginal price-setting technology",
+         subtitle = DB,
+         caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
+    theme(panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
+          panel.grid.minor.y = element_line(color = "lightgray",linetype="dotted"),
+          axis.line.x = element_line(color = "black"),
+          axis.line.y = element_line(color = "black"),
+          axis.text = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          axis.title = element_text(size = sz),
+          plot.subtitle = element_text(size = sz-2,hjust=0.5),
+          plot.caption = element_text(face="italic",size = sz-4,hjust=0),
+          plot.title = element_text(hjust=0.5,size = sz+2),
+          #          plot.margin=unit(c(1,1,1.5,1.2),"cm"),
+          
+          # For transparent background
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          panel.border = element_rect(colour = "black", fill = "transparent"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) 
+  
+}
+
+margin_season <- function(year1, year2, case) {
+  # Plots the marginal price-setting technology for AESO and Sim
+  # Like AESO Market Report 2021 Figure 19
+  
+  #  MargSim <- Year %>%
+  #    filter(Run_ID == case,
+  #           Condition == "Average",
+  #           ID == "LTO_Coal" | ID == "AB_NGCONV" | ID ==  "AB_SCCT_noncogen" |
+  #           ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | ID == "LTO_Other" |
+  #           ID == "LTO_Hydro" | ID == "LTO_Solar" | ID == "LTO_Storage" | 
+  #           ID == "LTO_Wind" | ID == "Intertie") %>%
+  #    subset(.,select=c(ID,Report_Year,Condition,Percent_Marginal))
+  #    filter(Condition )
+  
+  cogen <- c("ALS1", "APS1", "BCR2", "BCRK", "BFD1", "CL01", "CNR5", "COD1", 
+             "DOWG", "EC04", "FH1", "HMT1", "HRT1", "IOR1", "IOR2", "JOF1",
+             "MEG1", "MKR1", "MKRC", "MUL1", "NX02", "PR1", "PW01", "RL1", 
+             "SCL1", "SCR1", "SCR5", "SCR6", "SDH1", "TC01", "TC02", "TLM2", 
+             "UOC1", "UOA1", "IOR3", "IOR4", "SHCG", "PEC1", "CRG1")
+  
+  ngcc <- c("CAL1", "CMH1", "EC01", "EGC1", "FNG1", "NX01", "Cascade")
+  
+  scgt <- c("ALP1", "ALP2", "ANC1", "BHL1", "CRS1", "CRS2", "CRS3", "DRW1", 
+            "ENC1", "ENC2", "ENC3", "GEN5", "GEN6", "HSM1", "ME02", "ME03", 
+            "ME04", "MFG1", "NAT1", "NPC1", "NPC2", "NPC3", "NPP1", "PH1", "PMB1",
+            "RB5", "SET1",  "VVW1", "VVW2", "WCD1"
+  )
+  
+  coal <- c("BR3", "BR4", "BR5", "GN1", "GN2", "GN3", "HRM", "KH1", "KH2", 
+            "KH3", "SD2", "SD3", "SD4", "SD5", "SD6", "SH1", "SH2")
+  
+  hydro <- c("BIG", "BOW1", "BRA", "CHIN", "DKSN", "ICP1", "OMRH", "RYMD", "TAY1")
+  
+  ngconv <- c("Retrofit")
+  
+  other <- c("AFG1", "BON1", "CCMH", "DAI1", "DV1", "EAGL", "GPEC", "GOC1", "NRG3", 
+             "SLP1", "SRL1", "WEY1", "WST1", "WWD1")
+  
+  solar <- c("BSC1", "HUL1", "INF1", "VXH1", "BRD1", "BUR1", "CLR1", "CLR2", 
+             "SUF1", "WEF1", "JER1", "HYS1", "BRK1", "BRK2", "COL1", "CRD2", 
+             "CRD1", "MON1", "NMK1", "STR1", "STR2", "TVS1", "EPS1", "VCN1", 
+             "KKP1", "KKP2", "MIC1", "CLY1", "CLY2", "TRH1", "Tilley", "Coulee",
+             "Enchant", "Stavely")
+  
+  wind <- c("CRE3", "CR1", "AKE1", "IEW1", "KHW1", "SCR2", "TAB1", "GWW1", "SCR3", 
+            "BTR1", "OWF1", "IEW2", "SCR4", "CRR2", "NEP1", "HAL1", "BUL1", 
+            "BUL2", "BSR1", "CRR1", "RIV1", "WHT1", "ARD1", "WRW1", "WHT2", 
+            "RTL1", "WHE1", "FMG1", "JNR1", "JNR2", "JNR3", "HHW1", "Garden", 
+            "Cypress", "Buffalo", "Grizzly", "Lanfine")
+  
+  storage <- c("*CRS", "*GN1&2", "ERV1", "ERV2", "ERV3", "SUM1")
+  
+  Sim <- ZoneH %>%
+    filter(Report_Year >= year1 & 
+             Report_Year <= year2,
+           Run_ID == case, 
+           Condition != "Average") %>%
+    mutate(Name = Marginal_Resource,
+           Year = Report_Year,
+           #           Plant_Type = "Group"
+    ) %>%
+    subset(.,select=c(date,Name,Price,Year)) %>%
+    mutate(Plant_Type = case_when(
+      grepl(paste(cogen,collapse="|"), x=Name) ~ "COGEN",
+      grepl(paste(ngcc,collapse="|"), x=Name) ~ "NGCC",
+      grepl(paste(scgt,collapse="|"), x=Name) ~ "SCGT",
+      grepl(paste(coal,collapse="|"), x=Name) ~ "COAL",
+      grepl(paste(hydro,collapse="|"), x=Name) ~ "HYDRO",
+      grepl(paste(ngconv,collapse="|"), x=Name) ~ "NGCONV",
+      grepl(paste(other,collapse="|"), x=Name) ~ "OTHER",
+      grepl(paste(solar,collapse="|"), x=Name) ~ "SOLAR",
+      grepl(paste(wind,collapse="|"), x=Name) ~ "WIND",
+      grepl(paste(storage,collapse="|"), x=Name) ~ "STORAGE",
+      grepl("Intertie", x=Name) ~ "INTERTIE"
+    )) %>%
+    group_by(Plant_Type,Year) %>%
+    summarise(freq = n()) %>%
+    ungroup() %>%
+    group_by(Year) %>%
+    mutate(tot = sum(freq),
+           perc = freq/tot*100,
+           sit = "Simulation") %>%
+    ungroup() 
+  
+  Sim <- na.omit(Sim)  
+  
+  #  totHour <- RHour %>%
+  #    filter(Report_Year >= year1 & 
+  #             Report_Year <= year2,
+  #           Percent_Marginal == 100,
+  #           Run_ID == case) %>%
+  #    subset(.,select=c(date,Name,Dispatch_Cost,Incr_Cost,Primary_Fuel,Percent_Marginal,Zone))
+  
+  #  Sim <- Hr %>%
+  #    filter(Report_Year >= year1 & 
+  #             Report_Year <= year2,
+  #           Run_ID == case, 
+  #           Name != "Alberta",
+  #           Percent_Marginal == 100) %>%
+  #    subset(.,select=c(Name,Time_Period,ID,date))
+  
+  #  SimComb <- merge(Sim,totZone, by=c("date",))
+  
+  #  data1 <- left_join(totZone, totHour, by=c("date","Name")) 
+  
+  #  data1 <- data1 %>%
+  #    group_by(Name, Report_Year) %>%
+  #    mutate(perc = 1-ecdf(Price)(Price)) #%>%
+  
+  Sample <- merit_filt %>%
+    filter(year >= year1,
+           year <= year2) %>%
+    subset(.,select=c(date,year,he,asset_id,AESO_Name,Plant_Type,price,
+                      actual_posted_pool_price,merit,dispatched_mw)) %>%
+    mutate(Year = year)
+  
+  Act <- Sample %>%
+    filter(dispatched_mw != 0) %>%
+    group_by(date, he) %>%
+    slice_max(n=1,merit) %>%
+    ungroup() %>%
+    group_by(Year,Plant_Type) %>%
+    summarise(freq = n()) %>%
+    ungroup() %>%
+    group_by(Year) %>%
+    mutate(tot = sum(freq), 
+           perc = freq/tot*100,
+           sit = "Actual")
+  
+  total <- rbind(Sim,Act)
+  
+  sz <- 12
+  
+  # Plot the data
+  ggplot(total,
+         aes(Plant_Type,perc,colour=sit,fill=sit),
+         alpha=0.8)+
+    geom_col(aes(Plant_Type,perc,colour=sit,fill=sit),
+             size=1.5,position = position_dodge(width = .9),width = .6)+
+    geom_hline(yintercept=0, linetype="solid", color="gray",size=1)+
+    scale_color_manual("",values=c("grey50","royalblue"))+
+    scale_fill_manual("",values=c("grey50","royalblue"))+
+    facet_grid(~Year) +
+    scale_y_continuous(expand=c(0,0),
+                       #                       limits = c(-50,100),
+                       #                       breaks = seq(-40,100, by = 20)
+    ) +
+    labs(x="",y="Percentage of Time",
+         title="Annual marginal price-setting technology",
+         subtitle = DB,
+         caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
+    theme(panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
+          panel.grid.minor.y = element_line(color = "lightgray",linetype="dotted"),
+          axis.line.x = element_line(color = "black"),
+          axis.line.y = element_line(color = "black"),
+          axis.text = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          axis.title = element_text(size = sz),
+          plot.subtitle = element_text(size = sz-2,hjust=0.5),
+          plot.caption = element_text(face="italic",size = sz-4,hjust=0),
+          plot.title = element_text(hjust=0.5,size = sz+2),
+          #          plot.margin=unit(c(1,1,1.5,1.2),"cm"),
+          
+          # For transparent background
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          panel.border = element_rect(colour = "black", fill = "transparent"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) 
+  
+}
+
+margin_onoff <- function(year1, year2, case) {
+  # Plots the marginal price-setting technology for AESO and Sim
+  # Like AESO Market Report 2021 Figure 19
+  
+  cogen <- c("ALS1", "APS1", "BCR2", "BCRK", "BFD1", "CL01", "CNR5", "COD1", 
+             "DOWG", "EC04", "FH1", "HMT1", "HRT1", "IOR1", "IOR2", "JOF1",
+             "MEG1", "MKR1", "MKRC", "MUL1", "NX02", "PR1", "PW01", "RL1", 
+             "SCL1", "SCR1", "SCR5", "SCR6", "SDH1", "TC01", "TC02", "TLM2", 
+             "UOC1", "UOA1", "IOR3", "IOR4", "SHCG", "PEC1", "CRG1")
+  
+  ngcc <- c("CAL1", "CMH1", "EC01", "EGC1", "FNG1", "NX01", "Cascade")
+  
+  scgt <- c("ALP1", "ALP2", "ANC1", "BHL1", "CRS1", "CRS2", "CRS3", "DRW1", 
+            "ENC1", "ENC2", "ENC3", "GEN5", "GEN6", "HSM1", "ME02", "ME03", 
+            "ME04", "MFG1", "NAT1", "NPC1", "NPC2", "NPC3", "NPP1", "PH1", "PMB1",
+            "RB5", "SET1",  "VVW1", "VVW2", "WCD1"
+  )
+  
+  coal <- c("BR3", "BR4", "BR5", "GN1", "GN2", "GN3", "HRM", "KH1", "KH2", 
+            "KH3", "SD2", "SD3", "SD4", "SD5", "SD6", "SH1", "SH2")
+  
+  hydro <- c("BIG", "BOW1", "BRA", "CHIN", "DKSN", "ICP1", "OMRH", "RYMD", "TAY1")
+  
+  ngconv <- c("Retrofit")
+  
+  other <- c("AFG1", "BON1", "CCMH", "DAI1", "DV1", "EAGL", "GPEC", "GOC1", "NRG3", 
+             "SLP1", "SRL1", "WEY1", "WST1", "WWD1")
+  
+  solar <- c("BSC1", "HUL1", "INF1", "VXH1", "BRD1", "BUR1", "CLR1", "CLR2", 
+             "SUF1", "WEF1", "JER1", "HYS1", "BRK1", "BRK2", "COL1", "CRD2", 
+             "CRD1", "MON1", "NMK1", "STR1", "STR2", "TVS1", "EPS1", "VCN1", 
+             "KKP1", "KKP2", "MIC1", "CLY1", "CLY2", "TRH1", "Tilley", "Coulee",
+             "Enchant", "Stavely")
+  
+  wind <- c("CRE3", "CR1", "AKE1", "IEW1", "KHW1", "SCR2", "TAB1", "GWW1", "SCR3", 
+            "BTR1", "OWF1", "IEW2", "SCR4", "CRR2", "NEP1", "HAL1", "BUL1", 
+            "BUL2", "BSR1", "CRR1", "RIV1", "WHT1", "ARD1", "WRW1", "WHT2", 
+            "RTL1", "WHE1", "FMG1", "JNR1", "JNR2", "JNR3", "HHW1", "Garden", 
+            "Cypress", "Buffalo", "Grizzly", "Lanfine")
+  
+  storage <- c("*CRS", "*GN1&2", "ERV1", "ERV2", "ERV3", "SUM1")
+  
+  Sim <- ZoneH %>%
+    filter(Report_Year >= year1 & 
+             Report_Year <= year2,
+           Run_ID == case, 
+           Condition != "Average") %>%
+    mutate(Name = Marginal_Resource,
+           Year = Report_Year,
+           #           Plant_Type = "Group"
+    ) %>%
+    subset(.,select=c(date,Name,Price,Year,Condition)) %>%
+    mutate(Plant_Type = case_when(
+      grepl(paste(cogen,collapse="|"), x=Name) ~ "COGEN",
+      grepl(paste(ngcc,collapse="|"), x=Name) ~ "NGCC",
+      grepl(paste(scgt,collapse="|"), x=Name) ~ "SCGT",
+      grepl(paste(coal,collapse="|"), x=Name) ~ "COAL",
+      grepl(paste(hydro,collapse="|"), x=Name) ~ "HYDRO",
+      grepl(paste(ngconv,collapse="|"), x=Name) ~ "NGCONV",
+      grepl(paste(other,collapse="|"), x=Name) ~ "OTHER",
+      grepl(paste(solar,collapse="|"), x=Name) ~ "SOLAR",
+      grepl(paste(wind,collapse="|"), x=Name) ~ "WIND",
+      grepl(paste(storage,collapse="|"), x=Name) ~ "STORAGE",
+      grepl("Intertie", x=Name) ~ "INTERTIE"
+    )) %>%
+    group_by(Plant_Type,Year,Condition) %>%
+    summarise(freq = n()) %>%
+    ungroup() %>%
+    group_by(Year,Condition) %>%
+    mutate(tot = sum(freq),
+           perc = freq/tot*100,
+           sit = "Simulation") %>%
+    ungroup() 
+  
+  Sim <- na.omit(Sim)  
+  
+  Sample <- merit_filt %>%
+    filter(year >= year1,
+           year <= year2,
+           dispatched_mw != 0) %>%
+    mutate(Year = year,
+           Condition = case_when(
+#             he<=7 ~ "Off-Peak WECC",
+#             he>=23 ~ "Off-Peak WECC",
+             (hour<=06 | hour>=23) ~ "Off-Peak WECC",
+#             (he>=08 & he<=22) ~ "On-Peak WECC",
+             TRUE ~ "On-Peak WECC"
+#             (he<=07 | he>=23) ~ "Off-Peak WECC",
+             )
+          ) %>%
+    subset(.,select=c(date,Year,hour,asset_id,Plant_Type,merit,dispatched_mw,
+                      Condition))
+  
+  Act <- Sample %>%
+#    filter(dispatched_mw != 0) %>%
+    group_by(date, hour) %>%
+    slice_max(n=1,merit) %>%
+    ungroup() %>%
+    group_by(Year,Plant_Type,Condition) %>%
+    summarise(freq = n()) %>%
+    ungroup() %>%
+    group_by(Year,Condition) %>%
+    mutate(tot = sum(freq), 
+           perc = freq/tot*100,
+           sit = "Actual")
+  
+  total <- rbind(Sim,Act)
+  
+  sz <- 12
+  
+  # Plot the data
+  ggplot(total,
+         aes(Plant_Type,perc,colour=sit,fill=sit),
+         alpha=0.8)+
+    geom_col(aes(Plant_Type,perc,colour=sit,fill=sit),
+             size=1.5,position = position_dodge(width = .9),width = .6)+
+    geom_hline(yintercept=0, linetype="solid", color="gray",size=1)+
+    scale_color_manual("",values=c("grey50","royalblue"))+
+    scale_fill_manual("",values=c("grey50","royalblue"))+
+    facet_grid(Condition~Year) +
+    scale_y_continuous(expand=c(0,0),
+                       #                       limits = c(-50,100),
+                       #                       breaks = seq(-40,100, by = 20)
+    ) +
+    labs(x="",y="Percentage of Time",
+         title="Annual marginal price-setting technology",
+         subtitle = DB,
+         caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
+    theme(panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
+          panel.grid.minor.y = element_line(color = "lightgray",linetype="dotted"),
+          axis.line.x = element_line(color = "black"),
+          axis.line.y = element_line(color = "black"),
+          axis.text = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          axis.title = element_text(size = sz),
+          plot.subtitle = element_text(size = sz-2,hjust=0.5),
+          plot.caption = element_text(face="italic",size = sz-4,hjust=0),
+          plot.title = element_text(hjust=0.5,size = sz+2),
+          #          plot.margin=unit(c(1,1,1.5,1.2),"cm"),
+          
+          # For transparent background
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          panel.border = element_rect(colour = "black", fill = "transparent"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) 
   
 }
 
@@ -1184,7 +2442,7 @@ tot_cap <- function(year1, year2, case) {
            Report_Month == 12,
            Report_Day == 31,
            Report_Hour == 24,
-           ID == "LTO_Coal" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
+           ID == "LTO_Coal" | ID == "AB_NGCONV" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
              ID == "AB_SCCT_noncogen" | ID == "LTO_Hydro" | ID == "LTO_Other" | 
              ID == "LTO_Wind" | ID == "LTO_Solar") %>%
     group_by(Report_Year, ID) %>%
@@ -1194,10 +2452,10 @@ tot_cap <- function(year1, year2, case) {
   
   colnames(Sim) <- c("Year", "Plant_Type", "Cap", "sit")
   
-  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("LTO_Coal", "AB_CCCT_noncogen", "LTO_Cogen",
+  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("LTO_Coal", "AB_NGCONV", "AB_CCCT_noncogen", "LTO_Cogen",
                                                     "AB_SCCT_noncogen", "LTO_Hydro", "LTO_Other", 
                                                     "LTO_Wind", "LTO_Solar"))
-  levels(Sim$Plant_Type) <- c("COAL", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
+  levels(Sim$Plant_Type) <- c("COAL", "NGCONV", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
                               "WIND", "SOLAR")
   
   Sim$Year <- as.factor(Sim$Year)
@@ -1417,6 +2675,69 @@ ach_pool <- function(year1, year2, case) {
 # Plot combination of plots
 ################################################################################
 
+AESO_Sim <- function(year,month,day,case) {
+  SimP <- week_price(year,month,day,case)
+  ActP <- wkPrice(year,month,day)
+  SimO <- Week1(year,month,day,case)
+  ActO <- Week_act(year,month,day)
+  
+  MXP <- plyr::round_any(
+    max(layer_scales(SimP)$y$range$range,layer_scales(ActP)$y$range$range),
+    10, f = ceiling)
+  MNP <- plyr::round_any(
+    min(layer_scales(SimP)$y$range$range,layer_scales(ActP)$y$range$range),
+    10, f = floor)  
+  MXO <- plyr::round_any(
+    max(layer_scales(SimO)$y$range$range,layer_scales(ActO)$y$range$range),
+    100, f = ceiling)
+  MNO <- plyr::round_any(
+    min(layer_scales(SimO)$y$range$range,layer_scales(ActO)$y$range$range),
+    100, f = floor)
+  
+  legend <- gtable_filter(ggplotGrob(Week1(year,month,day,case)), "guide-box")
+  
+  sz <- 15
+  
+  ggarrange(arrangeGrob(plot_grid(week_price(year,month,day,case) + 
+                                    labs(title = paste0("Simulated Data for ",year),
+                                         subtitle = paste0("(",DB,")")) +
+                                    theme(axis.title.x=element_blank(),
+                                          axis.text.x=element_blank(),
+                                          legend.position ="none",
+                                          plot.title = element_text(hjust = 0.5, size = sz),
+                                          plot.subtitle = element_text(hjust = 0.5, size = sz-2, face="italic")) + 
+                                    scale_y_continuous(expand=c(0,0), limits = c(MNP,MXP), 
+                                                       breaks = pretty_breaks(4)),
+                                  Week1(year,month,day,case)+
+                                    theme(legend.position ="none") + 
+                                    scale_y_continuous(expand=c(0,0), limits = c(MNO,MXO), 
+                                                       breaks = pretty_breaks(4)), 
+                                  ncol = 1, align="v", axis = "l",
+                                  rel_heights = c(1,2.5)),
+                        
+                        plot_grid(wkPrice(year,month,day) + 
+                                    labs(title = paste0("AESO Data for ",year),
+                                         subtitle = "NRGStream Data") +
+                                    theme(axis.title=element_blank(),
+                                          axis.text.x=element_blank(),
+                                          legend.position ="none",
+                                          plot.title = element_text(hjust = 0.5, size = sz),
+                                          plot.subtitle = element_text(hjust = 0.5, size = sz-2, face="italic")) + 
+                                    scale_y_continuous(expand=c(0,0), limits = c(MNP,MXP), 
+                                                       breaks = pretty_breaks(4)),
+                                  Week_act(year,month,day)+
+                                    theme(legend.position ="none",
+                                          axis.title.y=element_blank())+
+                                    scale_y_continuous(expand=c(0,0), limits = c(MNO,MXO), 
+                                                       breaks = pretty_breaks(4)), 
+                                  ncol = 1, align="v", axis = "l",
+                                  rel_heights = c(1,2.5)),
+                        ncol=2, widths = c(1.05,1)),
+            
+            legend,
+            ncol=2, widths =c(5,1))
+}
+
 AESOSim <- function(year1,year2,case) {
 
   sz <- 16
@@ -1465,6 +2786,37 @@ AESOSim <- function(year1,year2,case) {
 #            rel_heights = c(2,1.5,2))
 }
 
+Sample_output <- function(year,month,day,case) {
+  sz <- 14
+  
+  pool <- Weekly_price(year,month,day,case) +
+    theme(axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          axis.text.x = element_blank(),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz-2),
+          axis.title.x = element_blank())
+  stacked <- Weekly(year,month,day,case)  +
+    theme(axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, hjust=1, size = sz),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz-2),
+          axis.title.x = element_blank())
+  
+  pool + stacked + plot_layout(design = "A
+                                B",
+                               heights = c(1,3)) &
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          panel.border = element_rect(colour = "black", fill = "transparent"))
+}
+
 price_comp <- function(year1,year2,case) {
   
   sz <- 14
@@ -1476,7 +2828,10 @@ price_comp <- function(year1,year2,case) {
           plot.title = element_text(size = sz+2),
           legend.text = element_text(size = sz-2),
           axis.title.x = element_blank())
-  p.y <- year_pool(year1,year2,case) + 
+  p.y <- price_interval(year1,year2,case) + 
+    scale_fill_manual("",values = c("grey50","royalblue"),
+                      labels=c("Actual",
+                               "Simulation"))
     theme(axis.text = element_text(size = sz),
           axis.title = element_text(size = sz),
           axis.text.x = element_text(angle = 45, hjust=1, size = sz),
@@ -1488,8 +2843,8 @@ price_comp <- function(year1,year2,case) {
           legend.position = "right")
   p.t <- capture_price(year1,year2,case) +
     scale_y_continuous(expand=c(0,0),
-                       limits = c(-50,200),
-                       breaks = seq(-50,200, by = 50)
+#                       limits = c(-50,100),
+#                       breaks = seq(-50,100, by = 50)
     ) +
     theme(axis.text = element_text(size = sz-2),
           axis.title = element_text(size = sz),
@@ -1540,7 +2895,7 @@ gen_comp <- function(year1,year2,case) {
           plot.subtitle = element_blank(),
           axis.title.x = element_blank(),
           legend.position = "right")
-  p.t <- tot_gen(year1,year2,case) +
+  p.t <- market_share(year1,year2,case) +
 #    scale_y_continuous(expand=c(0,0),
 #                       limits = c(-50,200),
 #                       breaks = seq(-50,200, by = 50)
@@ -1571,4 +2926,40 @@ gen_comp <- function(year1,year2,case) {
   #  plot_grid(p.c,p.y,p.t,
   #            ncol = 1, align = "v", axis = "l",
   #            rel_heights = c(2,1.5,2))
+}
+
+week_cycling <- function(year,month,day,case) {
+  
+  sz <- 15
+  
+  Sim <- Week_line(year,month,day,case)  + 
+    labs(title = paste0("Simulated Data for ",year),
+         subtitle = paste0("(",DB,")")) +
+    theme(axis.title.x=element_blank(),
+          legend.position ="none",
+          plot.title = element_text(hjust = 0.5, size = sz),
+          plot.subtitle = element_text(hjust = 0.5, size = sz-2, face="italic"),
+          aspect.ratio = 5/2)
+  Act <- Week_aline(year,month,day) + 
+    labs(title = paste0("AESO Data for ",year),
+         subtitle = "NRGStream Data") +
+    theme(axis.title.x=element_blank(),
+          plot.title = element_text(hjust = 0.5, size = sz),
+          plot.subtitle = element_text(hjust = 0.5, size = sz-2, face="italic"),
+          aspect.ratio = 5/2)
+  
+  MX <- plyr::round_any(
+    max(layer_scales(Sim)$y$range$range,layer_scales(Act)$y$range$range),
+    100, f = ceiling)
+  MN <- plyr::round_any(
+    min(layer_scales(Sim)$y$range$range,layer_scales(Act)$y$range$range),
+    100, f = floor)
+  
+  Simulation <- Sim + scale_y_continuous(expand=c(0,0), limits = c(MN,MX), 
+                                         breaks = pretty_breaks(4))
+  
+  Actual <- Act + scale_y_continuous(expand=c(0,0), limits = c(MN,MX), 
+                                     breaks = pretty_breaks(4))
+  
+  Simulation + Actual + plot_layout(ncol = 2, widths = c(1,1.1), guides = 'collect')
 }
