@@ -11,9 +11,11 @@ library(png)
 # Load data
 ################################################################################
 {
-  setwd("D:/Documents/GitHub/AuroraEval")
+  setwd("D:/Documents/Education/Masters Degree/Datasets/Market")
 
 load("nrgstream_gen.RData") ## which is here *equivalent* to
+
+setwd("D:/Documents/GitHub/AuroraEval")
 
 nrgstream_gen <- nrgstream_gen %>% rename(time=Time)
 
@@ -53,7 +55,11 @@ demand <- nrgstream_gen %>%
   summarise(Demand = median(Demand), 
             Price = median(Price),
             AIL = median(AIL))
-  
+
+trade_excl<-c("AB - WECC Imp Hr Avg MW", 
+              "AB - WECC Exp Hr Avg MW",
+              "AB - WECC Imp/Exp Hr Avg MW")  
+
 df1 <- sub_samp %>% 
   filter(! NRG_Stream %in% trade_excl)%>% 
   group_by(Plant_Type,time) %>% 
@@ -246,8 +252,18 @@ wind <- df2 %>%
   filter(Plant_Type == "WIND") %>%
   filter(as.character(Year) >= 2010)
 
-wndVSmrk <- rbind(mrk,wind)
+wndVSmrk <- rbind(mrk,wind) 
 
+MRK <- mrk %>%
+  mutate(Market = capture) %>%
+  subset(., select = c(Year,Market))
+
+WND <- wind %>%
+  mutate(Wind = capture) %>%
+  subset(., select = c(Year,Wind))
+
+discount <- merge(MRK,WND,by="Year") %>%
+  mutate(diff = (1-Wind/Market)*100)
 
 plot_c <- ggplot(wndVSmrk,
                  aes(Year,capture,colour=Plant_Type),alpha=1)+
@@ -256,7 +272,7 @@ plot_c <- ggplot(wndVSmrk,
   scale_color_manual("",values=c("black", "forestgreen"))+
   slide_theme()+
   labs(x="",y="Average Revenue \n($/MWh)",
-         title="Energy Price Capture ($/MWh, 2010-2021)",
+#         title="Energy Price Capture ($/MWh, 2010-2021)",
        caption="Source: AESO Data, accessed via NRGStream") +
   theme(panel.background = element_rect(fill = "transparent"),
         plot.background = element_rect(fill = "transparent", color = NA),
@@ -268,6 +284,8 @@ plot_c <- ggplot(wndVSmrk,
 plot_c
 
 ggsave(path = "images", filename = "wind_vs_market.png", bg = "transparent")
+
+
 
 ################################################################################
 ################################################################################

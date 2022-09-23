@@ -53,10 +53,18 @@
         filter(ID=="LTO_Cogen")
       CCCT <- inputdata %>%
         filter(ID=="AB_CCCT_noncogen")
+      CC_Blended <- inputdata %>%
+        filter(ID=="AB_CCCT_Blended")
+      SC_Blended <- inputdata %>%
+        filter(ID=="AB_SCCT_Blended")
+      H2 <- inputdata %>%
+        filter(ID=="LTO_H2")
       Other <- inputdata %>%
         filter(ID=="LTO_Other")
       Hydro <- inputdata %>%
         filter(ID=="LTO_Hydro")
+      Nuclear <- inputdata %>%
+        filter(ID=="LTO_Nuclear")
       Solar <- inputdata %>%
         filter(ID=="LTO_Solar")
       Storage <- inputdata %>%    
@@ -66,11 +74,16 @@
       }
       
       # Combine the grouped data
-      {case <- rbind(Coal, NGConv, Cogen, SCCT, CCCT, Hydro, Solar, Wind, Storage, Other)
-        case$ID <- factor(case$ID, levels=c("LTO_Coal", "AB_NGCONV", "AB_CCCT_noncogen", "LTO_Cogen",
-                                            "AB_SCCT_noncogen", "LTO_Hydro", "LTO_Other", 
+      {case <- rbind(Coal, NGConv, Cogen, SCCT, CCCT, CC_Blended, SC_Blended,
+                     H2, Hydro, Nuclear, Solar, Wind, Storage, Other)
+        case$ID <- factor(case$ID, levels=c("LTO_Coal", "AB_NGCONV", 
+                                            "AB_CCCT_noncogen", "LTO_Cogen",
+                                            "AB_SCCT_noncogen", "AB_CCCT_Blended", 
+                                            "AB_SCCT_Blended", "LTO_H2", "LTO_Hydro", 
+                                            "LTO_Other", "LTO_Nuclear",
                                             "LTO_Wind", "LTO_Solar", "LTO_Storage"))
-        levels(case$ID) <- c("COAL", "NGCONV", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
+        levels(case$ID) <- c("COAL", "NGCONV", "NGCC", "COGEN", "SCGT", "CC_BLEND",
+                             "SC_BLEND", "H2", "HYDRO", "OTHER", "NUCLEAR",
                              "WIND", "SOLAR", "STORAGE")
       }
       return(case)
@@ -102,7 +115,7 @@
       rbind(.,Import) %>%
       filter(Run_ID == case)
     
-    data$ID <- factor(data$ID, levels=c("Import", "COAL", "NGCONV", "COGEN", 
+    data$ID <- factor(data$ID, levels=c("IMPORT", "COAL", "NGCONV", "COGEN", 
                                         "SCGT", "NGCC", "HYDRO", "OTHER",
                                         "WIND", "SOLAR", "STORAGE"))
     
@@ -155,6 +168,71 @@
                          breaks = seq(MN, MX, by = MX/4)) +
       labs(x = "Date", y = "Output (MWh)", fill = "Resource") +
       scale_fill_manual(values = colours1)
+  }
+  
+  Week_line <- function(year, month, day, case) {
+    # Filters for the desired case study
+    data <- Hour %>%
+      sim_filt1(.) %>%
+      subset(., select=-c(Report_Year,Capacity_Factor)) %>%
+      rbind(.,Import) %>%
+      filter(Run_ID == case)
+    
+    data$ID <- factor(data$ID, levels=c("Import", "COAL", "NGCONV", "COGEN", 
+                                        "SCGT", "NGCC", "HYDRO", "OTHER",
+                                        "WIND", "SOLAR", "STORAGE"))
+    
+    #    data$date <- as.POSIXct(data$date, tz = "MST")
+    
+    wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
+    wk_end <- as.POSIXct(paste(day+7,month,year, sep = "/"), format="%d/%m/%Y")
+    
+    # Select only a single week
+    ##############################################################################
+    WK <- data %>%
+      filter(date >= wk_st, date <= wk_end)
+    
+    # Select only a single week
+    #    WK <- HrTime(data,year,month,day)
+#    ZPrice <- HrTime(ZH,year,month,day)
+#    Expo <- HrTime(Export,year,month,day)
+#    WK$MX <- ZPrice$Demand - Expo$Output_MWH
+    
+    # Set the max and min for the plot
+    MX <- plyr::round_any(max(abs(WK$Output_MWH)), 100, f = ceiling)
+    MN <- plyr::round_any(min(WK$Output_MWH), 100, f = floor)
+    
+    # Plot the data    
+    ggplot() +
+      geom_line(data = WK, aes(x = date, y = Output_MWH, color = ID), 
+#                alpha=0.8, 
+                size=2) +
+      
+      # Add hourly load line
+#      geom_line(data = ZPrice, 
+#                aes(x = date, y = Demand), size=2, colour = "black") +
+      scale_x_datetime(expand=c(0,0)) +
+      
+      # Set the theme for the plot
+      theme_bw() +
+      theme(axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+            panel.background = element_rect(fill = "transparent"),
+            panel.grid.major.x = element_blank(),
+            panel.grid.minor.x = element_blank(),
+            panel.grid = element_blank(),
+            legend.position = "right",
+            plot.background = element_rect(fill = "transparent", color = NA),
+            legend.key = element_rect(colour = "transparent", fill = "transparent"),
+            legend.background = element_rect(fill='transparent'),
+            legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+            text = element_text(size= 15)
+      ) +
+      scale_y_continuous(expand=c(0,0), 
+                         limits = c(MN,MX), 
+                         breaks = seq(MN, MX, by = MX/4)
+                         ) +
+      labs(x = "Date", y = "Output (MWh)", color = "Resource") +
+      scale_color_manual(values = colours1)
   }
   
   ################################################################################
@@ -403,8 +481,8 @@
       summarise(Output_MWH = mean(Output_MWH)) %>%
       mutate(ID = "Import")
     
-    #  Imp$Time_Period  <- as.Date(as.character(Imp$Time_Period), 
-    #                               format = "%Y")
+      Imp$Time_Period  <- as.Date(as.character(Imp$Time_Period), 
+                                   format = "%Y")
     
     #  Imp <- subset(Imp, Time_Period <= '2040-04-05')
     
@@ -412,9 +490,9 @@
     data <- input %>%
       filter(Run_ID == case & Condition == "Average") %>%
       select(ID, Time_Period, Output_MWH) %>%
-      sim_filt(.) %>%
+      sim_filt1(.) %>%
       rbind(.,Imp) 
-    
+      
     data$ID<-fct_relevel(data$ID, "Import")
     data$Time_Period <- as.Date(data$Time_Period)
     
@@ -429,9 +507,10 @@
             plot.title = element_text(hjust = 0.5),
             plot.subtitle = element_text(hjust = 0.5), 
             legend.justification = c(0,0.5)) +
-      #    scale_x_date(expand=c(0,0)) +
+          scale_x_date(expand=c(0,0)) +
       scale_y_continuous(expand=c(0,0)) +
-      scale_fill_manual(values = colours1) +
+      scale_fill_output() +
+#      scale_fill_manual(values = colours5c) +
       labs(x = "Date", y = "Output (GWh)", fill = "Resource") 
   }
   
@@ -441,7 +520,7 @@
     data <- input %>%
       filter(Run_ID == case & Condition == "Average") %>%
       select(ID, Time_Period, Capacity) %>%
-      sim_filt(.)
+      sim_filt1(.)
     
     data %>%
       ggplot() +
@@ -456,8 +535,73 @@
             legend.justification = c(0,0.5)) +
       scale_x_date(expand=c(0,0)) +
       scale_y_continuous(expand=c(0,0)) +
-      scale_fill_manual(values = colours2) +
+      scale_fill_output() +
+#      scale_fill_manual(values = colours6) +
       labs(x = "Date", y = "Capacity (GWh)", fill = "Resource") 
+  }
+  
+  Eval_diffUnits <- function(input,case) {
+    
+    # Filters for the desired case study
+    data <- input %>%
+      filter(Run_ID == case & Condition == "Average") %>%
+      select(ID, Time_Period, Capacity) %>%
+      sim_filt1(.) %>%
+      group_by(ID) %>%
+      arrange(Time_Period) %>%
+      mutate(diff = Capacity - lag(Capacity, default = first(Capacity)))
+    
+    data$Time_Period <- as.Date(data$Time_Period)
+    
+    data %>%
+      ggplot() +
+      aes(Time_Period, (diff), fill = ID) +
+      geom_col(alpha=0.6, size=.5, colour="black") +
+      #    facet_wrap(~ Condition, nrow = 1) +
+      theme_bw() +
+      theme(panel.grid = element_blank(),
+            axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+            plot.title = element_text(hjust = 0.5),
+            plot.subtitle = element_text(hjust = 0.5), 
+            legend.justification = c(0,0.5)) +
+      scale_x_date(expand=c(0,0)) +
+      scale_y_continuous(expand=c(0,0)) +
+      scale_fill_output() +
+#      scale_fill_manual(values = colours5d) +
+      labs(x = "Date", y = "Yearly change in capacity (MW)", fill = "Resource",
+           title = paste("Simulation: ",DB, sep = "")) 
+  }
+  
+  Eval_diffcap <- function(input,case) {
+    
+    # Filters for the desired case study
+    data <- input %>%
+      filter(Run_ID == case & Condition == "Average") %>%
+      select(ID, Time_Period, Capacity) %>%
+      sim_filt1(.) %>%
+      group_by(ID) %>%
+      arrange(Time_Period) %>%
+      mutate(diff = Capacity - lag(Capacity, default = first(Capacity)))
+    
+    data$Time_Period <- as.Date(data$Time_Period)
+    
+    data %>%
+      ggplot() +
+      aes(Time_Period, (diff), fill = ID) +
+      geom_col(alpha=0.6, size=.5, colour="black") +
+      #    facet_wrap(~ Condition, nrow = 1) +
+      theme_bw() +
+      theme(panel.grid = element_blank(),
+            axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+            plot.title = element_text(hjust = 0.5),
+            plot.subtitle = element_text(hjust = 0.5), 
+            legend.justification = c(0,0.5)) +
+      scale_x_date(expand=c(0,0)) +
+      scale_y_continuous(expand=c(0,0)) +
+      scale_fill_output() +
+#      scale_fill_manual(values = colours5d) +
+      labs(x = "Date", y = "Yearly change in capacity (MW)", fill = "Resource",
+           title = paste("Simulation: ",DB, sep = "")) 
   }
   
   ################################################################################
@@ -474,7 +618,7 @@
     #    mutate(Percentage = n / sum(n))
     
     # Filter the data by resource
-    case_Time <- sim_filt(data)
+    case_Time <- sim_filt1(data)
     
     # Remove negative generation (Storage)
     case_Time$Output_MWH[case_Time$Output_MWH < 0] <- NA
@@ -505,8 +649,10 @@
       scale_y_continuous(expand=c(0,0),
                          labels = scales::percent, 
                          breaks = sort(c(seq(0,1,length.out=5),0.3))) +
-      scale_fill_manual(values = colours2) +
-      labs(x = "Date", y = "Percentage of Generation", fill = "Resource") 
+#      scale_fill_manual(values = colours6) +
+      scale_fill_output() +
+      labs(x = "Date", y = "Percentage of Generation", fill = "Resource",
+           title = paste("Simulation: ",DB, sep = "")) 
   }
   
   ################################################################################
@@ -523,7 +669,13 @@
       summarise(Units = sum(Units_Built)) 
     
     data$Fuel_Type <- factor(data$Fuel_Type, 
-                             levels = c("WND","SUN","Gas0","Gas1", "PS", "OT"))
+                             levels = c("WND","SUN","PS","UR","WAT","OT","H2",
+                                        "GasB","Gas2","Gas1","Gas0","Gas","COAL"))
+    
+#    data$Time_Period <- as.Date(data$Time_Period)
+    
+#    mnx <- min(Month$Report_Year)
+#    mxx <- max(Month$Report_Year)
     
     data %>%
       ggplot() +
@@ -535,9 +687,13 @@
       ) +
       labs(x = "Date", y = "# of Units Built", fill = "Fuel Type") +
       scale_y_continuous(expand=c(0,0),
-                         limits = c(0,(max(data$Units)+1))) +
-      #    scale_x_discrete(expand=c(0,0)) +
-      scale_fill_manual(values = colours3)
+                         #limits = c(0,(max(data$Units)+1))
+                         ) +
+#      scale_x_continuous(expand=c(0,0),
+#                       limits = c(mnx,mxx)
+#                       ) +
+      scale_fill_built()
+#      scale_fill_manual(values = colours3)
   }
   
   ################################################################################
@@ -553,7 +709,11 @@
       summarise(Units = sum(Units_Built), Capacity = sum(Capacity_Built)) 
     
     data$Fuel_Type <- factor(data$Fuel_Type, 
-                             levels = c("WND","SUN","Gas0","Gas1", "PS", "OT"))
+                             levels = c("WND","SUN","PS","UR","WAT","OT","H2",
+                                        "GasB","Gas2","Gas1","Gas0","Gas","COAL"
+                                        ))
+    
+#    data$Fuel_Type[is.na(data$Fuel_Type)] <- "GasB"
     
     Tot <- data %>%
       group_by(Time_Period) %>%
@@ -561,6 +721,9 @@
     
     mxu <- max(Tot$totu)
     mxc <- max(Tot$totc)
+    
+    mnx <- min(Month$Report_Year)
+    mxx <- max(Month$Report_Year)
     
     ggplot(data) +
       aes(Time_Period, Units, fill = Fuel_Type, group = Fuel_Type) +
@@ -574,8 +737,9 @@
       labs(x = "Date", y = "# of Units Built", fill = "Fuel Type") +
       scale_y_continuous(expand=c(0,0),
                          limits = c(0,(mxu+1))) +
-      #    scale_x_discrete(expand=c(0,0)) +
-      scale_fill_manual(values = colours3)
+#      scale_x_discrete(limits=c(mnx,mxx)) +
+      scale_fill_built()
+  #    scale_fill_manual(values = colours4)
   }
   
   ################################################################################
@@ -591,7 +755,8 @@
       summarise(Units = sum(Units_Built), Capacity = sum(Capacity_Built)) 
     
     data$Fuel_Type <- factor(data$Fuel_Type, 
-                             levels = c("WND","SUN","Gas0","Gas1", "PS", "OT"))
+                             levels = c("WND","SUN","PS","UR","WAT","OT","H2",
+                                        "GasB","Gas2","Gas1","Gas0","Gas","COAL"))
     
     Tot <- data %>%
       group_by(Time_Period) %>%
@@ -611,7 +776,8 @@
       scale_y_continuous(expand=c(0,0),
                          limits = c(0,plyr::round_any(mxc, 100, f = ceiling))) +
       #    scale_x_discrete(expand=c(0,0)) +
-      scale_fill_manual(values = colours3)
+      scale_fill_built()
+#      scale_fill_manual(values = colours4)
   }
   
   ################################################################################

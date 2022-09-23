@@ -103,6 +103,7 @@
   library(zoo)
   library(ggpattern)
   library(patchwork)
+  library(timeDate)
 #  library(lmtest)
 }
 
@@ -123,6 +124,7 @@
   merit_filt <- filter(merit, 
                        date >= as.Date("2017-01-1"))
   rm(merit)
+  load("forecast_data.RData")
   
   setwd("D:/Documents/GitHub/AuroraEval")
   
@@ -176,10 +178,10 @@
 # Connect to SQL
 ################################################################################
 
-{
-  DB <- "Jul_07_2022"
-  # Connect to SQL database
-  ################################################################################
+{ 
+  DB <- "Sep_20_2022"
+# Connect to SQL database
+################################################################################
   con <- dbConnect(odbc(),
                    Driver = "SQL Server",
                    Server = "192.168.0.139,49172",
@@ -187,7 +189,7 @@
                    UID = "admin",
                    PWD = "SOB704910",
                    Port = 49172)
-  
+  {  
   # Connect to MySQL database
   ################################################################################
   #  con1 <- dbConnect(RMariaDB::MariaDB(),
@@ -213,9 +215,12 @@
     ResourceYr <- dbReadTable(con,'ResourceYear1')
     #ResourceHr <- dbReadTable(con,'ResourceHour1')
     #StackHr <- dbReadTable(con,'ResourceStackHour1')
+    StackYr <- dbReadTable(con,'ResourceStackYear1')
     
     #LTRes <- dbReadTable(con,'LTResValue1')
-    #Build <- dbReadTable(con,'LTBuildReport1')
+    #LTMarg <- dbReadTable(con,'LTMargResLog1')
+    #LTCap <- dbReadTable(con,'LTCapacLog1')
+    Build <- dbReadTable(con,'LTBuildReport1')
     #Study <- dbReadTable(con,'StudyLog1')
     #Link <- dbReadTable(con,'LinkYear1')
     #Fuel <- dbReadTable(con,'FuelYear1')
@@ -243,11 +248,65 @@
       # Set legend variables
       colours = c("darkslateblue", "grey", "darkslategrey", "coral4", "goldenrod4", 
                   "dodgerblue", "forestgreen", "gold", "darkolivegreen1", "cyan")
-      colours1 = c("darkslateblue", "black", "grey", "darkslategrey", "coral4", "goldenrod4", 
-                   "darkcyan", "dodgerblue", "forestgreen", "gold", "cyan")
-      colours2 = c("grey", "darkslategrey", "coral4", "goldenrod4", 
-                   "dodgerblue", "darkcyan", "forestgreen", "gold", "cyan")
-      colours3 = c("forestgreen", "gold", "coral4", "goldenrod4", "cyan", "dodgerblue")
+      colours1 = c("darkslateblue", "black", "grey", "darkslategrey", "coral4", 
+                   "goldenrod4", "darkcyan", "dodgerblue", "forestgreen", "gold", 
+                   "cyan") #11 colours
+      colours2 = c("black", "grey", "darkslategrey", "coral4", "goldenrod4", 
+                   "dodgerblue", "darkcyan", "forestgreen", "gold", "cyan") #10 colours
+      colours3 = c("forestgreen", "gold", "darkslategrey", "goldenrod4", "cyan", 
+                   "dodgerblue")
+      colours4 = c("forestgreen","gold","cyan","dodgerblue","darkorange1","goldenrod4",
+                   "darkslategrey","darkslategrey") #8 colours
+      colours4a = c("forestgreen","gold","cyan","dodgerblue","goldenrod4",
+                   "darkslategrey","darkslategrey") #7 colours
+      colours5 = c("darkslateblue", "black", "grey", "darkslategrey", "coral4", 
+                   "goldenrod4", "darkorange1", "darkcyan", "dodgerblue", 
+                   "forestgreen", "gold", "cyan") #12 colours
+      colours5a = c("black", "grey", "darkslategrey", "coral4", 
+                   "goldenrod4", "darkorange1", "darkcyan", "dodgerblue", 
+                   "forestgreen", "gold", "cyan") #11 colours
+      colours5b = c("black", "grey", "darkslategrey", "coral4", 
+                    "goldenrod4", "darkcyan", "dodgerblue", 
+                    "forestgreen", "gold", "cyan") #10 colours
+      colours5c = c("darkslateblue", "black", "grey", "darkslategrey", "coral4", 
+                   "goldenrod4", "darkorange1","lightsalmon", "darkcyan", "dodgerblue", 
+                   "forestgreen", "gold", "cyan","blue") #13 colours
+      colours5d = c("black", "grey", "darkslategrey", "coral4", 
+                    "goldenrod4", "darkorange1","lightsalmon", "darkcyan", "dodgerblue", 
+                    "forestgreen", "gold", "cyan","blue") #12 colours
+      colours6 = c("black", "grey", "darkslategrey", "coral4", 
+                   "goldenrod4", "darkorange1","lightsalmon", "darkcyan", "dodgerblue", 
+                   "forestgreen", "gold", "cyan") #12 colours
+      colours6a = c("black", "grey", "darkslategrey", "coral4", 
+                   "goldenrod4", "darkcyan", "dodgerblue", 
+                   "forestgreen", "gold", "cyan") #10 colours
+      
+      scale_fill_output <- function(...){
+        ggplot2:::manual_scale(
+          'fill', 
+          values = setNames(c("black", "grey", "darkslategrey", "coral4","goldenrod4", 
+                              "darkorange1", "lightsalmon", "firebrick1", 
+                              "darkcyan", "dodgerblue", 
+                              "chartreuse","forestgreen", "gold", "cyan"), 
+                            c("COAL","NGCONV","NGCC","COGEN","SCGT","CC_BLEND",
+                              "SC_BLEND","H2",
+                              "HYDRO","OTHER","UR","WIND","SOLAR","STORAGE")), 
+          ...
+        )
+      }
+      
+      scale_fill_built <- function(...){
+        ggplot2:::manual_scale(
+          'fill', 
+          values = setNames(c("black", "darkslategrey", "coral4","goldenrod4", 
+                              "darkorange1", "lightsalmon", "indianred", 
+                              "darkcyan", "dodgerblue", 
+                              "firebrick1","forestgreen", "gold", "cyan"), 
+                            c("COAL","Gas","COGEN","SCGT","GasB_CC","GasB","H2",
+                              "WAT","OT","UR","WND","SUN","PS")), 
+          ...
+        )
+      }
 
     # Converts the date and time and identifies the week when applicable
     ################################################################################
@@ -259,8 +318,8 @@
                                    format = "%Y")
       ZoneHour$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",ZoneHour$Time_Period))), 
                                   tz = "MST")-(60*60)
-#      ResourceHr$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",ResourceHr$Time_Period))), 
-#                            tz = "MST")-(60*60)
+      #ResourceHr$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",ResourceHr$Time_Period))), 
+      #                      tz = "MST")-(60*60)
       
       # Selects only the required columns
       ################################################################################
@@ -296,29 +355,48 @@
       Import <- ZH %>%
         subset(., select = c(date, Imports, Run_ID)) %>%
         'colnames<-'(c("date", "Output_MWH", "Run_ID")) %>%
-        add_column(ID = "Import")
+        add_column(ID = "IMPORT")
       
       Export <- ZH %>%
         subset(., select = c(date, Exports, Run_ID)) %>%
         'colnames<-'(c("date", "Output_MWH", "Run_ID")) %>%
-        add_column(ID = "Export")
+        add_column(ID = "EXPORT")
       
       Export$Output_MWH <- Export$Output_MWH * -1
     }
-   }
+    }
+    }
 }
 
-AESO_Sim(2021,03,01,BC)
-
-price_comp(2020,2021,BC)
+year_price(2021,BC)
 
 gen_comp(2020,2021,BC)
 
-AESOSim(2020,2021,BC)
+price_comp(2020,2021,BC)
+
+margin(2020,2021,BC)
+
+Sample_output(2021,03,01,BC)
+
+Fossil_line(2021,03,01,BC)
+
+Sample_output(2021,06,01,BC)
+
+Fossil_line(2021,06,01,BC)
+
+seas_price(2020,2021,BC)
+
+Weekly_line(2021,06,01,BC)
 
 tot_gen(2020,2021,BC)
 
 comp_dur(2018,2021,BC)
 
 load_dur(2018,2021,BC)
+
+EvalOut(Year,BC)
+
+EvalPerc(Year,BC)
+
+Eval_diff(Year,BC)
  

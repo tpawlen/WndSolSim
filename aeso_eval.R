@@ -12,6 +12,925 @@ plnt_tr <- function(Asset_ID) {
     subset(., select = c(time, Price, gen, Capacity, Plant_Type, AESO_Name, CO2, Heat.Rate, Revenue, Cap_Fac))
 }
 
+zero_bid <- function(plant_type) {
+  CogenA <- sub_samp %>%
+    filter(Plant_Type == plant_type, 
+           #         time >= as.Date("2020-01-1")
+    ) %>%
+    mutate(hour = he) %>%
+    subset(., select = c(time, date, hour, ID, gen, Capacity))
+  
+  CogenB <- merit_filt %>%
+    filter(Plant_Type == plant_type,
+           #         date >= as.Date("2020-01-1")
+    ) %>%
+    mutate(#time = paste0(date," ", hour-1, ":00:00"),
+      ID = asset_id) %>%
+    subset(., select = c(date,hour, AESO_Name, ID, available_mw, dispatched_mw, 
+                         size, flexible, price))
+  
+  Cogen <- merge(CogenA, CogenB, by = c("date","hour","ID"))
+  
+  BidZero<- Cogen %>%
+    filter(price == 0) %>%
+    group_by(ID, AESO_Name) %>%
+    summarise(#dispatched = mean(dispatched_mw), 
+              available = mean(available_mw),
+              Capacity = mean(Capacity)) %>%
+    mutate(#dis_Percent = dispatched/Capacity*100,
+           Percent = available/Capacity*100)
+  
+  if (plant_type == "COGEN" | plant_type == "SCGT") {
+    BidZero <- BidZero %>%
+      mutate(Heat_Rate = round((5357.1*(Percent/100)^2-11150*(Percent/100)+15493),digits=0),
+             Percent = round(Percent,0),
+             Heat_Rate5 = (5357.1*((Percent+5)/100)^2-11150*((Percent+5)/100)+15493),
+             Heat_Rate100 = (5357.1-11150+15493))
+  }
+  
+  if (plant_type == "COAL") {
+    BidZero <- BidZero %>%
+      mutate(Heat_Rate = round((1517.9*(Percent/100)^2-3233.9*(Percent/100)+11136),digits=0),
+             Percent = round(Percent,0),
+             Heat_Rate5 = (1517.9*((Percent+5)/100)^2-3233.9*((Percent+5)/100)+11136),
+             Heat_Rate100 = (1517.9-3233.9+11136))
+  } 
+  
+  if (plant_type == "NGCC") {
+    BidZero <- BidZero %>%
+      mutate(Heat_Rate = round((5803.6*(Percent/100)^2-11034*(Percent/100)+12800),digits=0),
+             Percent = round(Percent,0),
+             Heat_Rate5 = (5803.6*((Percent+5)/100)^2-11034*((Percent+5)/100)+12800),
+             Heat_Rate100 = (5803.6-11034+12800))
+  }
+  
+  if (plant_type == "NGCONV") {
+    BidZero <- BidZero %>%
+      mutate(Heat_Rate = round((892.86*(Percent/100)^2-2610.7*(Percent/100)+11521),digits=0),
+             Percent = round(Percent,0),
+             Heat_Rate5 = (892.86*((Percent+5)/100)^2-2610.7*((Percent+5)/100)+11521),
+             Heat_Rate100 = (892.86-2610.7+11521))
+  }
+  
+#  Max <- Cogen %>% 
+#    filter(price >=900) %>%
+#    group_by(ID, AESO_Name) %>%
+#    summarise(max_run = mean(available_mw), Capacity = mean(Capacity), price = mean(price)) %>%
+#    mutate(Percent = (1-max_run/Capacity)*100)
+  
+  
+  setwd("G:/My Drive/transfer")
+  write.csv(BidZero, paste0(plant_type,"_Bid_Zero.csv"))
+}
+
+hockey_stick <- function(plant_type) {
+  # Code to determine the bidding behavior of different technologies by 
+  # identifying the capacity factors for various offers, and separating them into
+  # bins, then taking the median value. This is the plot for the box and whisker plots.
+  # The bid factor is identified as this median value divided by the overall 
+  # average minus one, and is shown in the plots as a label.
+  
+  # Gather the data
+  dataA <- sub_samp %>%
+    filter(Plant_Type == plant_type, 
+    ) %>%
+    mutate(hour = he) %>%
+    subset(., select = c(time, date, hour, ID, Capacity))
+  
+  dataB <- merit_filt %>%
+    filter(Plant_Type == plant_type,
+    ) %>%
+    mutate(ID = asset_id) %>%
+    subset(., select = c(date,hour, ID, available_mw, size, block_number,price))
+  
+  # Combine the data
+  data <- merge(dataA, dataB, by = c("date","hour","ID")) 
+  
+  # Combine individual plant data and calculate the capacity factors for the 
+  # different offers.
+  data <- data %>%
+    group_by(time,price) %>%
+    summarise(available = sum(size)) %>%
+    ungroup() %>%
+    group_by(time) %>%
+    arrange(price) %>%
+    mutate(csum = cumsum(available),
+           Capacity = max(csum),
+           Cap_Fac = csum/Capacity)
+  
+  # Remove duplicate rows
+  data <- data[!duplicated(data[c(2,6)]),]
+  
+  
+  # Identify the bins. 
+#  tags <- c("[0-10%)","[10-20%)","[20-30%)","[30-40%)","[40-50%)","[50-60%)",
+#            "[60-70%)","[70-80%)","[80-90%)","[90-100%]")
+  
+  tags1 <- c("[0-05%)","[05-10%)","[10-15%)","[15-20%)","[20-25%)","[25-30%)",
+             "[30-35%)","[35-40%)","[40-45%)","[45-50%)","[50-55%)","[55-60%)",
+            "[60-65%)","[65-70%)","[70-75%)","[75-80%)","[80-85%)","[85-90%)",
+            "[90-95%)","[95-100%]")
+  
+  # Separate the data into the bins
+#  data3 <- data1 %>%
+#    mutate(tag = case_when(
+#      Cap_Fac < 0.1 ~ tags[1],
+#      Cap_Fac >= 0.1 & Cap_Fac < 0.2 ~ tags[2],
+#      Cap_Fac >= 0.2 & Cap_Fac < 0.3 ~ tags[3],
+#      Cap_Fac >= 0.3 & Cap_Fac < 0.4 ~ tags[4],
+#      Cap_Fac >= 0.4 & Cap_Fac < 0.5 ~ tags[5],
+#      Cap_Fac >= 0.5 & Cap_Fac < 0.6 ~ tags[6],
+#      Cap_Fac >= 0.6 & Cap_Fac < 0.7 ~ tags[7],
+#      Cap_Fac >= 0.7 & Cap_Fac < 0.8 ~ tags[8],
+#      Cap_Fac >= 0.8 & Cap_Fac < 0.9 ~ tags[9],
+#      Cap_Fac >= 0.9 & Cap_Fac <= 1 ~ tags[10]
+#    ))
+  
+  data <- data %>%
+    mutate(tag = case_when(
+      Cap_Fac < 0.05 ~ tags1[1],
+      Cap_Fac >= 0.05 & Cap_Fac < 0.1 ~ tags1[2],
+      Cap_Fac >= 0.1 & Cap_Fac < 0.15 ~ tags1[3],
+      Cap_Fac >= 0.15 & Cap_Fac < 0.2 ~ tags1[4],
+      Cap_Fac >= 0.2 & Cap_Fac < 0.25 ~ tags1[5],
+      Cap_Fac >= 0.25 & Cap_Fac < 0.3 ~ tags1[6],
+      Cap_Fac >= 0.3 & Cap_Fac < 0.35 ~ tags1[7],
+      Cap_Fac >= 0.35 & Cap_Fac < 0.4 ~ tags1[8],
+      Cap_Fac >= 0.4 & Cap_Fac < 0.45 ~ tags1[9],
+      Cap_Fac >= 0.45 & Cap_Fac < 0.5 ~ tags1[10],
+      Cap_Fac >= 0.5 & Cap_Fac < 0.55 ~ tags1[11],
+      Cap_Fac >= 0.55 & Cap_Fac < 0.6 ~ tags1[12],
+      Cap_Fac >= 0.6 & Cap_Fac < 0.65 ~ tags1[13],
+      Cap_Fac >= 0.65 & Cap_Fac < 0.7 ~ tags1[14],
+      Cap_Fac >= 0.7 & Cap_Fac < 0.75 ~ tags1[15],
+      Cap_Fac >= 0.75 & Cap_Fac < 0.8 ~ tags1[16],
+      Cap_Fac >= 0.8 & Cap_Fac < 0.85 ~ tags1[17],
+      Cap_Fac >= 0.85 & Cap_Fac < 0.9 ~ tags1[18],
+      Cap_Fac >= 0.9 & Cap_Fac < 0.95 ~ tags1[19],
+      Cap_Fac >= 0.95 & Cap_Fac <= 1 ~ tags1[20]
+    ))
+  
+  tot_ave <- median(data$price)
+#  tot_ave <- median(data4$price)
+  
+  # Summarize the median prices and bid factors.
+  means <- data %>%
+    group_by(tag) %>%
+    summarize(ave = mean(price),
+              med = median(price),
+              bid = med/tot_ave-1) %>%
+    mutate_if(is.numeric,round,2)
+  
+  # Remove duplicate rows
+  means <- means[!duplicated(means[c(1,2,3,4)]),]
+  
+  # Plot the data
+  ggplot(data = data, mapping = aes(x=tag,y=price)) +
+    geom_jitter(color = "gray", alpha=0.2) + 
+    geom_boxplot(fill="gray",color="black",alpha=0.3) +
+#    geom_text(data = means, aes(label = dollar(round(med, digits=0)),hjust=1.2, 
+#                                y = med+90)) +
+    geom_label(data = means, aes(label = bid, vjust="inward", y = ave),size=5) +
+    labs(x='Capacity Factor') + 
+    theme_bw() +
+    theme(legend.position="right",
+          axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          text = element_text(size= 15)
+    )  +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(0,1000),
+                       n.breaks = 8) +
+    labs(x = "Capacity Factor",
+         y = "Offer Price ($/MWh)",
+         title = paste(plant_type, "Bidding Behaviour", sep = " "),
+         )
+  
+  # Unused code to plot simple scatter plot of offers.
+#  test2 <- test1 %>%
+#    group_by(Cap_Fac) %>%
+#    summarize(q95_price=quantile(price, probs=c(0.95)),
+#              q5_price=quantile(price, probs=c(0.05)),
+#              mean_price=ave(price))
+  
+#  ggplot(test2) + 
+#    geom_line(aes(Cap_Fac,mean_price)) +
+#    geom_ribbon(aes(Cap_Fac,ymax=q95_price,ymin=q5_price),alpha=0.5) +
+#    theme_bw() +
+#    theme(panel.background = element_rect(fill = "transparent"),
+#          panel.grid = element_blank(),
+#          plot.background = element_rect(fill = "transparent", color = NA),
+#          text = element_text(size= 15),
+#          plot.title = element_text(hjust = 0.5),
+#          plot.subtitle = element_text(hjust = 0.5),
+#          axis.text.x = element_text(angle = 45, hjust=1)
+#    ) +
+#    scale_y_continuous(expand=c(0,0),
+#                       limits = c(0,1000)) +
+#    labs(x = "Capacity Factor",
+#         y = "Offer Price ($/MWh)",
+#         title = paste(plant_type, "Bidding Behaviour", sep = " "),
+#    )
+
+#  test <- Cogen %>%
+#    group_by(time, ID) %>%
+#    arrange(block_number) %>%
+#    mutate(csum = cumsum(Cap_Fac)) %>%
+#    group_by(block_number,price,csum) %>%
+#    summarise(block_number = median(block_number),
+#              price = median(price),
+#              csum = median(csum))
+  
+  #fit polynomial regression models up to degree 5
+#  fit1 <- lm(price~Cap_Fac, data=test1)
+#  fit2 <- lm(price~poly(Cap_Fac,2,raw=TRUE), data=test1)
+#  fit3 <- lm(price~poly(Cap_Fac,3,raw=TRUE), data=test1)
+#  fit4 <- lm(price~poly(Cap_Fac,4,raw=TRUE), data=test1)
+#  fit5 <- lm(price~poly(Cap_Fac,5,raw=TRUE), data=test1)
+#  fitlog <- lm(log(price)~Cap_Fac, data=test1)
+#  fitexp <- lm(price~exp(Cap_Fac), data=test1)
+#  log.model <- lm(log(price) ~ Cap_Fac, data=test1)
+  
+  #calculated adjusted R-squared of each model
+#  summary(fit1)$adj.r.squared
+#  summary(fit2)$adj.r.squared
+#  summary(fit3)$adj.r.squared
+#  summary(fit4)$adj.r.squared
+#  summary(fit5)$adj.r.squared
+  
+#  plot(test1$Cap_Fac, test1$price, pch=19, xlab='Capacity Factor', ylab='Price ($/MWh)')
+  
+#  x_axis <- seq(0,1, length=15)
+  
+  #add curve of each model to plot
+#  lines(x_axis, predict(fit1, data.frame(x=x_axis)), col='green')
+#  lines(x_axis, predict(fit2, data.frame(x=x_axis)), col='red')
+#  lines(x_axis, predict(fit3, data.frame(x=x_axis)), col='purple')
+#  lines(x_axis, predict(fit4, data.frame(x=x_axis)), col='blue')
+#  lines(x_axis, predict(fit5, data.frame(x=x_axis)), col='orange')
+  
+#  Cap_Fac <- c(0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,
+#               0.75,0.8,0.85,0.9,0.95,1)
+#  price <- c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,15,20,25,1000) #COGEN
+#  price <- c(0,0,0,0,0,0,0,0,0,5,5,10,15,15,15,20,20,25,30,1000) #COAL
+#  price <-c(0,30,30,30,30,30,30,30,30,30,30,35,40,45,50,55,65,75,1000,1000) #SCGT
+#  price <-c(0,0,0,0,0,0,0,5,5,5,10,10,10,15,20,25,30,35,40,1000) #NGCC
+#  Aurora <- data.frame(Cap_Fac, price)
+  
+#  gg<-ggplot(test1, aes(x = Cap_Fac, y=price)) + 
+#    geom_point() +
+##    geom_point(data=Aurora, color="red") +
+##    stat_smooth(method = 'nls', formula = 'y~a^(b*x+c)',
+##                method.args = list(start=c(a=20, b=10, c=-9)), se=FALSE) +
+##    geom_line(mapping=aes(y=my))+
+##    geom_smooth(method = 'lm', aes(color="Exp Model"), formula=(y ~ exp(x)), 
+##                se = FALSE, linetype = 1) +
+#    theme_bw() +
+#    theme(panel.background = element_rect(fill = "transparent"),
+#          panel.grid = element_blank(),
+#          plot.background = element_rect(fill = "transparent", color = NA),
+#          text = element_text(size= 15),
+#          plot.title = element_text(hjust = 0.5),
+#          plot.subtitle = element_text(hjust = 0.5),
+#          axis.text.x = element_text(angle = 45, hjust=1)
+#    ) +
+#    scale_y_continuous(expand=c(0,0),
+#                       limits = c(0,1000),
+#                       n.breaks = 8) +
+    #    ggtitle(paste(name, type, sep = ": "))+
+#    labs(x = "Capacity Factor",
+#         y = "Offer Price ($/MWh)",
+#         title = paste(plant_type, "Bidding Behaviour", sep = " "),
+##         subtitle = paste("Bids at $0 at ",round(must_run*100, digits=2),"% CF",sep="")
+#)# +
+#    lines(x_axis, predict(fit1, data.frame(x=x_axis)), col='green')
+  
+#    setwd("G:/My Drive/transfer")
+#    write.csv(test1, paste0(plant_type, "_Bid_Behaviour.csv"))
+
+}
+
+hockey_stick10 <- function(plant_type) {
+  # Code to determine the bidding behavior of different technologies by 
+  # identifying the capacity factors for various offers, and separating them into
+  # bins, then taking the median value. This is the plot for the box and whisker plots.
+  # The bid factor is identified as this median value divided by the overall 
+  # average minus one, and is shown in the plots as a label.
+  
+  # Gather the data
+  dataA <- sub_samp %>%
+    filter(Plant_Type == plant_type, 
+    ) %>%
+    mutate(hour = he) %>%
+    subset(., select = c(time, date, hour, ID, Capacity))
+  
+  dataB <- merit_filt %>%
+    filter(Plant_Type == plant_type,
+    ) %>%
+    mutate(ID = asset_id) %>%
+    subset(., select = c(date,hour, ID, available_mw, size, block_number,price))
+  
+  # Combine the data
+  data <- merge(dataA, dataB, by = c("date","hour","ID")) 
+  
+  # Combine individual plant data and calculate the capacity factors for the 
+  # different offers.
+  data1 <- data %>%
+    group_by(time,price) %>%
+    summarise(available = sum(size)) %>%
+    ungroup() %>%
+    group_by(time) %>%
+    arrange(price) %>%
+    mutate(csum = cumsum(available),
+           Capacity = max(csum),
+           Cap_Fac = csum/Capacity)
+  
+  # Remove duplicate rows
+  data1 <- data1[!duplicated(data1[c(2,6)]),]
+  
+  
+  # Identify the bins. 
+  tags <- c("[0-10%)","[10-20%)","[20-30%)","[30-40%)","[40-50%)","[50-60%)",
+            "[60-70%)","[70-80%)","[80-90%)","[90-100%]")
+  
+  #  tags1 <- c("[0-05%)","[05-10%)","[10-15%)","[15-20%)","[20-25%)","[25-30%)",
+  #             "[30-35%)","[35-40%)","[40-45%)","[45-50%)","[50-55%)","[55-60%)",
+  #            "[60-65%)","[65-70%)","[70-75%)","[75-80%)","[80-85%)","[85-90%)",
+  #            "[90-95%)","[95-100%]")
+  
+  # Separate the data into the bins
+  data3 <- data1 %>%
+    mutate(tag = case_when(
+      Cap_Fac < 0.1 ~ tags[1],
+      Cap_Fac >= 0.1 & Cap_Fac < 0.2 ~ tags[2],
+      Cap_Fac >= 0.2 & Cap_Fac < 0.3 ~ tags[3],
+      Cap_Fac >= 0.3 & Cap_Fac < 0.4 ~ tags[4],
+      Cap_Fac >= 0.4 & Cap_Fac < 0.5 ~ tags[5],
+      Cap_Fac >= 0.5 & Cap_Fac < 0.6 ~ tags[6],
+      Cap_Fac >= 0.6 & Cap_Fac < 0.7 ~ tags[7],
+      Cap_Fac >= 0.7 & Cap_Fac < 0.8 ~ tags[8],
+      Cap_Fac >= 0.8 & Cap_Fac < 0.9 ~ tags[9],
+      Cap_Fac >= 0.9 & Cap_Fac <= 1 ~ tags[10]
+    ))
+  
+  #  data4 <- data1 %>%
+  #    mutate(tag = case_when(
+  #      Cap_Fac < 0.05 ~ tags[1],
+  #      Cap_Fac >= 0.05 & Cap_Fac < 0.1 ~ tags1[2],
+  #      Cap_Fac >= 0.1 & Cap_Fac < 0.15 ~ tags1[3],
+  #      Cap_Fac >= 0.15 & Cap_Fac < 0.2 ~ tags1[4],
+  #      Cap_Fac >= 0.2 & Cap_Fac < 0.25 ~ tags1[4],
+  #      Cap_Fac >= 0.25 & Cap_Fac < 0.3 ~ tags1[5],
+  #      Cap_Fac >= 0.3 & Cap_Fac < 0.35 ~ tags1[6],
+  #      Cap_Fac >= 0.35 & Cap_Fac < 0.4 ~ tags1[7],
+  #      Cap_Fac >= 0.4 & Cap_Fac < 0.45 ~ tags1[8],
+  #      Cap_Fac >= 0.45 & Cap_Fac < 0.5 ~ tags1[9],
+  #      Cap_Fac >= 0.5 & Cap_Fac < 0.55 ~ tags1[10],
+  #      Cap_Fac >= 0.55 & Cap_Fac < 0.6 ~ tags1[11],
+  #      Cap_Fac >= 0.6 & Cap_Fac < 0.65 ~ tags1[12],
+  #      Cap_Fac >= 0.65 & Cap_Fac < 0.7 ~ tags1[13],
+  #      Cap_Fac >= 0.7 & Cap_Fac < 0.75 ~ tags1[14],
+  #      Cap_Fac >= 0.75 & Cap_Fac < 0.8 ~ tags1[15],
+  #      Cap_Fac >= 0.8 & Cap_Fac < 0.85 ~ tags1[16],
+  #      Cap_Fac >= 0.85 & Cap_Fac < 0.9 ~ tags1[17],
+  #      Cap_Fac >= 0.9 & Cap_Fac < 0.95 ~ tags1[18],
+  #      Cap_Fac >= 0.95 & Cap_Fac <= 1 ~ tags1[19]
+  #    ))
+  
+  tot_ave <- median(data3$price)
+  #  tot_ave <- median(data4$price)
+  
+  # Summarize the median prices and bid factors.
+  means <- data3 %>%
+    group_by(tag) %>%
+    summarize(ave = mean(price),
+              med = median(price),
+              bid = med/tot_ave-1) %>%
+    mutate_if(is.numeric,round,2)
+  
+  # Plot the data
+  ggplot(data = data3, mapping = aes(x=tag,y=price)) +
+    geom_jitter(color = "gray", alpha=0.2) + 
+    geom_boxplot(fill="gray",color="black",alpha=0.3) +
+    #    geom_text(data = means, aes(label = dollar(round(med, digits=0)),hjust=1.2, 
+    #                                y = med+90)) +
+    geom_label(data = means, aes(label = bid, vjust="inward", y = ave),size=5) +
+    labs(x='Capacity Factor') + 
+    theme_bw() +
+    theme(legend.position="right",
+          axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          text = element_text(size= 15)
+    )  +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(0,1000),
+                       n.breaks = 8) +
+    labs(x = "Capacity Factor",
+         y = "Offer Price ($/MWh)",
+         title = paste(plant_type, "Bidding Behaviour", sep = " "),
+    )
+  
+  # Unused code to plot simple scatter plot of offers.
+  #  test2 <- test1 %>%
+  #    group_by(Cap_Fac) %>%
+  #    summarize(q95_price=quantile(price, probs=c(0.95)),
+  #              q5_price=quantile(price, probs=c(0.05)),
+  #              mean_price=ave(price))
+  
+  #  ggplot(test2) + 
+  #    geom_line(aes(Cap_Fac,mean_price)) +
+  #    geom_ribbon(aes(Cap_Fac,ymax=q95_price,ymin=q5_price),alpha=0.5) +
+  #    theme_bw() +
+  #    theme(panel.background = element_rect(fill = "transparent"),
+  #          panel.grid = element_blank(),
+  #          plot.background = element_rect(fill = "transparent", color = NA),
+  #          text = element_text(size= 15),
+  #          plot.title = element_text(hjust = 0.5),
+  #          plot.subtitle = element_text(hjust = 0.5),
+  #          axis.text.x = element_text(angle = 45, hjust=1)
+  #    ) +
+  #    scale_y_continuous(expand=c(0,0),
+  #                       limits = c(0,1000)) +
+  #    labs(x = "Capacity Factor",
+  #         y = "Offer Price ($/MWh)",
+  #         title = paste(plant_type, "Bidding Behaviour", sep = " "),
+  #    )
+  
+  #  test <- Cogen %>%
+  #    group_by(time, ID) %>%
+  #    arrange(block_number) %>%
+  #    mutate(csum = cumsum(Cap_Fac)) %>%
+  #    group_by(block_number,price,csum) %>%
+  #    summarise(block_number = median(block_number),
+  #              price = median(price),
+  #              csum = median(csum))
+  
+  #fit polynomial regression models up to degree 5
+  #  fit1 <- lm(price~Cap_Fac, data=test1)
+  #  fit2 <- lm(price~poly(Cap_Fac,2,raw=TRUE), data=test1)
+  #  fit3 <- lm(price~poly(Cap_Fac,3,raw=TRUE), data=test1)
+  #  fit4 <- lm(price~poly(Cap_Fac,4,raw=TRUE), data=test1)
+  #  fit5 <- lm(price~poly(Cap_Fac,5,raw=TRUE), data=test1)
+  #  fitlog <- lm(log(price)~Cap_Fac, data=test1)
+  #  fitexp <- lm(price~exp(Cap_Fac), data=test1)
+  #  log.model <- lm(log(price) ~ Cap_Fac, data=test1)
+  
+  #calculated adjusted R-squared of each model
+  #  summary(fit1)$adj.r.squared
+  #  summary(fit2)$adj.r.squared
+  #  summary(fit3)$adj.r.squared
+  #  summary(fit4)$adj.r.squared
+  #  summary(fit5)$adj.r.squared
+  
+  #  plot(test1$Cap_Fac, test1$price, pch=19, xlab='Capacity Factor', ylab='Price ($/MWh)')
+  
+  #  x_axis <- seq(0,1, length=15)
+  
+  #add curve of each model to plot
+  #  lines(x_axis, predict(fit1, data.frame(x=x_axis)), col='green')
+  #  lines(x_axis, predict(fit2, data.frame(x=x_axis)), col='red')
+  #  lines(x_axis, predict(fit3, data.frame(x=x_axis)), col='purple')
+  #  lines(x_axis, predict(fit4, data.frame(x=x_axis)), col='blue')
+  #  lines(x_axis, predict(fit5, data.frame(x=x_axis)), col='orange')
+  
+  #  Cap_Fac <- c(0.05,0.1,0.15,0.2,0.25,0.3,0.35,0.4,0.45,0.5,0.55,0.6,0.65,0.7,
+  #               0.75,0.8,0.85,0.9,0.95,1)
+  #  price <- c(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,15,20,25,1000) #COGEN
+  #  price <- c(0,0,0,0,0,0,0,0,0,5,5,10,15,15,15,20,20,25,30,1000) #COAL
+  #  price <-c(0,30,30,30,30,30,30,30,30,30,30,35,40,45,50,55,65,75,1000,1000) #SCGT
+  #  price <-c(0,0,0,0,0,0,0,5,5,5,10,10,10,15,20,25,30,35,40,1000) #NGCC
+  #  Aurora <- data.frame(Cap_Fac, price)
+  
+  #  gg<-ggplot(test1, aes(x = Cap_Fac, y=price)) + 
+  #    geom_point() +
+  ##    geom_point(data=Aurora, color="red") +
+  ##    stat_smooth(method = 'nls', formula = 'y~a^(b*x+c)',
+  ##                method.args = list(start=c(a=20, b=10, c=-9)), se=FALSE) +
+  ##    geom_line(mapping=aes(y=my))+
+  ##    geom_smooth(method = 'lm', aes(color="Exp Model"), formula=(y ~ exp(x)), 
+  ##                se = FALSE, linetype = 1) +
+  #    theme_bw() +
+  #    theme(panel.background = element_rect(fill = "transparent"),
+  #          panel.grid = element_blank(),
+  #          plot.background = element_rect(fill = "transparent", color = NA),
+  #          text = element_text(size= 15),
+  #          plot.title = element_text(hjust = 0.5),
+  #          plot.subtitle = element_text(hjust = 0.5),
+  #          axis.text.x = element_text(angle = 45, hjust=1)
+  #    ) +
+  #    scale_y_continuous(expand=c(0,0),
+  #                       limits = c(0,1000),
+  #                       n.breaks = 8) +
+  #    ggtitle(paste(name, type, sep = ": "))+
+  #    labs(x = "Capacity Factor",
+  #         y = "Offer Price ($/MWh)",
+  #         title = paste(plant_type, "Bidding Behaviour", sep = " "),
+  ##         subtitle = paste("Bids at $0 at ",round(must_run*100, digits=2),"% CF",sep="")
+  #)# +
+  #    lines(x_axis, predict(fit1, data.frame(x=x_axis)), col='green')
+  
+  #    setwd("G:/My Drive/transfer")
+  #    write.csv(test1, paste0(plant_type, "_Bid_Behaviour.csv"))
+  
+}
+
+hockey_stick_season <- function(plant_type) {
+  # Code to determine the bidding behavior of different technologies by 
+  # identifying the capacity factors for various offers, and separating them into
+  # bins, then taking the median value. This is the plot for the box and whisker plots.
+  # The bid factor is identified as this median value divided by the overall 
+  # average minus one, and is shown in the plots as a label.
+  
+  # Gather the data
+  dataA <- sub_samp %>%
+    filter(Plant_Type == plant_type, 
+    ) %>%
+    mutate(hour = he) %>%
+    subset(., select = c(time, date, hour, ID, Capacity))
+  
+  dataB <- merit_filt %>%
+    filter(Plant_Type == plant_type,
+    ) %>%
+    mutate(ID = asset_id) %>%
+    subset(., select = c(date, month, day, hour, ID, available_mw, size, 
+                         block_number,price))
+  
+  # Combine the data
+  data <- merge(dataA, dataB, by = c("date","hour","ID")) %>%
+    mutate(season = case_when(
+      (month <= 2 | (month == 3 & day < 21)) ~ "Winter",
+      ((month ==3 & day >=21) | (month >= 4 & month <= 5) | 
+         (month == 6 & day < 21)) ~ "Spring",
+      ((month ==6 & day >=21) | (month >= 7 & month <= 8) | 
+         (month == 9 & day < 21)) ~ "Summer",
+      ((month ==9 & day >=21) | (month >= 10 & month <= 11) | 
+         (month == 12 & day < 21)) ~ "Fall",
+      TRUE ~ "Winter"
+    ))
+  
+  # Combine individual plant data and calculate the capacity factors for the 
+  # different offers.
+  data1 <- data %>%
+    group_by(season,time,price) %>%
+    summarise(available = sum(size)) %>%
+    ungroup() %>%
+    group_by(time) %>%
+    arrange(price) %>%
+    mutate(csum = cumsum(available),
+           Capacity = max(csum),
+           Cap_Fac = csum/Capacity)
+  
+  # Remove duplicate rows
+  data1 <- data1[!duplicated(data1[c(3,7)]),]
+  
+  tags1 <- c("[0-05%)","[05-10%)","[10-15%)","[15-20%)","[20-25%)","[25-30%)",
+             "[30-35%)","[35-40%)","[40-45%)","[45-50%)","[50-55%)","[55-60%)",
+             "[60-65%)","[65-70%)","[70-75%)","[75-80%)","[80-85%)","[85-90%)",
+             "[90-95%)","[95-100%]")
+  
+  data3 <- data1 %>%
+    mutate(tag = case_when(
+      Cap_Fac < 0.05 ~ tags1[1],
+      Cap_Fac >= 0.05 & Cap_Fac < 0.1 ~ tags1[2],
+      Cap_Fac >= 0.1 & Cap_Fac < 0.15 ~ tags1[3],
+      Cap_Fac >= 0.15 & Cap_Fac < 0.2 ~ tags1[4],
+      Cap_Fac >= 0.2 & Cap_Fac < 0.25 ~ tags1[5],
+      Cap_Fac >= 0.25 & Cap_Fac < 0.3 ~ tags1[6],
+      Cap_Fac >= 0.3 & Cap_Fac < 0.35 ~ tags1[7],
+      Cap_Fac >= 0.35 & Cap_Fac < 0.4 ~ tags1[8],
+      Cap_Fac >= 0.4 & Cap_Fac < 0.45 ~ tags1[9],
+      Cap_Fac >= 0.45 & Cap_Fac < 0.5 ~ tags1[10],
+      Cap_Fac >= 0.5 & Cap_Fac < 0.55 ~ tags1[11],
+      Cap_Fac >= 0.55 & Cap_Fac < 0.6 ~ tags1[12],
+      Cap_Fac >= 0.6 & Cap_Fac < 0.65 ~ tags1[13],
+      Cap_Fac >= 0.65 & Cap_Fac < 0.7 ~ tags1[14],
+      Cap_Fac >= 0.7 & Cap_Fac < 0.75 ~ tags1[15],
+      Cap_Fac >= 0.75 & Cap_Fac < 0.8 ~ tags1[16],
+      Cap_Fac >= 0.8 & Cap_Fac < 0.85 ~ tags1[17],
+      Cap_Fac >= 0.85 & Cap_Fac < 0.9 ~ tags1[18],
+      Cap_Fac >= 0.9 & Cap_Fac < 0.95 ~ tags1[19],
+      Cap_Fac >= 0.95 & Cap_Fac <= 1 ~ tags1[20]
+    ))
+  
+  tot <- data3 %>%
+    group_by(season) %>%
+    summarise(tot = median(price))
+  
+  #fall <- as.numeric(tot[1,2])
+  #spr <- as.numeric(tot[2,2])
+  #summer <- as.numeric(tot[3,2])
+  #wint <- as.numeric(tot[4,2])
+  
+  data3 <- merge(data3,tot, by = "season")
+  
+  # Summarize the median prices and bid factors.
+  means <- data3 %>%
+    group_by(tag,season) %>%
+    summarize(ave = mean(price),
+              med = median(price),
+              bid = med/tot-1
+              ) %>%
+    mutate_if(is.numeric,round,2)
+  
+  # Remove duplicate rows
+  means <- means[!duplicated(means[c(1,2,3,4,5)]),]
+  
+  # Plot the data
+  ggplot(data = data3, mapping = aes(x=tag,y=price)) +
+    #geom_jitter(color = "gray", alpha=0.2) + 
+    geom_boxplot(fill="gray",color="black",alpha=0.3) +
+    #    geom_text(data = means, aes(label = dollar(round(med, digits=0)),hjust=1.2, 
+    #                                y = med+90)) +
+    geom_label(data = means, aes(label = bid, vjust="inward", y = ave),size=4) +
+    facet_wrap(~season, ncol=2) +
+    labs(x='Capacity Factor') + 
+    theme_bw() +
+    theme(legend.position="right",
+          axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          text = element_text(size= 9)
+    )  +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(0,1000),
+                       n.breaks = 8) +
+    labs(x = "Capacity Factor",
+         y = "Offer Price ($/MWh)",
+         title = paste(plant_type, "Bidding Behaviour", sep = " "),
+    )
+}
+
+hockey_stick_seasEXTRA <- function(plant_type) {
+  # Code to determine the bidding behavior of different technologies by 
+  # identifying the capacity factors for various offers, and separating them into
+  # bins, then taking the median value. This is the plot for the box and whisker plots.
+  # The bid factor is identified as this median value divided by the overall 
+  # average minus one, and is shown in the plots as a label.
+  
+  # Gather the data
+  dataA <- sub_samp %>%
+    filter(Plant_Type == plant_type, 
+    ) %>%
+    mutate(hour = he) %>%
+    subset(., select = c(time, date, hour, ID, Capacity))
+  
+  dataB <- merit_filt %>%
+    filter(Plant_Type == plant_type,
+    ) %>%
+    mutate(ID = asset_id) %>%
+    subset(., select = c(date, month, day, hour, ID, available_mw, size, 
+                         block_number,price))
+  
+  # Combine the data
+  data <- merge(dataA, dataB, by = c("date","hour","ID")) %>%
+    mutate(season = case_when(
+      (month <= 2 | (month == 3 & day < 21)) ~ "Winter",
+      ((month ==3 & day >=21) | (month >= 4 & month <= 5) | 
+         (month == 6 & day < 21)) ~ "Spring",
+      ((month ==6 & day >=21) | (month >= 7 & month <= 8) | 
+         (month == 9 & day < 21)) ~ "Summer",
+      ((month ==9 & day >=21) | (month >= 10 & month <= 11) | 
+         (month == 12 & day < 21)) ~ "Fall",
+      TRUE ~ "Winter"
+    ))
+  
+  # Combine individual plant data and calculate the capacity factors for the 
+  # different offers.
+  data1 <- data %>%
+    group_by(season,time,price) %>%
+    summarise(available = sum(size)) %>%
+    ungroup() %>%
+    group_by(time) %>%
+    arrange(price) %>%
+    mutate(csum = cumsum(available),
+           Capacity = max(csum),
+           Cap_Fac = csum/Capacity)
+  
+  # Remove duplicate rows
+  data1 <- data1[!duplicated(data1[c(3,7)]),]
+  
+  tags1 <- c("[0-05%)","[05-10%)","[10-15%)","[15-20%)","[20-25%)","[25-30%)",
+             "[30-35%)","[35-40%)","[40-45%)","[45-50%)","[50-55%)","[55-60%)",
+             "[60-65%)","[65-70%)","[70-75%)","[75-80%)","[80-85%)","[85-90%)",
+             "[90-95%)","[95-97%)","[97-100%]")
+  
+  data3 <- data1 %>%
+    mutate(tag = case_when(
+      Cap_Fac < 0.05 ~ tags1[1],
+      Cap_Fac >= 0.05 & Cap_Fac < 0.1 ~ tags1[2],
+      Cap_Fac >= 0.1 & Cap_Fac < 0.15 ~ tags1[3],
+      Cap_Fac >= 0.15 & Cap_Fac < 0.2 ~ tags1[4],
+      Cap_Fac >= 0.2 & Cap_Fac < 0.25 ~ tags1[5],
+      Cap_Fac >= 0.25 & Cap_Fac < 0.3 ~ tags1[6],
+      Cap_Fac >= 0.3 & Cap_Fac < 0.35 ~ tags1[7],
+      Cap_Fac >= 0.35 & Cap_Fac < 0.4 ~ tags1[8],
+      Cap_Fac >= 0.4 & Cap_Fac < 0.45 ~ tags1[9],
+      Cap_Fac >= 0.45 & Cap_Fac < 0.5 ~ tags1[10],
+      Cap_Fac >= 0.5 & Cap_Fac < 0.55 ~ tags1[11],
+      Cap_Fac >= 0.55 & Cap_Fac < 0.6 ~ tags1[12],
+      Cap_Fac >= 0.6 & Cap_Fac < 0.65 ~ tags1[13],
+      Cap_Fac >= 0.65 & Cap_Fac < 0.7 ~ tags1[14],
+      Cap_Fac >= 0.7 & Cap_Fac < 0.75 ~ tags1[15],
+      Cap_Fac >= 0.75 & Cap_Fac < 0.8 ~ tags1[16],
+      Cap_Fac >= 0.8 & Cap_Fac < 0.85 ~ tags1[17],
+      Cap_Fac >= 0.85 & Cap_Fac < 0.9 ~ tags1[18],
+      Cap_Fac >= 0.9 & Cap_Fac < 0.95 ~ tags1[19],
+      Cap_Fac >= 0.95 & Cap_Fac < 0.97 ~ tags1[20],
+      Cap_Fac >= 0.97 & Cap_Fac <= 1 ~ tags1[21]
+    ))
+  
+  tot <- data3 %>%
+    group_by(season) %>%
+    summarise(tot = median(price))
+  
+  #fall <- as.numeric(tot[1,2])
+  #spr <- as.numeric(tot[2,2])
+  #summer <- as.numeric(tot[3,2])
+  #wint <- as.numeric(tot[4,2])
+  
+  data3 <- merge(data3,tot, by = "season")
+  
+  # Summarize the median prices and bid factors.
+  means <- data3 %>%
+    group_by(tag,season) %>%
+    summarize(ave = mean(price),
+              med = median(price),
+              bid = med/tot-1
+    ) %>%
+    mutate_if(is.numeric,round,2)
+  
+  # Remove duplicate rows
+  means <- means[!duplicated(means[c(1,2,3,4,5)]),]
+  
+  # Plot the data
+  ggplot(data = data3, mapping = aes(x=tag,y=price)) +
+    #geom_jitter(color = "gray", alpha=0.2) + 
+    geom_boxplot(fill="gray",color="black",alpha=0.3) +
+    #    geom_text(data = means, aes(label = dollar(round(med, digits=0)),hjust=1.2, 
+    #                                y = med+90)) +
+    geom_label(data = means, aes(label = bid, vjust="inward", y = ave),size=4) +
+    facet_wrap(~season, ncol=2) +
+    labs(x='Capacity Factor') + 
+    theme_bw() +
+    theme(legend.position="right",
+          axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          text = element_text(size= 9)
+    )  +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(0,1000),
+                       n.breaks = 8) +
+    labs(x = "Capacity Factor",
+         y = "Offer Price ($/MWh)",
+         title = paste(plant_type, "Bidding Behaviour", sep = " "),
+    )
+}
+
+hockey_stick_onoff <- function(plant_type) {
+  # Code to determine the bidding behavior of different technologies by 
+  # identifying the capacity factors for various offers, and separating them into
+  # bins, then taking the median value. This is the plot for the box and whisker plots.
+  # The bid factor is identified as this median value divided by the overall 
+  # average minus one, and is shown in the plots as a label.
+  
+  # Gather the data
+  dataA <- sub_samp %>%
+    filter(Plant_Type == plant_type, 
+    ) %>%
+    mutate(hour = he) %>%
+    subset(., select = c(time, date, hour, ID, Capacity))
+  
+  dataB <- merit_filt %>%
+    filter(Plant_Type == plant_type,
+    ) %>%
+    mutate(ID = asset_id,
+           Condition = case_when(
+             (hour<=06 | hour>=23) ~ "Off-Peak WECC",
+             TRUE ~ "On-Peak WECC")) %>%
+    subset(., select = c(date,hour, ID, Condition, available_mw, size, block_number,price))
+  
+  # Combine the data
+  data <- merge(dataA, dataB, by = c("date","hour","ID")) 
+  
+  # Combine individual plant data and calculate the capacity factors for the 
+  # different offers.
+  data1 <- data %>%
+    group_by(time,price,Condition) %>%
+    summarise(available = sum(size)) %>%
+    ungroup() %>%
+    group_by(time) %>%
+    arrange(price) %>%
+    mutate(csum = cumsum(available),
+           Capacity = max(csum),
+           Cap_Fac = csum/Capacity)
+  
+  # Remove duplicate rows
+  data1 <- data1[!duplicated(data1[c(2,7)]),]
+  
+  tags1 <- c("[0-05%)","[05-10%)","[10-15%)","[15-20%)","[20-25%)","[25-30%)",
+             "[30-35%)","[35-40%)","[40-45%)","[45-50%)","[50-55%)","[55-60%)",
+             "[60-65%)","[65-70%)","[70-75%)","[75-80%)","[80-85%)","[85-90%)",
+             "[90-95%)","[95-100%]")
+  
+  data3 <- data1 %>%
+    mutate(tag = case_when(
+      Cap_Fac < 0.05 ~ tags1[1],
+      Cap_Fac >= 0.05 & Cap_Fac < 0.1 ~ tags1[2],
+      Cap_Fac >= 0.1 & Cap_Fac < 0.15 ~ tags1[3],
+      Cap_Fac >= 0.15 & Cap_Fac < 0.2 ~ tags1[4],
+      Cap_Fac >= 0.2 & Cap_Fac < 0.25 ~ tags1[5],
+      Cap_Fac >= 0.25 & Cap_Fac < 0.3 ~ tags1[6],
+      Cap_Fac >= 0.3 & Cap_Fac < 0.35 ~ tags1[7],
+      Cap_Fac >= 0.35 & Cap_Fac < 0.4 ~ tags1[8],
+      Cap_Fac >= 0.4 & Cap_Fac < 0.45 ~ tags1[9],
+      Cap_Fac >= 0.45 & Cap_Fac < 0.5 ~ tags1[10],
+      Cap_Fac >= 0.5 & Cap_Fac < 0.55 ~ tags1[11],
+      Cap_Fac >= 0.55 & Cap_Fac < 0.6 ~ tags1[12],
+      Cap_Fac >= 0.6 & Cap_Fac < 0.65 ~ tags1[13],
+      Cap_Fac >= 0.65 & Cap_Fac < 0.7 ~ tags1[14],
+      Cap_Fac >= 0.7 & Cap_Fac < 0.75 ~ tags1[15],
+      Cap_Fac >= 0.75 & Cap_Fac < 0.8 ~ tags1[16],
+      Cap_Fac >= 0.8 & Cap_Fac < 0.85 ~ tags1[17],
+      Cap_Fac >= 0.85 & Cap_Fac < 0.9 ~ tags1[18],
+      Cap_Fac >= 0.9 & Cap_Fac < 0.95 ~ tags1[19],
+      Cap_Fac >= 0.95 & Cap_Fac <= 1 ~ tags1[20]
+    ))
+  
+  tot <- data3 %>%
+    group_by(Condition) %>%
+    summarise(tot = median(price))
+  
+  data3 <- merge(data3,tot, by = "Condition")
+  
+  # Summarize the median prices and bid factors.
+  means <- data3 %>%
+    group_by(tag,Condition) %>%
+    summarize(ave = mean(price),
+              med = median(price),
+              bid = med/tot-1) %>%
+    mutate_if(is.numeric,round,2)
+  
+  # Remove duplicate rows
+  means <- means[!duplicated(means[c(1,2,3,4,5)]),]
+  
+  # Plot the data
+  ggplot(
+    data = data3, mapping = aes(x=tag,y=price)
+    ) +
+    #geom_jitter(color = "gray", alpha=0.2) + 
+    geom_boxplot(fill="gray",color="black",alpha=0.3) +
+    geom_label(data = means, aes(label = bid, vjust="inward", y = ave),size=3) +
+    facet_wrap(~Condition) +
+    labs(x='Capacity Factor') + 
+    theme_bw() +
+    theme(legend.position="right",
+          axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          text = element_text(size= 9)
+    )  +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(0,1000),
+                       n.breaks = 8) +
+    labs(x = "Capacity Factor",
+         y = "Offer Price ($/MWh)",
+         title = paste(plant_type, "Bidding Behaviour", sep = " "),
+    )
+}
+
 Week_act <- function(year,month,day) {
   
   colours = c("darkslateblue", "black", "grey", "darkslategrey", "coral4", "goldenrod4", 
@@ -96,6 +1015,179 @@ Week_act <- function(year,month,day) {
     scale_fill_manual(values = colours)
 }
 
+Week_aline <- function(year,month,day) {
+  
+  colours = c("darkslateblue", "black", "grey", "darkslategrey", "coral4", "goldenrod4", 
+              "darkcyan", "dodgerblue", "forestgreen", "gold", "cyan")
+  
+  wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
+  wk_end <- as.POSIXct(paste(day+7,month,year, sep = "/"), format="%d/%m/%Y")
+  
+  #wk_st <- hms::as.hms(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
+  #wk_end <- hms::as.hms(paste(day+7,month,year, sep = "/"), format="%d/%m/%Y")
+  
+  df1a$time <- as.POSIXct(df1a$time, tz = "MST")
+  
+  # Select only a single week
+  ##############################################################################
+  WKa <- df1a %>%
+    filter(Plant_Type != "EXPORT" & Plant_Type != "IMPORT") %>%
+    filter(time >= wk_st, time <= wk_end)
+  
+  WKIM <- df1a %>%
+    filter(Plant_Type == "IMPORT") %>%
+    filter(time >= wk_st & time <= wk_end)
+  
+  WKIM$total_gen <- WKIM$total_gen * -1
+  
+  WK <- rbind(WKIM, WKa)
+  
+  {
+    WK$Plant_Type<-fct_relevel(WK$Plant_Type, "IMPORT", after = Inf)
+    WK$Plant_Type<-fct_relevel(WK$Plant_Type, "COAL", after = Inf)
+    WK$Plant_Type<-fct_relevel(WK$Plant_Type, "NGCONV", after = Inf)
+    WK$Plant_Type<-fct_relevel(WK$Plant_Type, "COGEN", after = Inf)
+    WK$Plant_Type<-fct_relevel(WK$Plant_Type, "SCGT", after = Inf)
+    WK$Plant_Type<-fct_relevel(WK$Plant_Type, "NGCC", after = Inf)
+    WK$Plant_Type<-fct_relevel(WK$Plant_Type, "HYDRO", after = Inf)
+    WK$Plant_Type<-fct_relevel(WK$Plant_Type, "OTHER", after = Inf)
+    WK$Plant_Type<-fct_relevel(WK$Plant_Type, "WIND", after = Inf)
+    WK$Plant_Type<-fct_relevel(WK$Plant_Type, "SOLAR", after = Inf)
+    WK$Plant_Type<-fct_relevel(WK$Plant_Type, "STORAGE", after = Inf)
+  }
+  
+  WK$Plant_Type <- factor(WK$Plant_Type, levels=c("IMPORT", "COAL", "NGCONV", "COGEN", 
+                                                  "SCGT", "NGCC", "HYDRO", 
+                                                  "OTHER", "WIND", "SOLAR", "STORAGE"))
+  
+  levels(WK$Plant_Type) <- c("Import","Coal", "NGConv", "Cogen", "SCGT", "NGCC", "Hydro", 
+                             "Other", "Wind", "Solar", "Storage")
+  
+#  dmd <- demand %>%
+#    filter(time >= wk_st & time <= wk_end)
+  
+  # Plot the data    
+  ##############################################################################
+  ggplot() +
+    geom_line(data = WK, aes(x = time, y = total_gen, color = Plant_Type), 
+#              alpha=0.6, 
+              size=2) +
+    
+    # Add hourly load line
+#    geom_line(data = dmd, 
+#              aes(x = time, y = Demand), size=2, colour = "black") +
+    
+    scale_x_datetime(expand=c(0,0)) +
+    
+    # Set the theme for the plot
+    ############################################################################
+  theme_bw() +
+    theme(axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid = element_blank(),
+          legend.position = "right",
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          text = element_text(size= 15)
+    ) +
+    scale_y_continuous(expand=c(0,0)) +
+    labs(x = "Date", y = "Output (MWh)", fill = "AESO Data: \nResource") +
+    scale_color_manual(values = colours)
+}
+
+capVScap <- function(plant_type) {
+  # The purpose of this code is to show the relationship between the capacity 
+  # factor and the capture price (or wind discount)
+  
+  data <- sub_samp %>%
+    filter(Plant_Type == plant_type) %>%
+    subset(., select = c(time, ID, AESO_Name, Capacity, gen, Revenue, Cap_Fac)) %>%
+    mutate(capture=Revenue/gen)
+#    group_by(ID, AESO_Name) %>%
+#    summarise(total_gen=sum(gen,na.rm=T),
+#              total_rev=sum(Revenue,na.rm=T),
+#              mean_CapFac=mean(Cap_Fac),
+#              capture=total_rev/total_gen) %>%
+#    ungroup()
+  
+  tags <- c("[0-05%)","[05-10%)","[10-15%)","[15-20%)","[20-25%)","[25-30%)",
+             "[30-35%)","[35-40%)","[40-45%)","[45-50%)","[50-55%)","[55-60%)",
+             "[60-65%)","[65-70%)","[70-75%)","[75-80%)","[80-85%)","[85-90%)",
+             "[90-95%)","[95-100%]")
+  
+  data <- data %>%
+    mutate(tag = case_when(
+      Cap_Fac < 0.05 ~ tags[1],
+      Cap_Fac >= 0.05 & Cap_Fac < 0.1 ~ tags[2],
+      Cap_Fac >= 0.1 & Cap_Fac < 0.15 ~ tags[3],
+      Cap_Fac >= 0.15 & Cap_Fac < 0.2 ~ tags[4],
+      Cap_Fac >= 0.2 & Cap_Fac < 0.25 ~ tags[5],
+      Cap_Fac >= 0.25 & Cap_Fac < 0.3 ~ tags[6],
+      Cap_Fac >= 0.3 & Cap_Fac < 0.35 ~ tags[7],
+      Cap_Fac >= 0.35 & Cap_Fac < 0.4 ~ tags[8],
+      Cap_Fac >= 0.4 & Cap_Fac < 0.45 ~ tags[9],
+      Cap_Fac >= 0.45 & Cap_Fac < 0.5 ~ tags[10],
+      Cap_Fac >= 0.5 & Cap_Fac < 0.55 ~ tags[11],
+      Cap_Fac >= 0.55 & Cap_Fac < 0.6 ~ tags[12],
+      Cap_Fac >= 0.6 & Cap_Fac < 0.65 ~ tags[13],
+      Cap_Fac >= 0.65 & Cap_Fac < 0.7 ~ tags[14],
+      Cap_Fac >= 0.7 & Cap_Fac < 0.75 ~ tags[15],
+      Cap_Fac >= 0.75 & Cap_Fac < 0.8 ~ tags[16],
+      Cap_Fac >= 0.8 & Cap_Fac < 0.85 ~ tags[17],
+      Cap_Fac >= 0.85 & Cap_Fac < 0.9 ~ tags[18],
+      Cap_Fac >= 0.9 & Cap_Fac < 0.95 ~ tags[19],
+      Cap_Fac >= 0.95 & Cap_Fac <= 1 ~ tags[20]
+    ))
+  
+  data <- na.omit(data)
+  
+  # Summarize the median prices and bid factors.
+  means <- data %>%
+    group_by(tag) %>%
+    summarize(ave = mean(capture),
+              ) %>%
+    mutate_if(is.numeric,round,2)
+  
+  # Remove duplicate rows
+  means <- means[!duplicated(means[c(1,2)]),]
+  
+  ggplot(means, aes(x=tag, y=ave))+
+#    geom_jitter(color = "gray", alpha=0.2) + 
+#    geom_boxplot(fill="gray",color="black",alpha=0.3) +
+    #    geom_text(data = means, aes(label = dollar(round(med, digits=0)),hjust=1.2, 
+    #                                y = med+90)) +
+    geom_point(data = means, aes(label = ave, vjust="inward", y = ave),size=3) +
+    labs(x='Capacity Factor') + 
+    theme_bw() +
+    theme(legend.position="right",
+          axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          text = element_text(size= 15)
+    )  +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(0,100),
+                       n.breaks = 10) +
+    labs(x = "Capacity Factor",
+         y = "Capture Price ($/MWh)",
+#         title = paste(plant_type, "Bidding Behaviour", sep = " "),
+    )
+  
+  setwd("D:/Documents/GitHub/AuroraEval")
+  ggsave(path = "images", filename = "CF_vs_captureprice.png", bg = "transparent")
+  setwd("D:/Documents/Education/Masters Degree/Datasets/Market")
+}
+
 ################################################################################
 ################################################################################
 # Plot the AESO pool price
@@ -123,6 +1215,200 @@ wkPrice <- function(year,month,day) {
     ) +
     scale_y_continuous(expand=c(0,0)) +
     labs(x = "Date", y = "Pool Price \n($/MWh)")
+}
+
+cogen_bidding <- function(Type) {
+  # A function to calculate the interquartile range of the capacity factor for a 
+  # specific plant along with the heat rates at those capacities.
+  
+  # Filter Dr. Leach's student data for specific plant
+  dataA <- merit_filt %>%
+    filter(Plant_Type == Type,
+           price != 0) %>%
+    group_by(date,he) %>%
+    summarise(available = sum(available_mw))
+    #subset(., select = c(date, he, block_number, size, price, available_mw, 
+    #                     dispatched_mw, flexible))
+  
+  # Filter NRG Stream data for specific plant, and add columns for month and day
+  dataB <- sub_samp %>%
+    filter(Plant_Type == Type) %>%
+    subset(., select = c(date, he, gen, Capacity, Cap_Fac, Heat.Rate)) %>%
+    group_by(date,he) %>%
+    summarise(#Cap_Fac = weighted.mean(Cap_Fac,gen),
+              #gen = sum(gen),
+              Capacity = sum(Capacity)) %>%
+    mutate(month = month(as.POSIXlt(date, format="%Y-%m-%d")), 
+           day = day(as.POSIXlt(date, format="%Y-%m-%d"))) #%>%
+#    mutate(Cap_Fac = gen/Capacity)
+  
+  data <- merge(dataA, dataB, by = c("date", "he"))
+  
+  # Cumbersome code to specify the season  
+  {
+  data1 <-data %>%
+    filter(month == 1 | month == 2) %>%
+    mutate(Season = "Winter")
+  
+  data2 <- data %>%
+    filter(month == 3 & day < 21) %>%
+    mutate(Season = "Winter")
+  
+  data3 <- data %>%
+    filter(month == 3 & day >= 21) %>%
+    mutate(Season = "Spring")
+  
+  data4 <- data %>%
+    filter(month == 4 | month == 5) %>%
+    mutate(Season = "Spring")
+  
+  data5 <- data %>%
+    filter(month == 6 & day < 21) %>%
+    mutate(Season = "Spring")
+  
+  data6 <- data %>%
+    filter(month == 6 & day >= 21) %>%
+    mutate(Season = "Summer")
+  
+  data7 <- data %>%
+    filter(month == 7 | month == 8) %>%
+    mutate(Season = "Summer")
+  
+  data8 <- data %>%
+    filter(month == 9 & day < 21) %>%
+    mutate(Season = "Summer")
+  
+  data9 <- data %>%
+    filter(month == 9 & day >= 21) %>%
+    mutate(Season = "Fall")
+  
+  data10 <- data %>%
+    filter(month == 10 | month == 11) %>%
+    mutate(Season = "Fall")
+  
+  data11 <- data %>%
+    filter(month == 12 & day < 21) %>%
+    mutate(Season = "Fall")
+  
+  data12 <- data %>%
+    filter(month == 12 & day >= 21) %>%
+    mutate(Season = "Winter")
+  }
+  
+  # Group by season, calculate the quartile ranges and heat rates at those ranges
+  data <- rbind(data1,data2,data3,data4,data5,data6,
+                data7,data8,data9,data10,data11,data12)
+  
+  plant <- data %>%
+    group_by(Season)%>% 
+#    group_by(date, he) %>%
+    summarise(Available = sum(available), 
+              Capacity = sum(Capacity)) %>%
+#    summarise(#Generation = quantile(gen,probs=seq(0.25,0.75, 1/4)),
+#      Cap_Fac = quantile(Cap_Fac,probs=seq(0.25,0.75, 1/4)),
+#    ) %>%
+    mutate(Cap_Fac = 1-Available/Capacity,
+           Heat_Rate = (5357.1*(Cap_Fac)^2-11150*(Cap_Fac)+15493),
+           Cap_Fac = Cap_Fac*100)
+  
+  
+  
+  # Display the data
+  View(plant)
+  
+}
+
+cogen_range <- function(plant_ID) {
+  # A function to calculate the interquartile range of the capacity factor for a 
+  # specific plant along with the heat rates at those capacities.
+  
+  # Filter Dr. Leach's student data for specific plant
+  dataA <- merit_filt %>%
+    filter(plant_ID == asset_id) %>%
+    subset(., select = c(date, he, block_number, size, price, available_mw, dispatched_mw, flexible)) %>%
+    group_by(date,he) #%>%
+#    summarise(available = sum(available_mw),
+#              size = sum(size),
+#              dispatched = sum(dispatched_mw))
+  
+  # Filter NRG Stream data for specific plant, and add columns for month and day
+  dataB <- sub_samp %>%
+    filter(plant_ID == ID) %>%
+    subset(., select = c(date, he, gen, Capacity, Cap_Fac, Heat.Rate)) %>%
+    mutate(month = month(as.POSIXlt(date, format="%Y-%m-%d")), 
+           day = day(as.POSIXlt(date, format="%Y-%m-%d")))
+  
+  data <- merge(dataA, dataB, by = c("date", "he"))
+  
+  # Cumbersome code to specify the season  
+  data1 <-data %>%
+    filter(month == 1 | month == 2) %>%
+    mutate(Season = "Winter")
+  
+  data2 <- data %>%
+    filter(month == 3 & day < 21) %>%
+    mutate(Season = "Winter")
+  
+  data3 <- data %>%
+    filter(month == 3 & day >= 21) %>%
+    mutate(Season = "Spring")
+  
+  data4 <- data %>%
+    filter(month == 4 | month == 5) %>%
+    mutate(Season = "Spring")
+  
+  data5 <- data %>%
+    filter(month == 6 & day < 21) %>%
+    mutate(Season = "Spring")
+  
+  data6 <- data %>%
+    filter(month == 6 & day >= 21) %>%
+    mutate(Season = "Summer")
+  
+  data7 <- data %>%
+    filter(month == 7 | month == 8) %>%
+    mutate(Season = "Summer")
+  
+  data8 <- data %>%
+    filter(month == 9 & day < 21) %>%
+    mutate(Season = "Summer")
+  
+  data9 <- data %>%
+    filter(month == 9 & day >= 21) %>%
+    mutate(Season = "Fall")
+  
+  data10 <- data %>%
+    filter(month == 10 | month == 11) %>%
+    mutate(Season = "Fall")
+  
+  data11 <- data %>%
+    filter(month == 12 & day < 21) %>%
+    mutate(Season = "Fall")
+  
+  data12 <- data %>%
+    filter(month == 12 & day >= 21) %>%
+    mutate(Season = "Winter")
+  
+  # Group by season, calculate the quartile ranges and heat rates at those ranges
+  data <- rbind(data1,data2,data3,data4,data5,data6,
+                 data7,data8,data9,data10,data11,data12) %>%
+    mutate(BTF = (gen-dispatched_mw)/Capacity*100)
+  
+  plant <- data %>%
+    group_by(Season) %>%
+    summarise(#Generation = quantile(gen,probs=seq(0.25,0.75, 1/4)),
+      BTF = mean(BTF),
+      Cap_Fac = quantile(Cap_Fac,probs=seq(0.25,0.75, 1/4)),
+      #heat.rate = median(Heat.Rate)
+      ) %>%
+    mutate(Heat_Rate = (5357.1*(Cap_Fac)^2-11150*(Cap_Fac)+15493),
+           Cap_Fac = Cap_Fac*100)
+  
+  
+  
+  # Display the data
+  View(plant)
+  
 }
 
 cap_pf <- function(plant){#, year){
