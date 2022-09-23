@@ -108,4 +108,4 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
   New <- Sys.time() - old
   print(New)
   }
-            
+          
