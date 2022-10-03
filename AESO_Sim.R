@@ -179,7 +179,7 @@
 ################################################################################
 
 { 
-  DB <- "Sep_20_2022"
+  DB <- "Sep_30a_2022"
 # Connect to SQL database
 ################################################################################
   con <- dbConnect(odbc(),
@@ -232,7 +232,7 @@
     source("aeso_eval.R")
     
     {
-      Yr4Sp <- list(2020,2025,2030,2035)
+      Yr4Sp <- list(2022,2023,2024,2025)
       Yr2Sp <- list(2020,2021)
       
       BC <- "Base Case"
@@ -284,12 +284,12 @@
       scale_fill_output <- function(...){
         ggplot2:::manual_scale(
           'fill', 
-          values = setNames(c("black", "grey", "darkslategrey", "coral4","goldenrod4", 
-                              "darkorange1", "lightsalmon", "firebrick1", 
-                              "darkcyan", "dodgerblue", 
+          values = setNames(c("darkslateblue","black", "grey", "darkslategrey", 
+                              "coral4","goldenrod4","darkorange1", "lightsalmon", 
+                              "firebrick1", "darkcyan", "dodgerblue", 
                               "chartreuse","forestgreen", "gold", "cyan"), 
-                            c("COAL","NGCONV","NGCC","COGEN","SCGT","CC_BLEND",
-                              "SC_BLEND","H2",
+                            c("IMPORT","COAL","NGCONV","NGCC","COGEN","SCGT",
+                              "CC_BLEND","SC_BLEND","H2",
                               "HYDRO","OTHER","UR","WIND","SOLAR","STORAGE")), 
           ...
         )
@@ -298,11 +298,16 @@
       scale_fill_built <- function(...){
         ggplot2:::manual_scale(
           'fill', 
-          values = setNames(c("black", "darkslategrey", "coral4","goldenrod4", 
-                              "darkorange1", "lightsalmon", "indianred", 
+          values = setNames(c("black", 
+                              "darkslategrey", "darkslategrey", 
+                              "coral4","goldenrod4", 
+                              "darkorange1", "lightsalmon", "firebrick1", 
                               "darkcyan", "dodgerblue", 
-                              "firebrick1","forestgreen", "gold", "cyan"), 
-                            c("COAL","Gas","COGEN","SCGT","GasB_CC","GasB","H2",
+                              "chartreuse","forestgreen", "gold", "cyan"), 
+                            c("COAL", 
+                              "Gas", "Gas1", 
+                              "Gas0","Gas2",
+                              "GasB_CC","GasB_SC","H2",
                               "WAT","OT","UR","WND","SUN","PS")), 
           ...
         )
@@ -398,5 +403,5 @@ EvalOut(Year,BC)
 
 EvalPerc(Year,BC)
 
-Eval_diff(Year,BC)
+Eval_diffcap(Year,BC)
  

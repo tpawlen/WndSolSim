@@ -235,6 +235,77 @@
       scale_color_manual(values = colours1)
   }
   
+  Month1 <- function(year, month, case) {
+    # Filters for the desired case study
+    data <- Hour %>%
+      sim_filt1(.) %>%
+      subset(., select=-c(Report_Year,Capacity_Factor)) %>%
+      rbind(.,Import) %>%
+      filter(Run_ID == case)
+    
+    data$ID <- factor(data$ID, levels=c("IMPORT", "COAL", "NGCONV", "COGEN", 
+                                        "SCGT", "CC_BLEND", "SC_BLEND", "H2",
+                                        "NGCC", "HYDRO", "OTHER", "UR",
+                                        "WIND", "SOLAR", "STORAGE"))
+    
+    #    data$date <- as.POSIXct(data$date, tz = "MST")
+    
+    mth_st <- as.POSIXct(paste(01,month,year, sep = "/"), format="%d/%m/%Y")
+    mth_end <- as.POSIXct(paste(01,month+1,year, sep = "/"), format="%d/%m/%Y")
+    
+    # Select only a single week
+    ##############################################################################
+    data <- data %>%
+      filter(date >= mth_st, date < mth_end)
+    
+    # Select only a single week
+    #    data <- HrTime(data,year,month,day)
+    ZPrice <- ZH %>%
+      subset(.,
+             (date >= mth_st & 
+                date < mth_end))
+    Expo <- Export %>%
+      subset(.,
+             (date >= mth_st & 
+                date < mth_end))
+    data$MX <- ZPrice$Demand - Expo$Output_MWH
+    
+    # Set the max and min for the plot
+    MX <- plyr::round_any(max(abs(data$MX)), 100, f = ceiling)
+    MN <- plyr::round_any(min(data$Output_MWH), 100, f = floor)
+    
+    # Plot the data    
+    ggplot() +
+      geom_area(data = data, aes(x = date, y = Output_MWH, fill = ID), 
+                alpha=0.6, size=.5, colour="black") +
+      
+      # Add hourly load line
+      geom_line(data = ZPrice, 
+                aes(x = date, y = Demand), size=2, colour = "black") +
+      scale_x_datetime(expand=c(0,0)) +
+      
+      # Set the theme for the plot
+      theme_bw() +
+      theme(panel.grid = element_blank(),
+            legend.position = "right",
+      ) +
+      theme(axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+            panel.background = element_rect(fill = "transparent"),
+            panel.grid.major.x = element_blank(),
+            panel.grid.minor.x = element_blank(),
+            plot.background = element_rect(fill = "transparent", color = NA),
+            legend.key = element_rect(colour = "transparent", fill = "transparent"),
+            legend.background = element_rect(fill='transparent'),
+            legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+            text = element_text(size= 15)
+      ) +
+      scale_y_continuous(expand=c(0,0), limits = c(MN,MX), 
+                         breaks = seq(MN, MX, by = MX/4)) +
+      labs(x = "Date", y = "Output (MWh)", fill = "Resource") +
+      scale_fill_output()
+#      scale_fill_manual(values = colours1)
+  }
+  
   ################################################################################
   # Functions for weekly evaluation over four years
   ################################################################################  
@@ -299,6 +370,112 @@
                          breaks = seq(MN, MX, by = MX/4)) +
       labs(x = "Date", y = "Output (MWh)", fill = "Simulated Data: \nResource") +
       scale_fill_manual(values = colours1)
+  }
+  
+  Month14 <- function(year, month, case) {
+    # Filters for the desired case study
+    data <- Hour %>%
+      sim_filt1(.) %>%
+      subset(., select=-c(Report_Year,Capacity_Factor)) %>%
+      rbind(.,Import) %>%
+      filter(Run_ID == case)
+    
+    data$ID <- factor(data$ID, levels=c("IMPORT", "COAL", "NGCONV", "COGEN", 
+                                        "SCGT", "CC_BLEND", "SC_BLEND", "H2",
+                                        "NGCC", "HYDRO", "OTHER", "UR",
+                                        "WIND", "SOLAR", "STORAGE"))
+    
+    #    data$date <- as.POSIXct(data$date, tz = "MST")
+    
+    if(month < 12) {
+      month1 <- month+1
+      day1 <- 01
+    } else {
+      month1 <- month
+      day1 <- 31
+    }
+    
+    mth_st <- as.POSIXct(paste(01,month,year, sep = "/"), format="%d/%m/%Y")
+    mth_end <- as.POSIXct(paste(day1,month1,year, sep = "/"), format="%d/%m/%Y")
+    
+    # Select only a single week
+    ##############################################################################
+    mth <- data %>%
+      filter(date >= mth_st, date < mth_end)
+    
+    # Select only a single week
+    #    data <- HrTime(data,year,month,day)
+    ZPrice <- ZH %>%
+      subset(.,
+             (date >= mth_st & 
+                date < mth_end))
+#    Expo <- Export %>%
+#      subset(.,
+#             (date >= mth_st & 
+#                date < mth_end))
+    data$MX <- ZH$Demand - Export$Output_MWH
+    
+    # Set the max and min for the plot
+    MX1 <- data %>%
+      subset(.,
+             (date >= as.POSIXct(paste(01,month,Yr4Sp[[1]], sep = "/"), 
+                                 format="%d/%m/%Y") & 
+                  date < as.POSIXct(paste(day1,month1,Yr4Sp[[1]], sep = "/"), 
+                                    format="%d/%m/%Y")))
+                
+    MX2 <- data %>%
+      subset(.,
+             (date >= as.POSIXct(paste(01,month,Yr4Sp[[2]], sep = "/"), 
+                                 format="%d/%m/%Y") & 
+                date < as.POSIXct(paste(day1,month1,Yr4Sp[[2]], sep = "/"), 
+                                  format="%d/%m/%Y")))
+    MX3 <- data %>%
+      subset(.,
+             (date >= as.POSIXct(paste(01,month,Yr4Sp[[3]], sep = "/"), 
+                                 format="%d/%m/%Y") & 
+                date < as.POSIXct(paste(day1,month1,Yr4Sp[[3]], sep = "/"), 
+                                  format="%d/%m/%Y")))
+    MX4 <- data %>%
+      subset(.,
+             (date >= as.POSIXct(paste(01,month,Yr4Sp[[4]], sep = "/"), 
+                                 format="%d/%m/%Y") & 
+                date < as.POSIXct(paste(day1,month1,Yr4Sp[[4]], sep = "/"), 
+                                  format="%d/%m/%Y")))
+    MXtime <- rbind(MX1, MX2, MX3, MX4)
+    
+    MX <- plyr::round_any(max(abs(MXtime$MX)), 100, f = ceiling)
+    MN <- plyr::round_any(min(MXtime$Output_MWH), 100, f = floor)
+    
+    # Plot the data    
+    ggplot() +
+      geom_area(data = mth, aes(x = date, y = Output_MWH, fill = ID), 
+                alpha=0.6, size=.5, colour="black") +
+      
+      # Add hourly load line
+      geom_line(data = ZPrice, 
+                aes(x = date, y = Demand), size=2, colour = "black") +
+      scale_x_datetime(expand=c(0,0)) +
+      
+      # Set the theme for the plot
+      theme_bw() +
+      theme(panel.grid = element_blank(),
+            legend.position = "right",
+      ) +
+      theme(axis.text.x = element_text(angle = 25, vjust = 1, hjust = 1),
+            panel.background = element_rect(fill = "transparent"),
+            panel.grid.major.x = element_blank(),
+            panel.grid.minor.x = element_blank(),
+            plot.background = element_rect(fill = "transparent", color = NA),
+            legend.key = element_rect(colour = "transparent", fill = "transparent"),
+            legend.background = element_rect(fill='transparent'),
+            legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+            text = element_text(size= 15)
+      ) +
+      scale_y_continuous(expand=c(0,0), limits = c(MN,MX), 
+                         breaks = seq(MN, MX, by = MX/4)) +
+      labs(x = year, y = "Output (MWh)", fill = "Resource") +
+      scale_fill_output()
+    #      scale_fill_manual(values = colours1)
   }
   
   ################################################################################
@@ -553,6 +730,16 @@
     
     data$Time_Period <- as.Date(data$Time_Period)
     
+    Tot <- data %>%
+      group_by(Time_Period) %>%
+      summarise(maxy = sum(diff[which(diff>0)]), miny = sum(diff[which(diff<0)]))
+    
+    mny <- plyr::round_any(min(Tot$miny),1000, f=floor)
+    mxy <- plyr::round_any(max(Tot$maxy),1000, f=ceiling)
+    
+    mnx <- min(Month$Time_Period)
+    mxx <- max(Month$Time_Period)
+    
     data %>%
       ggplot() +
       aes(Time_Period, (diff), fill = ID) +
@@ -564,8 +751,10 @@
             plot.title = element_text(hjust = 0.5),
             plot.subtitle = element_text(hjust = 0.5), 
             legend.justification = c(0,0.5)) +
-      scale_x_date(expand=c(0,0)) +
-      scale_y_continuous(expand=c(0,0)) +
+      scale_x_date(expand=c(0,0),
+                   limits = as.Date(c(mnx,mxx))) +
+      scale_y_continuous(expand=c(0,0),
+                         limits = c((mny+100),(mxy+100))) +
       scale_fill_output() +
 #      scale_fill_manual(values = colours5d) +
       labs(x = "Date", y = "Yearly change in capacity (MW)", fill = "Resource",
@@ -583,7 +772,17 @@
       arrange(Time_Period) %>%
       mutate(diff = Capacity - lag(Capacity, default = first(Capacity)))
     
-    data$Time_Period <- as.Date(data$Time_Period)
+    data$Time_Period <- as.factor(format(data$Time_Period, format="%Y"))
+    
+    Tot <- data %>%
+      group_by(Time_Period) %>%
+      summarise(maxy = sum(diff[which(diff>0)]), miny = sum(diff[which(diff<0)]))
+    
+    mny <- plyr::round_any(min(Tot$miny),1000, f=floor)
+    mxy <- plyr::round_any(max(Tot$maxy),1000, f=ceiling)
+    
+    mnx <- format(min(Month$Time_Period), format="%Y")
+    mxx <- format(max(Month$Time_Period), format="%Y")
     
     data %>%
       ggplot() +
@@ -596,8 +795,13 @@
             plot.title = element_text(hjust = 0.5),
             plot.subtitle = element_text(hjust = 0.5), 
             legend.justification = c(0,0.5)) +
-      scale_x_date(expand=c(0,0)) +
-      scale_y_continuous(expand=c(0,0)) +
+      scale_x_discrete(expand=c(0,0),
+                       limits = as.character(mnx:mxx)) +
+#      scale_x_date(expand=c(0,0),
+#                   limits = as.Date(c(mnx,mxx))
+#                   ) +
+      scale_y_continuous(expand=c(0,0),
+                         limits = c((mny),(mxy))) +
       scale_fill_output() +
 #      scale_fill_manual(values = colours5d) +
       labs(x = "Date", y = "Yearly change in capacity (MW)", fill = "Resource",
@@ -708,9 +912,13 @@
       group_by(Fuel_Type, Time_Period) %>%
       summarise(Units = sum(Units_Built), Capacity = sum(Capacity_Built)) 
     
+    data$Time_Period <- as.factor(data$Time_Period)
+    #data$Time_Period <- anytime::anydate(data$Time_Period)
+    
     data$Fuel_Type <- factor(data$Fuel_Type, 
                              levels = c("WND","SUN","PS","UR","WAT","OT","H2",
-                                        "GasB","Gas2","Gas1","Gas0","Gas","COAL"
+                                        "GasB_CC","GasB_SC","Gas2","Gas1","Gas0",
+                                        "Gas","COAL"
                                         ))
     
 #    data$Fuel_Type[is.na(data$Fuel_Type)] <- "GasB"
@@ -722,12 +930,13 @@
     mxu <- max(Tot$totu)
     mxc <- max(Tot$totc)
     
-    mnx <- min(Month$Report_Year)
-    mxx <- max(Month$Report_Year)
+    mnx <- format(min(Month$Time_Period), format="%Y")
+    mxx <- format(max(Month$Time_Period), format="%Y")
     
     ggplot(data) +
       aes(Time_Period, Units, fill = Fuel_Type, group = Fuel_Type) +
-      geom_bar(position="stack", stat="identity", alpha=0.6, colour = "black") +
+      geom_col(alpha=0.6, colour = "black",
+               size=0.5) +
       theme_bw() +
       theme(panel.grid = element_blank(),  
             #legend.position ="none"
@@ -735,9 +944,13 @@
             #          legend.position = "top"
       ) +
       labs(x = "Date", y = "# of Units Built", fill = "Fuel Type") +
+      scale_x_discrete(expand=c(0,0),
+                       limits = as.character(mnx:mxx)) +
+      #      scale_x_date(expand=c(0,0),
+      #                   limits = as.Date(c(mnx,mxx))
+      #                   ) +
       scale_y_continuous(expand=c(0,0),
                          limits = c(0,(mxu+1))) +
-#      scale_x_discrete(limits=c(mnx,mxx)) +
       scale_fill_built()
   #    scale_fill_manual(values = colours4)
   }
@@ -756,7 +969,10 @@
     
     data$Fuel_Type <- factor(data$Fuel_Type, 
                              levels = c("WND","SUN","PS","UR","WAT","OT","H2",
-                                        "GasB","Gas2","Gas1","Gas0","Gas","COAL"))
+                                        "GasB_CC","GasB_SC","Gas2","Gas1","Gas0",
+                                        "Gas","COGEN","COAL"))
+    
+    data$Time_Period <- as.Date(data$Time_Period)
     
     Tot <- data %>%
       group_by(Time_Period) %>%
@@ -773,6 +989,7 @@
             #legend.position ="none"
       ) +
       labs(x = "Date", y = "Capacity Built \n(MW)", fill = "Fuel Type") +
+      scale_x_date(expand=c(0,0)) +
       scale_y_continuous(expand=c(0,0),
                          limits = c(0,plyr::round_any(mxc, 100, f = ceiling))) +
       #    scale_x_discrete(expand=c(0,0)) +
@@ -841,25 +1058,37 @@
   # Unit specific bar chart showing builds with potential builds highlighted
   ################################################################################
   
-  Units2 <- function(case, Fuel) {
-    data <- Build %>%
-      filter(Run_ID == case & LT_Iteration == max(LT_Iteration) & 
-               Time_Period == "Study" & Fuel_Type == Fuel) %>%
-      mutate(Potential = ifelse(grepl("Potential", Name, fixed = TRUE), 
-                                "Hypothetical", "AESO Queue"))
+  Units2 <- function(case, Fuel1, Fuel2) {
+    # Test to verify both Fuels were provided
+    if(missing(Fuel2)) {
+      data <- Build %>%
+        filter(Run_ID == case & LT_Iteration == max(LT_Iteration) & 
+                 Time_Period == "Study" & Fuel_Type == Fuel1) %>%
+        mutate(Potential = ifelse(grepl("Potential", Name, fixed = TRUE), 
+                                  "Hypothetical", "AESO Queue"))
+      fuel <- Fuel1
+    } else {
+      data <- Build %>%
+        filter(Run_ID == case & LT_Iteration == max(LT_Iteration) & 
+                 Time_Period == "Study" & 
+                 (Fuel_Type == Fuel1 | Fuel_Type == Fuel2)) %>%
+        mutate(Potential = ifelse(grepl("Potential", Name, fixed = TRUE), 
+                                  "Hypothetical", "AESO Queue"))
+      fuel <- paste0(Fuel1," & ",Fuel2)
+    }
     
     data %>%
       ggplot() +
       aes(Name, Units_Built, fill = Potential) + 
       geom_col() +
-      labs(x = "Plant Name", y = "Units Built") +
+      labs(x = fuel, y = "Units Built") +
       scale_fill_manual(
         values = c("Hypothetical"="forestgreen", "AESO Queue"="gray"),
         guide = "none") +
       scale_y_continuous(expand = c(0,0),
                          #limits = c(0,(max(data$Units_Built)+1))
                          ) +
-      theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+      theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1),
             panel.background = element_rect(fill = "transparent"),
             panel.grid.major.x = element_blank(),
             panel.grid.minor.x = element_blank(),
@@ -875,18 +1104,30 @@
   # highlighted
   ################################################################################
   
-  Slack2 <- function(case, Fuel) {
-    data <- Build %>%
-      filter(Run_ID == case & LT_Iteration == max(LT_Iteration) & 
-               Time_Period == "Study" & Fuel_Type == Fuel) %>%
-      mutate(Potential = ifelse(grepl("Potential", Name, fixed = TRUE), 
-                                "Hypothetical", "AESO Queue")) 
+  Slack2 <- function(case, Fuel1, Fuel2) {
+    # Test to verify both Fuels were provided
+    if(missing(Fuel2)) {
+      data <- Build %>%
+        filter(Run_ID == case & LT_Iteration == max(LT_Iteration) & 
+                 Time_Period == "Study" & Fuel_Type == Fuel1) %>%
+        mutate(Potential = ifelse(grepl("Potential", Name, fixed = TRUE), 
+                                  "Hypothetical", "AESO Queue")) 
+      fuel <- Fuel1
+    } else {
+      data <- Build %>%
+        filter(Run_ID == case & LT_Iteration == max(LT_Iteration) & 
+                 Time_Period == "Study" & 
+                 (Fuel_Type == Fuel1 | Fuel_Type == Fuel2)) %>%
+        mutate(Potential = ifelse(grepl("Potential", Name, fixed = TRUE), 
+                                  "Hypothetical", "AESO Queue")) 
+      fuel <- paste0(Fuel1," & ",Fuel2)
+    }
     
     data %>%
       ggplot() +
       aes(Name, Max_Limit_Slack, fill = Potential) + 
       geom_col() +
-      labs(x = "Plant Name", y = "Units Available") +
+      labs(x = fuel, y = "Units Not Built") +
       scale_fill_manual(
         values = c("Hypothetical"="forestgreen", "AESO Queue"="gray"),
         guide = "none") +
@@ -954,6 +1195,16 @@
                              ncol = 2, nrow = 2), DB))
   }
   
+  Month4 <- function(month,case) {
+    ggdraw(add_sub(ggarrange(Month14(Yr4Sp[[1]],month,case),
+                             Month14(Yr4Sp[[2]],month,case),
+                             Month14(Yr4Sp[[3]],month,case),
+                             Month14(Yr4Sp[[4]],month,case),
+                             #labels = c(Yr4Sp[[1]],Yr4Sp[[2]],Yr4Sp[[3]],Yr4Sp[[4]]),
+                             common.legend = TRUE, legend = "right",
+                             ncol = 2, nrow = 2), DB))
+  }
+  
   ################################################################################
   # Function to plot Price and Output together
   ################################################################################
@@ -988,8 +1239,8 @@
                     Builtcol(case)+theme(legend.position ="none",
                                          axis.title.x = element_blank(),
                                          axis.text.x = element_blank()), 
-                    BuiltMW(case)+theme(legend.position ="none"), 
-                    ncol = 1, align="v", axis = "l",rel_heights = c(2.5,0.8,1))
+                    Eval_diffcap(input,case)+theme(legend.position ="none"), 
+                    ncol = 1, align="v", axis = "l",rel_heights = c(2.5,0.6,1.5))
     
     ggdraw(add_sub(p1,paste("Simulation: ",DB, sep = "")))
   }
@@ -1007,11 +1258,11 @@
     ggdraw(add_sub(p1,paste("Simulation: ",DB, sep = "")))
   }
   
-  BuildUnits2 <- function(case, Fuel) {
-    p1 <- plot_grid(Units2(case,Fuel)+theme(axis.title.x = element_blank(),
+  BuildUnits2 <- function(case, Fuel1, Fuel2) {
+    p1 <- plot_grid(Units2(case,Fuel1,Fuel2)+theme(axis.title.x = element_blank(),
                                             axis.text.x = element_blank(),
                                             text = element_text(size= 15)),
-                    Slack2(case,Fuel)+theme(text = element_text(size= 15)),
+                    Slack2(case,Fuel1,Fuel2)+theme(text = element_text(size= 15)),
                     ncol = 1, align="v", axis = "l",rel_heights = c(1,1.5))
     
     ggdraw(add_sub(p1,paste("Simulation: ",DB, sep = "")))
