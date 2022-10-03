@@ -21,8 +21,9 @@
   library(formattable)
 }
 
+{
 # Define variables
-{location <- "la53082lo245821.csv"  # The location lat and long as it appears on file.
+{location <- "la53159lo243039.csv"  # The location lat and long as it appears on file.
   hbht <- 100   #Hubheight of wind turbine in meters
   cutin <- 3    #Cut in wind speed (m/s)
   rated <- 12   #Wind speed at maximum capacity (m/s)
@@ -203,3 +204,4 @@ Aurora <- TWF %>%
 
 #SAVE FILE (To save the processed data) This is to be entered into Aurora.
 write.csv(Aurora, file=paste(location,"_Output.csv"))
+}
