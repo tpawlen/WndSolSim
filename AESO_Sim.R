@@ -179,27 +179,27 @@
 ################################################################################
 
 { 
-  DB <- "Sep_30a_2022"
+  DB <- "oct_11_2022"
 # Connect to SQL database
 ################################################################################
-  con <- dbConnect(odbc(),
-                   Driver = "SQL Server",
-                   Server = "192.168.0.139,49172",
-                   Database = DB,
-                   UID = "admin",
-                   PWD = "SOB704910",
-                   Port = 49172)
+#  con <- dbConnect(odbc(),
+#                   Driver = "SQL Server",
+#                   Server = "192.168.0.139,49172",
+#                   Database = DB,
+#                   UID = "admin",
+#                   PWD = "SOB704910",
+#                   Port = 49172)
   {  
   # Connect to MySQL database
   ################################################################################
-  #  con1 <- dbConnect(RMariaDB::MariaDB(),
-  #                   user = 'tpawl',
-  #                   password = 'Aurora2022!',
-  #                   Driver = "SQL Server",
-  #                   host='192.168.0.139',
-  #                   dbname = DB,
+    con <- dbConnect(RMariaDB::MariaDB(),
+                     user = 'tpawl',
+                     password = 'Aurora2022!',
+                     Driver = "SQL Server",
+                     host='192.168.0.139',
+                     dbname = DB,
   
-  #                   port = 3306)
+                     port = 3306)
 
 
 ################################################################################
@@ -213,14 +213,14 @@
     Year  <- dbReadTable(con,'ResourceGroupYear1')
     ZoneHour <- dbReadTable(con,'ZoneHour1')
     ResourceYr <- dbReadTable(con,'ResourceYear1')
-    #ResourceHr <- dbReadTable(con,'ResourceHour1')
+    ResourceHr <- dbReadTable(con,'ResourceHour1')
     #StackHr <- dbReadTable(con,'ResourceStackHour1')
     StackYr <- dbReadTable(con,'ResourceStackYear1')
     
     #LTRes <- dbReadTable(con,'LTResValue1')
     #LTMarg <- dbReadTable(con,'LTMargResLog1')
     #LTCap <- dbReadTable(con,'LTCapacLog1')
-    Build <- dbReadTable(con,'LTBuildReport1')
+    #Build <- dbReadTable(con,'LTBuildReport1')
     #Study <- dbReadTable(con,'StudyLog1')
     #Link <- dbReadTable(con,'LinkYear1')
     #Fuel <- dbReadTable(con,'FuelYear1')
@@ -323,8 +323,8 @@
                                    format = "%Y")
       ZoneHour$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",ZoneHour$Time_Period))), 
                                   tz = "MST")-(60*60)
-      #ResourceHr$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",ResourceHr$Time_Period))), 
-      #                      tz = "MST")-(60*60)
+      ResourceHr$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",ResourceHr$Time_Period))), 
+                            tz = "MST")-(60*60)
       
       # Selects only the required columns
       ################################################################################
@@ -377,7 +377,7 @@ year_price(2021,BC)
 
 gen_comp(2020,2021,BC)
 
-price_comp(2020,2021,BC)
+price_comp(2020,2035,BC)
 
 margin(2020,2021,BC)
 
@@ -404,4 +404,8 @@ EvalOut(Year,BC)
 EvalPerc(Year,BC)
 
 Eval_diffcap(Year,BC)
+
+cap_fac_diff(2020,"WIND",BC)
+
+cap_fac_diff(2021,"WIND",BC)
  

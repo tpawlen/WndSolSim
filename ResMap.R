@@ -55,39 +55,48 @@ legText <- 12
 {
 wind_profile00 <- readRDS("WindAtlas_Data00_0.05")
 colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile00 <- readRDS("WindAtlas_Data01_0.05")
+wind_profile01 <- readRDS("WindAtlas_Data01_0.05")
 colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile00 <- readRDS("WindAtlas_Data02_0.05")
+wind_profile02 <- readRDS("WindAtlas_Data02_0.05")
 colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile00 <- readRDS("WindAtlas_Data03_0.05")
+wind_profile03 <- readRDS("WindAtlas_Data03_0.05")
 colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile04 <- readRDS("WindAtlas_Data04_0.05")
 colnames(wind_profile04) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile00 <- readRDS("WindAtlas_Data10_0.05")
+wind_profile10 <- readRDS("WindAtlas_Data10_0.05")
 colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile11 <- readRDS("WindAtlas_Data11_0.05")
 colnames(wind_profile11) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile00 <- readRDS("WindAtlas_Data12_0.05")
+wind_profile12 <- readRDS("WindAtlas_Data12_0.05")
 colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile13 <- readRDS("WindAtlas_Data13_0.05")
 colnames(wind_profile13) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile00 <- readRDS("WindAtlas_Data20_0.05")
+wind_profile14 <- readRDS("WindAtlas_Data14_0.05")
+colnames(wind_profile13) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile20 <- readRDS("WindAtlas_Data20_0.05")
 colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile21 <- readRDS("WindAtlas_Data21_0.05")
+colnames(wind_profile13) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile22 <- readRDS("WindAtlas_Data22_0.05")
 colnames(wind_profile22) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile00 <- readRDS("WindAtlas_Data30_0.05")
+wind_profile23 <- readRDS("WindAtlas_Data23_0.05")
+colnames(wind_profile13) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile30 <- readRDS("WindAtlas_Data30_0.05")
 colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile00 <- readRDS("WindAtlas_Data31_0.05")
+wind_profile31 <- readRDS("WindAtlas_Data31_0.05")
 colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile33 <- readRDS("WindAtlas_Data33_0.05")
 colnames(wind_profile33) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile44 <- readRDS("WindAtlas_Data40_0.05")
+wind_profile40 <- readRDS("WindAtlas_Data40_0.05")
 colnames(wind_profile44) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile40 <- readRDS("WindAtlas_Data44_0.05")
+wind_profile44 <- readRDS("WindAtlas_Data44_0.05")
 colnames(wind_profile40) <- c('Latitude', 'Longitude', 'Wind')
 
-wind_profile <- rbind(wind_profile00, wind_profile04, wind_profile11, 
-                      wind_profile13, wind_profile22, wind_profile31,
+wind_profile <- rbind(wind_profile00, wind_profile01, wind_profile02, 
+                      wind_profile03, wind_profile04, wind_profile11, 
+                      wind_profile12, wind_profile13, wind_profile14, 
+                      wind_profile20, wind_profile21, wind_profile22, 
+                      wind_profile23, wind_profile30, wind_profile31,
                       wind_profile33, wind_profile40, wind_profile44)
 }
 
@@ -96,9 +105,9 @@ wind_profile <- rbind(wind_profile00, wind_profile04, wind_profile11,
 # Location of operational wind turbines, from Canadian Wind Turbine Database
 # https://open.canada.ca/data/en/dataset/79fdad93-9025-49ad-ba16-c26d718cc070
 ################################################################################
-turb_location <- read_excel("Wind_Turbine_Database_FGP.xlsx")
-turb_AB <- turb_location %>%
-  filter(Province=="Alberta")
+#turb_location <- read_excel("Wind_Turbine_Database_FGP.xlsx")
+#turb_AB <- turb_location %>%
+#  filter(Province=="Alberta")
 
 ################################################################################
 # Location of wind farms in AESO queue. Long and Lat were determined manually 
@@ -114,16 +123,18 @@ turb_pot <- subset(turb_pot, select = -Technology)
 ################################################################################
 # Potential locations
 ################################################################################
-pot <- read_excel("Potential_Sim.xlsx")
+wind_Aurora <- read_excel("Potential_Sim.xlsx")
+pot <- read_excel("Potential_Sim.xlsx") %>%
+  filter(Status == "Potential")
 
 ################################################################################
 # Summarizes the active wind farms.
 ################################################################################
-plant <- turb_AB %>%
-  group_by(`Project name`, `Total project capacity (MW)`) %>%
-  summarise(Latitude = mean(Latitude), Longitude = mean(Longitude)) %>%
-  rename(Capacity = `Total project capacity (MW)`)
-plant$Status <- "Active"
+#plant <- turb_AB %>%
+#  group_by(`Project name`, `Total project capacity (MW)`) %>%
+#  summarise(Latitude = mean(Latitude), Longitude = mean(Longitude)) %>%
+#  rename(Capacity = `Total project capacity (MW)`)
+#plant$Status <- "Active"
 
 ################################################################################
 # Combine the active and planned wind farms
@@ -134,6 +145,7 @@ wind_sim <- rbind(plant,turb_pot,pot)
 
 ################################################################################
 #Level 1 shows provinces, while level 2 shows individual counties
+#When getData is removed, use geodata package instead
 ################################################################################
 {can_level1 = getData("GADM", country = "CA", level = 1)
 
@@ -151,10 +163,29 @@ alberta_ellipsoid1 =
 #  as(alberta_ellipsoid1,"SpatialPolygons")
 #)
 
-active <- wind_farm %>%
-  filter(Status == "Active")
+active <- wind_Aurora %>%
+  filter(Status == "Active") %>%
+  na.omit()
 simple <- wind_sim %>%
   filter(Status != "Proposed")
+
+#scale_color_Aurora <- function(...){
+#  ggplot2:::manual_scale(
+#    'fill', 
+#    values = setNames(c("black", "grey39","red4"), 
+#                      c("Active","Queue","Potential")), 
+#    ...
+#  )
+#}
+
+#scale_shape_Aurora <- function(...){
+#  ggplot2:::manual_scale(
+#    'fill', 
+#    values = setNames(c(16,18,17), 
+#                      c("Active","Queue","Potential")), 
+#    ...
+#  )
+#}
 
 ################################################################################
 ################################################################################
@@ -187,11 +218,29 @@ AB <- ggplot() +
 # Map of Alberta with active wind farms
 ################################################################################
 ################################################################################
-Act_wind <- AB + geom_point(data = active,
-                aes(x= Longitude, y = Latitude, size = Capacity), 
+#ID_labels <- as.list(active$ID)
+
+Act_wind <- ggplot(active, aes(x= Longitude, y = Latitude, #label=ID_labels
+                               )) + 
+  geom_tile(data = wind_profile, 
+            aes(x = Longitude, y = Latitude, fill = Wind)) +
+  geom_polygon(data = alberta_ellipsoid1, 
+               aes(x = long, y = lat, group = group), 
+               fill = "transparent", colour = "black") +
+  scale_fill_gradientn(colors = matlab.like2(100),
+                       limits=c(3,10),oob=squish, name = "Mean wind speed \nat 80m height \n(m/s)") +
+  geom_point(data = active,
+                aes(x= Longitude, y = Latitude, size = Capacity, ), 
                 shape = 16, color = "black") +
 #  ggtitle("Active Wind Farms") +
-  theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
+  theme(panel.background = element_rect(fill = "transparent"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        plot.background = element_rect(fill = "transparent", color = NA),
+        plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
         legend.text = element_text(size = legText),
         legend.title = element_text(size = legTitle)) 
 
@@ -265,6 +314,28 @@ Sim_wind <- AB + geom_point(data = wind_sim,
                        labels = labs3) +
     guides(shape = guide_legend(override.aes = list(size = 5))) +
     ggtitle("Active, Queued, & Potential \nWind Farms") +
+    theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
+          legend.text = element_text(size = legText),
+          legend.title = element_text(size = legTitle)) 
+}
+
+################################################################################
+################################################################################
+# Map of Alberta with active and queued wind farms in Aurora with selected 
+# locations for simulation
+################################################################################
+################################################################################
+{
+  labs4 <- c("Active","Simulated","AESO Queue")
+  
+  Aurora_wind <- AB + geom_point(data = wind_Aurora,
+                              aes(x= Longitude, y = Latitude, size = Capacity, 
+                                  shape = Status, color = Status)) + 
+    scale_shape_manual(values = c(16,17,18), labels = labs4) +
+    scale_color_manual(values = c("black", "red4", "grey39"), 
+                       labels = labs4) +
+    guides(shape = guide_legend(override.aes = list(size = 5))) +
+    ggtitle("Active, Queued, & Potential \nWind Farms in Aurora") +
     theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
           legend.text = element_text(size = legText),
           legend.title = element_text(size = legTitle)) 

@@ -21,9 +21,9 @@
   library(formattable)
 }
 
-{
+
 # Define variables
-{location <- "la53159lo243039.csv"  # The location lat and long as it appears on file.
+{{location <- "la49221lo246324.csv"  # The location lat and long as it appears on file.
   hbht <- 100   #Hubheight of wind turbine in meters
   cutin <- 3    #Cut in wind speed (m/s)
   rated <- 12   #Wind speed at maximum capacity (m/s)
