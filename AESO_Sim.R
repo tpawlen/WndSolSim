@@ -179,27 +179,27 @@
 ################################################################################
 
 { 
-  DB <- "oct_11_2022"
+  DB <- "Oct_06_2022"
 # Connect to SQL database
 ################################################################################
-#  con <- dbConnect(odbc(),
-#                   Driver = "SQL Server",
-#                   Server = "192.168.0.139,49172",
-#                   Database = DB,
-#                   UID = "admin",
-#                   PWD = "SOB704910",
-#                   Port = 49172)
+  con <- dbConnect(odbc(),
+                   Driver = "SQL Server",
+                   Server = "192.168.0.139,49172",
+                   Database = DB,
+                   UID = "admin",
+                   PWD = "SOB704910",
+                   Port = 49172)
   {  
   # Connect to MySQL database
   ################################################################################
-    con <- dbConnect(RMariaDB::MariaDB(),
-                     user = 'tpawl',
-                     password = 'Aurora2022!',
-                     Driver = "SQL Server",
-                     host='192.168.0.139',
-                     dbname = DB,
+#    con <- dbConnect(RMariaDB::MariaDB(),
+#                     user = 'tpawl',
+#                     password = 'Aurora2022!',
+#                     Driver = "SQL Server",
+#                     host='192.168.0.139',
+#                     dbname = DB,
   
-                     port = 3306)
+#                     port = 3306)
 
 
 ################################################################################
@@ -404,6 +404,10 @@ EvalOut(Year,BC)
 EvalPerc(Year,BC)
 
 Eval_diffcap(Year,BC)
+
+cap_fac_difference(2020,2021,"WIND",BC)
+
+capturePrice_diff(2020,2021,"WIND",BC)
 
 cap_fac_diff(2020,"WIND",BC)
 
