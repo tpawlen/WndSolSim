@@ -179,27 +179,26 @@
 ################################################################################
 
 { 
-  DB <- "Oct_06_2022"
+  DB <- "Oct_12c_2022"
 # Connect to SQL database
 ################################################################################
-  con <- dbConnect(odbc(),
-                   Driver = "SQL Server",
-                   Server = "192.168.0.139,49172",
-                   Database = DB,
-                   UID = "admin",
-                   PWD = "SOB704910",
-                   Port = 49172)
+#  con <- dbConnect(odbc(),
+#                   Driver = "SQL Server",
+#                   Server = "192.168.0.139,49172",
+#                   Database = DB,
+#                   UID = "admin",
+#                   PWD = "SOB704910",
+#                   Port = 49172)
   {  
   # Connect to MySQL database
   ################################################################################
-#    con <- dbConnect(RMariaDB::MariaDB(),
-#                     user = 'tpawl',
-#                     password = 'Aurora2022!',
-#                     Driver = "SQL Server",
-#                     host='192.168.0.139',
-#                     dbname = DB,
-  
-#                     port = 3306)
+    con <- dbConnect(RMariaDB::MariaDB(),
+                     user = 'tpawl',
+                     password = 'Aurora2022!',
+                     Driver = "SQL Server",
+                     host='192.168.0.139',
+                     dbname = DB,
+                     port = 3306)
 
 
 ################################################################################
@@ -409,7 +408,11 @@ cap_fac_difference(2020,2021,"WIND",BC)
 
 capturePrice_diff(2020,2021,"WIND",BC)
 
-cap_fac_diff(2020,"WIND",BC)
+capPrice_diff(2020,2021,"WIND",BC)
 
-cap_fac_diff(2021,"WIND",BC)
+capacity_factor(2020,"WIND",BC)
+
+capacity_factor(2021,"WIND",BC)
+
+capturePrice(2021,"WIND",BC)
  

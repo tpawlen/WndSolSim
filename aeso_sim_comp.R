@@ -1636,7 +1636,118 @@ capturePrice_diff <- function(year1, year2, plant_type, case) {
     labs(x="",y="Difference in Revenue Relative to Mean Price 
     between Actual and Simulation ($/MWh)",
          title=paste0("Energy Price Capture Differential ($/MWh, ",year1,"-",
-                      year2," (%)"),
+                      year2," (%))"),
+         subtitle = DB,
+         caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
+    theme(panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
+          panel.grid.minor.y = element_line(color = "lightgray",linetype="dotted"),
+          axis.line.x = element_line(color = "black"),
+          axis.line.y = element_line(color = "black"),
+          axis.text = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          axis.title = element_text(size = sz),
+          plot.subtitle = element_text(size = sz-2,hjust=0.5),
+          plot.caption = element_text(face="italic",size = sz-4,hjust=0),
+          plot.title = element_text(hjust=0.5,size = sz+2),
+          #          plot.margin=unit(c(1,1,1.5,1.2),"cm"),
+          
+          # For transparent background
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          panel.border = element_rect(colour = "black", fill = "transparent"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) 
+}
+
+capPrice_diff <- function(year1, year2, plant_type, case) {
+  # Plots the difference between the average capture price realized by each 
+  # generation technology and the mean price for the same time period. 
+  
+  # Based on a plot designed by Dr. Andrew Leach
+  
+  # Filters data set for required timeframe
+  Act <- sub_samp %>% 
+    filter(year(time) >= year1,
+           year(time) <= year2,
+           Plant_Type %in% gen_set) %>%
+    mutate(Year = year(time)) %>%
+    group_by(ID,Plant_Type,Year) %>% 
+    summarize(capture_Act = sum(Revenue)/sum(gen)) %>%
+    mutate(Year = as.factor(Year),
+    ) %>%
+    filter(Plant_Type == plant_type) %>%
+    subset(., select = c(ID,Year,capture_Act))
+  
+  # Filters data set for required timeframe for simulated data
+  SampleSimZ <- ZH  %>%
+    filter(year(date) >= year1,
+           year(date) <= year2,
+           Run_ID == case,
+    ) %>%
+    subset(., select = c(date, Price, Imports, Exports))
+  
+  SampleSim <- ResourceHr %>%
+    subset(., select = c(date,ID,Name,Output_MWH,Capacity_Factor,Primary_Fuel,
+                         Revenue,Run_ID,Report_Year,
+                         Condition)) %>%
+    filter(Report_Year >= year1,
+           Report_Year <= year2,
+           Output_MWH >= 0,
+           Run_ID == case,
+    ) %>%
+    mutate(Year = as.factor(Report_Year),
+           ID = str_extract(Name, "(?<=\\().*(?=\\))"),
+           Plant_Type = case_when(str_detect(Primary_Fuel, "Coal")~"COAL",
+                                  str_detect(Primary_Fuel, "NaturalGas")~"NGCC",
+                                  str_detect(Primary_Fuel, "-Peaking")~"SCGT",
+                                  str_detect(Primary_Fuel, "Water")~"HYDRO",
+                                  str_detect(Primary_Fuel, "COGEN")~"COGEN",
+                                  str_detect(Primary_Fuel, "Wind")~"WIND",
+                                  str_detect(Primary_Fuel, "Other")~"OTHER",
+                                  str_detect(Primary_Fuel, "Solar")~"SOLAR",
+                                  str_detect(Primary_Fuel, "Storage")~"STORAGE",
+                                  str_detect(Primary_Fuel, "Trade")~"IMPORT",
+                                  str_detect(Primary_Fuel, "100-Hydrogen")~"H2",
+                                  str_detect(Primary_Fuel, "Simple Cycle")~"SC_BLEND",
+           ),
+           sit="Simulation")
+  
+  Sim <- merge(SampleSimZ, SampleSim, by = "date") %>%
+    subset(., select = -c(Imports,Exports,Run_ID,Report_Year,Primary_Fuel)) %>%
+    mutate(Revenue = Price * Output_MWH) %>%
+    group_by(ID,Plant_Type,Year) %>%
+    summarize(capture_Sim = sum(Revenue)/sum(Output_MWH)) %>%
+    filter(Plant_Type == plant_type) %>%
+    subset(., select=c(ID,Year,capture_Sim))
+  
+  total <- merge(Act,Sim,by = c("ID","Year"))  %>%
+    mutate(CP_diff = capture_Act - capture_Sim)
+  
+  sz <- 12
+  
+  # Plot the data
+  ggplot(total,
+         aes(Year,CP_diff,colour=Year,fill=Year),
+         alpha=0.8)+
+    geom_col(aes(ID,CP_diff,colour=Year,fill=Year),
+             size=1.5,position = position_dodge(width = .75),width = .6)+
+    geom_hline(yintercept=0, linetype="solid", color="gray",size=1)+
+    scale_color_manual("",values=AESO_colours)+
+    scale_fill_manual("",values=AESO_colours)+
+    #    facet_grid(~Year) +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(-50,50),
+                       #                       breaks = seq(-40,100, by = 20)
+    ) +
+    labs(x="",y="Difference in Revenue between 
+         Actual and Simulation ($/MWh)",
+         title=paste0("Energy Price Capture Differential ($/MWh, ",year1,"-",
+                      year2," (%))"),
          subtitle = DB,
          caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
     theme(panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
@@ -1721,8 +1832,6 @@ year_price <- function(year,case) {
     ) + 
     scale_color_manual(values = c("black", "red"))
 }
-
-
 
 ################################################################################
 # Plot charts shown in AESO 2021 Market Report
