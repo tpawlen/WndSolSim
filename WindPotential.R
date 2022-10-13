@@ -99,7 +99,7 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
 
      
    # Creates an RDS file with the entire dataset.
-  saveRDS(wind_prof, file = paste("WindAtlas_Data23", res, sep = "_"))
+  saveRDS(wind_prof, file = paste("WindAtlas_Data24", res, sep = "_"))
   
   # Prints the location of the file.
   getwd()
