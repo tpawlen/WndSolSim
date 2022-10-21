@@ -13,6 +13,7 @@
 #  return(legend)}
 
 AESO_PrOt <- function(year,month,day) {
+  # Single week output, demand, and pool price
   plot_grid(wkPrice(year,month,day) + 
               theme(axis.title.x=element_blank(),axis.text.x=element_blank()),
             Week_act(year,month,day)+theme(legend.position ="none"), 
@@ -24,9 +25,12 @@ AESO_PrOt <- function(year,month,day) {
 ################################################################################
 
 Weekly <- function(year, month, day, case) {
+  # Plots hourly generation output of actual beside simulation
   
+  # Set duration to the length of time being compared
+  duration <- 14
   wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
-  wk_end <- as.POSIXct(paste(day+14,month,year, sep = "/"), format="%d/%m/%Y")
+  wk_end <- as.POSIXct(paste(day+duration,month,year, sep = "/"), format="%d/%m/%Y")
   
   # Filters for the desired case study
   Sim <- Hour %>%
@@ -72,6 +76,7 @@ Weekly <- function(year, month, day, case) {
   
   WK <- rbind(Sim,Act)
   
+  # Reorder the factor levels
   {
     WK$ID<-fct_relevel(WK$ID, "IMPORT", after = Inf)
     WK$ID<-fct_relevel(WK$ID, "COAL", after = Inf)
@@ -86,13 +91,16 @@ Weekly <- function(year, month, day, case) {
     WK$ID<-fct_relevel(WK$ID, "STORAGE", after = Inf)
   }
   
+  # Set the factor levels
   WK$ID <- factor(WK$ID, levels=c("IMPORT", "COAL", "NGCONV", "COGEN", 
                                                   "SCGT", "NGCC", "HYDRO", 
                                                   "OTHER", "WIND", "SOLAR", "STORAGE"))
   
+  # Rename the factor levels
   levels(WK$ID) <- c("Import","Coal", "NGConv", "Cogen", "SCGT", "NGCC", "Hydro", 
                              "Other", "Wind", "Solar", "Storage")
   
+  # Select the demand data
   dmd <- demand %>%
     filter(time >= wk_st & time <= wk_end) %>%
     rename(date = time) %>%
@@ -142,9 +150,12 @@ Weekly <- function(year, month, day, case) {
 }
 
 Weekly_price <- function(year, month, day,case) {
+  # Plot the pool price actual verses simulation
   
+  # Set duration to the length of time being compared
+  duration <- 14
   wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
-  wk_end <- as.POSIXct(paste(day+14,month,year, sep = "/"), format="%d/%m/%Y")
+  wk_end <- as.POSIXct(paste(day+duration,month,year, sep = "/"), format="%d/%m/%Y")
   
   # Filters for the desired case study
   Sim <- ZH %>%
@@ -190,6 +201,9 @@ Weekly_price <- function(year, month, day,case) {
 }
 
 price_interval <- function(year1, year2, case) {
+  # Based on code from Dr. Leach with simulation data overlaid ontop.
+  # Plots the average price with bands showing the range between on and off peak
+  # prices.
   assign_peaks<-function(data_orig,time_var=time){
     #default is that we're receiving a data_frame with time as the time variable
     #create temp_time with whatever the time variable might be, then use that to create stats and peaks
@@ -381,11 +395,15 @@ price_interval <- function(year1, year2, case) {
 }
 
 Weekly_line <- function(year, month, day, case) {
+  # Simple line chart showing hourly generation output with actual beside 
+  # simulation
   
   # Select only a single week
   ##############################################################################
+  # Set duration to the length of time being compared
+  duration <- 14
   wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
-  wk_end <- as.POSIXct(paste(day+14,month,year, sep = "/"), format="%d/%m/%Y")
+  wk_end <- as.POSIXct(paste(day+duration,month,year, sep = "/"), format="%d/%m/%Y")
   
   # Filters Simulated data for the desired case study
   ##############################################################################
@@ -481,11 +499,14 @@ Weekly_line <- function(year, month, day, case) {
 }
 
 Fossil_line <- function(year, month, day, case) {
+  # Same as Weekly_line, but with only the fossil fuel resources
   
   # Select only a single week
   ##############################################################################
+  # Set duration to the length of time being compared
+  duration <- 14
   wk_st <- as.POSIXct(paste(day,month,year, sep = "/"), format="%d/%m/%Y")
-  wk_end <- as.POSIXct(paste(day+14,month,year, sep = "/"), format="%d/%m/%Y")
+  wk_end <- as.POSIXct(paste(day+duration,month,year, sep = "/"), format="%d/%m/%Y")
   
   # Filters Simulated data for the desired case study
   ##############################################################################
@@ -659,125 +680,6 @@ rev_dur <- function(year1, year2, type, case) {
                        labels = percent) +
     scale_y_continuous(expand=c(0,0)
     )
-}
-
-seas_price <- function(year1, year2, case) {
-    # Plots the Pool Price duration vs percentile for AESO and Sim for a specific season
-    # Like AESO Market Report 2021 Figures 2 and 3
-    
-    # Load and filter Simulation data, 
-    # Calculate the percentage of time
-    # Create column 'sit' to indicate Simulation
-  
-  WS1 <- as.Date(paste0(year1,"-1-01"), format = "%Y-%m-%d") # Winter Solstice
-  SE1 <- as.Date(paste0(year1,"-3-15"),  format = "%Y-%m-%d") # Spring Equinox
-  SS1 <- as.Date(paste0(year1,"-6-15"),  format = "%Y-%m-%d") # Summer Solstice
-  FE1 <- as.Date(paste0(year1,"-9-15"),  format = "%Y-%m-%d") # Fall Equinox  
-  
-  
-  WS2 <- as.Date(paste0(year2-1,"-12-15"), format = "%Y-%m-%d") # Winter Solstice
-  SE2 <- as.Date(paste0(year2,"-3-15"),  format = "%Y-%m-%d") # Spring Equinox
-  SS2 <- as.Date(paste0(year2,"-6-15"),  format = "%Y-%m-%d") # Summer Solstice
-  FE2 <- as.Date(paste0(year2,"-9-15"),  format = "%Y-%m-%d") # Fall Equinox  
-  WS3 <- as.Date(paste0(year2,"-12-15"), format = "%Y-%m-%d") # Winter Solstice
-  
-  totSim <- ZoneH %>%
-      filter(Report_Year >= (year1) & 
-               Report_Year <= year2,
-             Name == "WECC_Alberta",
-             Run_ID == case, 
-             Condition != "Average") %>%
-      group_by(Condition, Report_Year) %>%
-      mutate(perc = 1-ecdf(Price)(Price)) %>%
-      subset(., select=c(date, Condition, Report_Year, Price, perc)) %>%
-      rename(Year = Report_Year) %>%
-      ungroup() %>%
-      mutate(sit = "Simulated")
-    
-    # Load and filter AESO data, 
-    # Calculate the percentage of time
-    # Create column 'sit' to indicate Actual AESO data
-    Actual <- na.omit(demand)
-    Actual$Year <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%Y")
-    Actual$Hour <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%H")
-    
-    totAct <- Actual %>%
-      filter(Year >= (year1), 
-             Year <= year2,) %>%
-      mutate(Condition = if_else(between(Hour, 08, 23), 
-                                 "On-Peak WECC", "Off-Peak WECC")) %>%
-      group_by(Year, Condition) %>%
-      mutate(perc = 1-ecdf(Price)(Price)) %>%
-      subset(., select=c(time, Condition, Year, Price, perc)) %>%
-      ungroup() %>%
-      mutate(sit = "Actual") %>%
-      rename(date = time)
-    
-    # Combine Actual and Simulation data
-    total <- rbind(totSim,totAct)
-    
-    WinterTot <- total %>%
-      filter(date >= WS1 & date <= SE1 |
-               date >= WS2 & date <= SE2) %>%
-      mutate(Season = "Winter")
-    
-    SpringTot <- total %>%
-      filter(date >= SE1 & date <= SS1 |
-               date >= SE2 & date <= SS2) %>%
-      mutate(Season = "Spring")
-    
-    SummerTot <- total %>%
-      filter(date >= SS1 & date <= FE1 |
-               date >= SS2 & date <= FE2) %>%
-      mutate(Season = "Summer")
-    
-    FallTot <- total %>%
-      filter(date >= FE1 & date <= WS2 |
-               date >= FE2 & date <= WS3) %>%
-      mutate(Season = "Fall")
-    
-    total <- rbind(WinterTot, SpringTot, SummerTot, FallTot) #%>%
-#      filter(Season == season)
-    
-    # Set font size for plot
-    sz <- 15
-    
-    ggplot() +
-      geom_line(data = total, 
-                aes(x = perc, y = Price, colour = Year, linetype = sit), size = 1) +
-      facet_grid(Condition ~ Season) +#cols = vars(Condition)) +
-      theme_bw() +
-      theme(axis.text = element_text(size = sz),
-            axis.text.x = element_text(angle = 45, hjust=1, size = sz),
-            axis.title = element_text(size = sz),
-            plot.title = element_text(size = sz+2),
-            legend.text = element_text(size = sz),
-            
-            # For transparent background
-            panel.grid = element_blank(),
-            legend.title = element_blank(),
-            panel.background = element_rect(fill = "transparent"),
-            panel.grid.major.x = element_blank(),
-            panel.grid.minor.x = element_blank(),
-            panel.spacing = unit(1.5, "lines"),
-            plot.background = element_rect(fill = "transparent", color = NA),
-            legend.key = element_rect(colour = "transparent", fill = "transparent"),
-            legend.background = element_rect(fill='transparent'),
-            legend.box.background = element_rect(fill='transparent', colour = "transparent"),
-            aspect.ratio = 2/3
-      ) +
-      labs(y = "Pool Price$/MWh", 
-           x = "Percentage of Time", 
-           title = "Seasonal AESO Data vs Simulation",
-           subtitle = DB) +
-      scale_color_manual(values = c("goldenrod1", "forestgreen", "cornflowerblue",
-                                    "firebrick","gray60", "orange")) +
-      scale_x_continuous(expand=c(0,0), 
-                         limits = c(0,1.1),
-                         labels = percent) +
-      scale_y_continuous(expand=c(0,0)
-      ) #+
-      #coord_fixed(ratio = 10)
 }
 
 year_comp <- function(year,case) {
@@ -1040,7 +942,7 @@ tot_gen <- function(year1, year2, case) {
     labs(y = "Total Yearly Generation (GWh)", 
          title = "Yearly total generation AESO Data vs Simulation",
          subtitle = DB) +
-    scale_fill_manual(values = AESO_colours) +
+    scale_fill_manual(values = c("grey50","royalblue")) +
     #    scale_x_continuous(expand=c(0,0), 
     #                       limits = c(0,1.1),
     #                       labels = percent) +
@@ -1776,6 +1678,8 @@ capPrice_diff <- function(year1, year2, plant_type, case) {
 }
 
 year_price <- function(year,case) {
+  # Line plot of the pool price with simulation shown in red over the historical
+  
   # Filters for the desired case study
   data <- ZH %>%
     filter(Run_ID == case,
@@ -1831,6 +1735,345 @@ year_price <- function(year,case) {
                        breaks = seq(MN, MX, by = MX/4)
     ) + 
     scale_color_manual(values = c("black", "red"))
+}
+
+capacity_factor <- function(year, plant_type, case) {
+  # Plots the difference between the average capture price realized by each 
+  # specific plant of a generation technology and the mean price for the same 
+  # time period. 
+  
+  # Based on a plot designed by Dr. Andrew Leach
+  
+  # Filters data set for required timeframe
+  Act <- sub_samp %>% 
+    filter(year(time) == year,
+           Plant_Type %in% gen_set) %>%
+    mutate(Year = year(time)) %>%
+    group_by(ID,Plant_Type,Year) %>%
+    summarize(Cap_Fac = mean(Cap_Fac)) %>%
+    mutate(sit = "Actual", Year = as.factor(Year))
+  
+  #  ResourceHr$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",
+  #                                                        ResourceHr$Time_Period))), 
+  #                                format="%Y-%m-%d %H:%M:%S",tz = "MST")-(60*60)
+  
+  # Filters data set for required timeframe for simulated data
+  #  SampleSimZ <- ZH  %>%
+  #    filter(year(date) == year,
+  #           #           year(date) <= year2,
+  #           Run_ID == case,
+  #    ) %>%
+  #    subset(., select = c(date, Price, Imports, Exports))
+  
+  SampleSim <- ResourceHr %>%
+    subset(., select = c(date,ID,Name,Output_MWH,Capacity_Factor,Primary_Fuel,
+                         Run_ID,Report_Year,#Beg_Date,End_Date,
+                         Condition)) %>%
+    filter(Report_Year == year,
+           #           Report_Year <= year2,
+           Output_MWH >= 0,
+           Run_ID == case,
+    ) %>%
+    mutate(Year = as.factor(Report_Year),
+           #           Aurora_ID = ID,
+           ID = str_extract(Name, "(?<=\\().*(?=\\))"),
+           Plant_Type = case_when(str_detect(Primary_Fuel, "Coal")~"COAL",
+                                  str_detect(Primary_Fuel, "NaturalGas")~"NGCC",
+                                  str_detect(Primary_Fuel, "-Peaking")~"SCGT",
+                                  str_detect(Primary_Fuel, "Water")~"HYDRO",
+                                  str_detect(Primary_Fuel, "COGEN")~"COGEN",
+                                  str_detect(Primary_Fuel, "Wind")~"WIND",
+                                  str_detect(Primary_Fuel, "Other")~"OTHER",
+                                  str_detect(Primary_Fuel, "Solar")~"SOLAR",
+                                  str_detect(Primary_Fuel, "Storage")~"STORAGE",
+                                  str_detect(Primary_Fuel, "Trade")~"IMPORT",
+                                  str_detect(Primary_Fuel, "100-Hydrogen")~"H2",
+                                  str_detect(Primary_Fuel, "Simple Cycle")~"SC_BLEND",
+           )) %>%
+    group_by(ID,Plant_Type,Year) %>%
+    summarize(Cap_Fac = mean(Capacity_Factor)) %>%
+    mutate(sit = "Simulation") %>%
+    na.omit()
+  
+  total <- rbind(SampleSim,Act) %>%
+    filter(Plant_Type == plant_type) 
+  
+  sz <- 12
+  
+  # Plot the data
+  ggplot(total,
+         aes(Year,Cap_Fac,colour=sit,fill=sit),
+         alpha=0.8)+
+    geom_col(aes(ID,Cap_Fac,colour=sit,fill=sit),
+             size=1.5,position = position_dodge(width = .9),width = .6)+
+    geom_hline(yintercept=0, linetype="solid", color="gray",size=1)+
+    scale_color_manual("",values=c("grey50","royalblue"))+
+    scale_fill_manual("",values=c("grey50","royalblue"))+
+    facet_grid(~Year) +
+    scale_y_continuous(expand=c(0,0),
+                       labels = scales::percent,
+                       #                       limits = c(-50,100),
+                       #                       breaks = seq(-40,100, by = 20)
+    ) +
+    labs(x="",y="Capacity Factor (%)",
+         title=paste0("Capacity Factor for ",plant_type," in ",year," (%)"),
+         subtitle = DB,
+         caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
+    theme(panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
+          panel.grid.minor.y = element_line(color = "lightgray",linetype="dotted"),
+          axis.line.x = element_line(color = "black"),
+          axis.line.y = element_line(color = "black"),
+          axis.text = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          axis.title = element_text(size = sz),
+          plot.subtitle = element_text(size = sz-2,hjust=0.5),
+          plot.caption = element_text(face="italic",size = sz-4,hjust=0),
+          plot.title = element_text(hjust=0.5,size = sz+2),
+          #          plot.margin=unit(c(1,1,1.5,1.2),"cm"),
+          
+          # For transparent background
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          panel.border = element_rect(colour = "black", fill = "transparent"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) 
+}
+
+cap_fac_diff <- function(year, plant_type, case) {
+  # Plots the difference between the average capture price realized by each plant
+  # of a specific generation technology and the mean price for the same time period. 
+  
+  # Based on a plot designed by Dr. Andrew Leach
+  
+  # Filters data set for required timeframe
+  Act <- sub_samp %>% 
+    filter(year(time) == year,
+           Plant_Type %in% gen_set,
+           Plant_Type == plant_type) %>%
+    #    mutate(Year = year(time)) %>%
+    group_by(ID,
+             #Plant_Type,
+             #Year
+    ) %>%
+    summarize(Act_Cap_Fac = mean(Cap_Fac)) %>%
+    mutate(
+      #sit = "Actual", 
+      #Year = as.factor(Year)
+    )#%>%
+  #filter(Plant_Type == plant_type) 
+  
+  #  ResourceHr$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",
+  #                                                        ResourceHr$Time_Period))), 
+  #                                format="%Y-%m-%d %H:%M:%S",tz = "MST")-(60*60)
+  
+  # Filters data set for required timeframe for simulated data
+  #  SampleSimZ <- ZH  %>%
+  #    filter(year(date) == year,
+  #           #           year(date) <= year2,
+  #           Run_ID == case,
+  #    ) %>%
+  #    subset(., select = c(date, Price, Imports, Exports))
+  
+  SampleSim <- ResourceHr %>%
+    subset(., select = c(date,ID,Name,Output_MWH,Capacity_Factor,Primary_Fuel,
+                         Run_ID,Report_Year,#Beg_Date,End_Date,
+                         Condition)) %>%
+    filter(Report_Year == year,
+           #           Report_Year <= year2,
+           Output_MWH >= 0,
+           Run_ID == case,
+    ) %>%
+    mutate(#Year = as.factor(Report_Year),
+      #           Aurora_ID = ID,
+      ID = str_extract(Name, "(?<=\\().*(?=\\))"),
+      Plant_Type = case_when(str_detect(Primary_Fuel, "Coal")~"COAL",
+                             str_detect(Primary_Fuel, "NaturalGas")~"NGCC",
+                             str_detect(Primary_Fuel, "-Peaking")~"SCGT",
+                             str_detect(Primary_Fuel, "Water")~"HYDRO",
+                             str_detect(Primary_Fuel, "COGEN")~"COGEN",
+                             str_detect(Primary_Fuel, "Wind")~"WIND",
+                             str_detect(Primary_Fuel, "Other")~"OTHER",
+                             str_detect(Primary_Fuel, "Solar")~"SOLAR",
+                             str_detect(Primary_Fuel, "Storage")~"STORAGE",
+                             str_detect(Primary_Fuel, "Trade")~"IMPORT",
+                             str_detect(Primary_Fuel, "100-Hydrogen")~"H2",
+                             str_detect(Primary_Fuel, "Simple Cycle")~"SC_BLEND",
+      )) %>%
+    filter(Plant_Type == plant_type)  %>%
+    group_by(ID,
+             #Plant_Type,
+             #Year
+    ) %>%
+    summarize(Sim_Cap_Fac = mean(Capacity_Factor))%>%
+    
+    #    mutate(sit = "Simulation") %>%
+    na.omit()
+  
+  total <- merge(Act,SampleSim,by = "ID") %>%
+    mutate(CF_diff = Act_Cap_Fac - Sim_Cap_Fac)
+  
+  sz <- 12
+  
+  # Plot the data
+  ggplot(total,
+         aes(#Year,
+           CF_diff,#colour=sit,fill=sit
+         ),
+         alpha=0.8)+
+    geom_col(aes(ID,CF_diff,#colour=sit,fill=sit
+    ),
+    size=1.5,position = position_dodge(width = .9),width = .6)+
+    geom_hline(yintercept=0, linetype="solid", color="gray",size=1)+
+    scale_color_manual("",values=c("grey50","royalblue"))+
+    scale_fill_manual("",values=c("grey50","royalblue"))+
+    #    facet_grid(~Year) +
+    scale_y_continuous(expand=c(0,0),
+                       labels = scales::percent,
+                       limits = c(-0.2,0.2),
+                       #                       breaks = seq(-40,100, by = 20)
+    ) +
+    labs(x="",y="Difference in Capacity Factor between /nActual and Simulation (%)",
+         title=paste0("Difference in Capacity Factor for ",plant_type," in ",year," (%)"),
+         subtitle = DB,
+         caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
+    theme(panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
+          panel.grid.minor.y = element_line(color = "lightgray",linetype="dotted"),
+          axis.line.x = element_line(color = "black"),
+          axis.line.y = element_line(color = "black"),
+          axis.text = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          axis.title = element_text(size = sz),
+          plot.subtitle = element_text(size = sz-2,hjust=0.5),
+          plot.caption = element_text(face="italic",size = sz-4,hjust=0),
+          plot.title = element_text(hjust=0.5,size = sz+2),
+          #          plot.margin=unit(c(1,1,1.5,1.2),"cm"),
+          
+          # For transparent background
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          panel.border = element_rect(colour = "black", fill = "transparent"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) 
+}
+
+cap_fac_difference <- function(year1, year2, plant_type, case) {
+  # Plots the difference between the average capture price realized by each 
+  # generation technology and the mean price for the same time period. 
+  
+  # Based on a plot designed by Dr. Andrew Leach
+  
+  # Filters data set for required timeframe
+  Act <- sub_samp %>% 
+    filter(year(time) >= year1,
+           year(time) <= year2,
+           Plant_Type %in% gen_set,
+           Plant_Type == plant_type) %>%
+    mutate(Year = year(time)) %>%
+    group_by(ID,
+             #Plant_Type,
+             Year
+    ) %>%
+    summarize(Act_Cap_Fac = mean(Cap_Fac)) %>%
+    mutate(
+      #sit = "Actual", 
+      Year = as.factor(Year)
+    )
+  
+  Sim <- ResourceHr %>%
+    subset(., select = c(date,ID,Name,Output_MWH,Capacity_Factor,Primary_Fuel,
+                         Run_ID,Report_Year,#Beg_Date,End_Date,
+                         Condition)) %>%
+    filter(Report_Year >= year1,
+           Report_Year <= year2,
+           Output_MWH >= 0,
+           Run_ID == case,
+    ) %>%
+    mutate(Year = as.factor(Report_Year),
+           ID = str_extract(Name, "(?<=\\().*(?=\\))"),
+           Plant_Type = case_when(str_detect(Primary_Fuel, "Coal")~"COAL",
+                                  str_detect(Primary_Fuel, "NaturalGas")~"NGCC",
+                                  str_detect(Primary_Fuel, "-Peaking")~"SCGT",
+                                  str_detect(Primary_Fuel, "Water")~"HYDRO",
+                                  str_detect(Primary_Fuel, "COGEN")~"COGEN",
+                                  str_detect(Primary_Fuel, "Wind")~"WIND",
+                                  str_detect(Primary_Fuel, "Other")~"OTHER",
+                                  str_detect(Primary_Fuel, "Solar")~"SOLAR",
+                                  str_detect(Primary_Fuel, "Storage")~"STORAGE",
+                                  str_detect(Primary_Fuel, "Trade")~"IMPORT",
+                                  str_detect(Primary_Fuel, "100-Hydrogen")~"H2",
+                                  str_detect(Primary_Fuel, "Simple Cycle")~"SC_BLEND",
+           )) %>%
+    filter(Plant_Type == plant_type)  %>%
+    group_by(ID,
+             #Plant_Type,
+             Year
+    ) %>%
+    summarize(Sim_Cap_Fac = mean(Capacity_Factor))%>%
+    
+    #    mutate(sit = "Simulation") %>%
+    na.omit()
+  
+  total <- merge(Act,Sim,by = c("ID","Year")) %>%
+    mutate(CF_diff = Act_Cap_Fac - Sim_Cap_Fac)
+  
+  sz <- 12
+  
+  # Plot the data
+  ggplot(total,
+         aes(#Year,
+           CF_diff,#colour=sit,fill=sit
+         ),
+         alpha=0.8)+
+    geom_col(aes(ID,CF_diff,colour=Year,fill=Year
+    ),
+    size=1.5,position = position_dodge(width = 0.75),width = .6)+
+    geom_hline(yintercept=0, linetype="solid", color="gray",size=1)+
+    scale_color_manual("",values=AESO_colours)+
+    scale_fill_manual("",values=AESO_colours)+
+    #    facet_grid(~Year) +
+    scale_y_continuous(expand=c(0,0),
+                       labels = scales::percent,
+                       limits = c(-0.2,0.2),
+                       #                       breaks = seq(-40,100, by = 20)
+    ) +
+    labs(x="",y="Difference in Capacity Factor between Actual and Simulation (%)",
+         title=paste0("Difference in Capacity Factor for ",plant_type," in ",
+                      year1,"-",year2," (%)"),
+         subtitle = DB,
+         caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
+    theme(panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
+          panel.grid.minor.y = element_line(color = "lightgray",linetype="dotted"),
+          axis.line.x = element_line(color = "black"),
+          axis.line.y = element_line(color = "black"),
+          axis.text = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          axis.title = element_text(size = sz),
+          plot.subtitle = element_text(size = sz-2,hjust=0.5),
+          plot.caption = element_text(face="italic",size = sz-4,hjust=0),
+          plot.title = element_text(hjust=0.5,size = sz+2),
+          #          plot.margin=unit(c(1,1,1.5,1.2),"cm"),
+          
+          # For transparent background
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          panel.border = element_rect(colour = "black", fill = "transparent"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) 
 }
 
 ################################################################################
@@ -1948,6 +2191,125 @@ year_pool <- function(year1, year2,case) {
     scale_y_continuous(expand=c(0,0),
                        n.breaks = 3
     )
+}
+
+seas_price <- function(year1, year2, case) {
+  # Plots the Pool Price duration vs percentile for AESO and Sim for a specific season
+  # Like AESO Market Report 2021 Figures 2 and 3
+  
+  # Load and filter Simulation data, 
+  # Calculate the percentage of time
+  # Create column 'sit' to indicate Simulation
+  
+  WS1 <- as.Date(paste0(year1,"-1-01"), format = "%Y-%m-%d") # Winter Solstice
+  SE1 <- as.Date(paste0(year1,"-3-15"),  format = "%Y-%m-%d") # Spring Equinox
+  SS1 <- as.Date(paste0(year1,"-6-15"),  format = "%Y-%m-%d") # Summer Solstice
+  FE1 <- as.Date(paste0(year1,"-9-15"),  format = "%Y-%m-%d") # Fall Equinox  
+  
+  
+  WS2 <- as.Date(paste0(year2-1,"-12-15"), format = "%Y-%m-%d") # Winter Solstice
+  SE2 <- as.Date(paste0(year2,"-3-15"),  format = "%Y-%m-%d") # Spring Equinox
+  SS2 <- as.Date(paste0(year2,"-6-15"),  format = "%Y-%m-%d") # Summer Solstice
+  FE2 <- as.Date(paste0(year2,"-9-15"),  format = "%Y-%m-%d") # Fall Equinox  
+  WS3 <- as.Date(paste0(year2,"-12-15"), format = "%Y-%m-%d") # Winter Solstice
+  
+  totSim <- ZoneH %>%
+    filter(Report_Year >= (year1) & 
+             Report_Year <= year2,
+           Name == "WECC_Alberta",
+           Run_ID == case, 
+           Condition != "Average") %>%
+    group_by(Condition, Report_Year) %>%
+    mutate(perc = 1-ecdf(Price)(Price)) %>%
+    subset(., select=c(date, Condition, Report_Year, Price, perc)) %>%
+    rename(Year = Report_Year) %>%
+    ungroup() %>%
+    mutate(sit = "Simulated")
+  
+  # Load and filter AESO data, 
+  # Calculate the percentage of time
+  # Create column 'sit' to indicate Actual AESO data
+  Actual <- na.omit(demand)
+  Actual$Year <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%Y")
+  Actual$Hour <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%H")
+  
+  totAct <- Actual %>%
+    filter(Year >= (year1), 
+           Year <= year2,) %>%
+    mutate(Condition = if_else(between(Hour, 08, 23), 
+                               "On-Peak WECC", "Off-Peak WECC")) %>%
+    group_by(Year, Condition) %>%
+    mutate(perc = 1-ecdf(Price)(Price)) %>%
+    subset(., select=c(time, Condition, Year, Price, perc)) %>%
+    ungroup() %>%
+    mutate(sit = "Actual") %>%
+    rename(date = time)
+  
+  # Combine Actual and Simulation data
+  total <- rbind(totSim,totAct)
+  
+  WinterTot <- total %>%
+    filter(date >= WS1 & date <= SE1 |
+             date >= WS2 & date <= SE2) %>%
+    mutate(Season = "Winter")
+  
+  SpringTot <- total %>%
+    filter(date >= SE1 & date <= SS1 |
+             date >= SE2 & date <= SS2) %>%
+    mutate(Season = "Spring")
+  
+  SummerTot <- total %>%
+    filter(date >= SS1 & date <= FE1 |
+             date >= SS2 & date <= FE2) %>%
+    mutate(Season = "Summer")
+  
+  FallTot <- total %>%
+    filter(date >= FE1 & date <= WS2 |
+             date >= FE2 & date <= WS3) %>%
+    mutate(Season = "Fall")
+  
+  total <- rbind(WinterTot, SpringTot, SummerTot, FallTot) #%>%
+  #      filter(Season == season)
+  
+  # Set font size for plot
+  sz <- 15
+  
+  ggplot() +
+    geom_line(data = total, 
+              aes(x = perc, y = Price, colour = Year, linetype = sit), size = 1) +
+    facet_grid(Condition ~ Season) +#cols = vars(Condition)) +
+    theme_bw() +
+    theme(axis.text = element_text(size = sz),
+          axis.text.x = element_text(angle = 45, hjust=1, size = sz),
+          axis.title = element_text(size = sz),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz),
+          
+          # For transparent background
+          panel.grid = element_blank(),
+          legend.title = element_blank(),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+          aspect.ratio = 2/3
+    ) +
+    labs(y = "Pool Price$/MWh", 
+         x = "Percentage of Time", 
+         title = "Seasonal AESO Data vs Simulation",
+         subtitle = DB) +
+    scale_color_manual(values = c("goldenrod1", "forestgreen", "cornflowerblue",
+                                  "firebrick","gray60", "orange")) +
+    scale_x_continuous(expand=c(0,0), 
+                       limits = c(0,1.1),
+                       labels = percent) +
+    scale_y_continuous(expand=c(0,0)
+    ) #+
+  #coord_fixed(ratio = 10)
 }
 
 comp_dur <- function(year1, year2, case) {
@@ -2108,6 +2470,99 @@ load_dur <- function(year1, year2, case) {
     )
 }
 
+tot_cap <- function(year1, year2, case) {
+  # Plots the year-end capacity by technology for AESO and Sim
+  # Like AESO Market Report 2021 Figure 11
+  
+  Act <- sub_samp %>%
+    filter(! NRG_Stream %in% trade_excl,
+           year(time) >= year1,
+           year(time) <= year2,
+           month(time) == 12,
+           day(time) == 31,
+           hour(time) == 23,
+           #           Plant_Type != "STORAGE"
+    ) %>%
+    group_by(time, Plant_Type) %>%
+    summarise(Cap = sum(Capacity)) %>%
+    #    subset(., select=c(time, Cap, perc)) %>%
+    mutate(sit = "Actual", Year = as.factor(year(time))) %>%
+    subset(., select=c(Year, Plant_Type, Cap, sit))
+  
+  Act <- na.omit(Act)
+  
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "HYDRO",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "WIND",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "SOLAR",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "OTHER",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "STORAGE",after=Inf)
+  
+  Sim <- Hr %>%
+    filter(Run_ID == case,
+           Report_Year >= year1,
+           Report_Year <= year2,
+           Report_Month == 12,
+           Report_Day == 31,
+           Report_Hour == 24,
+           ID == "LTO_Coal" | ID == "AB_NGCONV" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
+             ID == "AB_SCCT_noncogen" | ID == "LTO_Hydro" | ID == "LTO_Other" | 
+             ID == "LTO_Wind" | ID == "LTO_Solar") %>%
+    group_by(Report_Year, ID) %>%
+    subset(., select=c(Report_Year, ID, Capacity)) %>%
+    #    summarise(Cap = mean(Capacity_Factor)) %>%
+    mutate(sit = "Simulation")
+  
+  colnames(Sim) <- c("Year", "Plant_Type", "Cap", "sit")
+  
+  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("LTO_Coal", "AB_NGCONV", "AB_CCCT_noncogen", "LTO_Cogen",
+                                                    "AB_SCCT_noncogen", "LTO_Hydro", "LTO_Other", 
+                                                    "LTO_Wind", "LTO_Solar"))
+  levels(Sim$Plant_Type) <- c("COAL", "NGCONV", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
+                              "WIND", "SOLAR")
+  
+  Sim$Year <- as.factor(Sim$Year)
+  
+  total <- rbind(Sim,Act)
+  
+  sz <- 15
+  
+  ggplot() +
+    geom_col(data = total, position = "dodge", alpha = 0.8, width = 0.7,
+             aes(x = Plant_Type, y = Cap, fill = sit, linetype = sit)) +
+    facet_grid(~Year) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          axis.title.x = element_blank(),
+          axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz),
+          panel.grid = element_blank(),
+          legend.title = element_blank(),
+          
+          # For transparent background
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) +
+    labs(y = "Installed Generation Capacity (MW)", 
+         title = "Year-end generation capacity AESO Data vs Simulation",
+         subtitle = DB) +
+    scale_fill_manual(values = AESO_colours) +
+    #    scale_x_continuous(expand=c(0,0), 
+    #                       limits = c(0,1.1),
+    #                       labels = percent) +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(0,6000),
+                       #                       breaks = seq(0,1, by = 0.2)
+    )
+}
+
 tech_cap <- function(year1, year2, case) {
   # Plots the capacity factor by technology for AESO and Sim
   # Like AESO Market Report 2021 Figure 15
@@ -2191,6 +2646,176 @@ tech_cap <- function(year1, year2, case) {
     scale_y_continuous(expand=c(0,0),
                        limits = c(0,1),
                        breaks = seq(0,1, by = 0.2)
+    )
+}
+
+ach_pool <- function(year1, year2, case) {
+  # Plots the achieved premium-to-pool price realized by each generation 
+  # technology. 
+  #
+  #The ratio of the achieved margin to the average pool price
+  # Achieved price represents the average price realized in the wholesale energy 
+  #
+  # market for electricity delivered to the grid and is calculated as the 
+  # weighted average of the hourly pool price, where the price in each settlement 
+  # interval is weighted by the net-to-grid generation in that interval.
+  #
+  # Like AESO Market Report 2021 Figure 18
+  
+  # Filters data set for required timeframe
+  Sample <- sub_samp %>%
+    filter(! NRG_Stream %in% trade_excl,
+           year(time) >= year1,
+           year(time) <= year2,
+           Plant_Type == "COAL" | Plant_Type == "COGEN" | Plant_Type == "NGCC" |
+             Plant_Type == "SCGT" | Plant_Type == "HYDRO" | Plant_Type == "OTHER" |
+             Plant_Type == "WIND" | Plant_Type == "SOLAR" | Plant_Type == "STORAGE" |
+             Plant_Type == "EXPORT" | Plant_Type == "IMPORT"
+    )
+  
+  # This section calculates the annual average pool prices
+  Avg <- Sample %>%
+    group_by(time) %>%
+    summarise(Price = median(Price)) %>%
+    ungroup() %>%
+    mutate(Year = as.factor(year(time))) %>%
+    group_by(Year) %>%
+    summarise(Pool = mean(Price))
+  
+  # This section calculates the achieved prices
+  Ach <- Sample %>%
+    group_by(time, Plant_Type) %>%
+    summarise(Price = median(Price), gen = sum(gen)) %>%
+    mutate(WeighPrice = Price*gen) %>%
+    ungroup() %>%
+    mutate(Year = as.factor(year(time))) %>%
+    group_by(Year, Plant_Type) %>%
+    summarise(WeighPrice = sum(WeighPrice), gen = sum(gen)) %>%
+    mutate(AchPrice = WeighPrice/gen)
+  
+  # Combine the two
+  Act <- merge(Avg, Ach, by = "Year")
+  
+  # Calculate the achieved margin and the achieved premium-to-pool price
+  Act <- Act %>%
+    mutate(Margin = AchPrice-Pool, Ratio = Margin/Pool, sit = "Actual")
+  
+  # Reorder the factors for plotting
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "HYDRO",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "WIND",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "SOLAR",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "STORAGE",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "OTHER",after=Inf)
+  
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "EXPORT",after=Inf)
+  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "IMPORT",after=Inf)
+  
+  # Filters data set for required timeframe for simulated data
+  SampleSimZ <- ZH  %>%
+    filter(year(date) >= year1,
+           year(date) <= year2,
+           Run_ID == case,
+    ) %>%
+    subset(., select = c(date, Price, Imports, Exports))
+  
+  SampleSim <- Hr %>%
+    filter(year(date) >= year1,
+           year(date) <= year2,
+           Run_ID == case,
+           ID == "LTO_Coal" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
+             ID == "AB_SCCT_noncogen" | ID == "LTO_Hydro" | ID == "LTO_Other" | 
+             ID == "LTO_Wind" | ID == "LTO_Solar" | ID == "LTO_Storage"
+    ) %>%
+    subset(., select = c(date, ID, Output))
+  
+  # Combine the two
+  SampleSim <- merge(SampleSimZ, SampleSim, by = "date")
+  SampleSim <- SampleSim %>%
+    mutate(Year = as.factor(year(date)))
+  
+  # This section calculates the annual average pool prices for simulated data
+  AvgSim <- SampleSim %>%
+    group_by(Year) %>%
+    summarise(Pool = mean(Price))
+  
+  # This section calculates the achieved prices for imports and exports
+  Imp <- SampleSimZ %>%
+    mutate(WeighPrice = Price*Imports, Year = as.factor(year(date))) %>%
+    group_by(Year) %>%
+    summarise(WeighPrice = sum(WeighPrice), gen = sum(Imports)) %>%
+    mutate(AchPrice = WeighPrice/gen, Plant_Type = "IMPORT")
+  
+  Exp <- SampleSimZ %>%
+    mutate(WeighPrice = Price*Exports, Year = as.factor(year(date))) %>%
+    group_by(Year) %>%
+    summarise(WeighPrice = sum(WeighPrice), gen = sum(Exports)) %>%
+    mutate(AchPrice = WeighPrice/gen, Plant_Type = "EXPORT")
+  
+  # This section calculates the achieved prices
+  AchSim <- SampleSim %>%
+    mutate(WeighPrice = Price*Output, Plant_Type = ID) %>%
+    #    ungroup() %>%
+    #    mutate(Year = as.factor(year(time))) %>%
+    group_by(Year, Plant_Type) %>%
+    summarise(WeighPrice = sum(WeighPrice), gen = sum(Output)) %>%
+    mutate(AchPrice = WeighPrice/gen)
+  
+  AchSim <- rbind(AchSim, Imp, Exp)
+  
+  # Combine the two
+  Sim <- merge(AvgSim, AchSim, by = "Year")
+  
+  # Calculate the achieved margin and the achieved premium-to-pool price
+  Sim <- Sim %>%
+    mutate(Margin = AchPrice-Pool, Ratio = Margin/Pool, sit = "Simulation")
+  
+  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("LTO_Coal", "AB_CCCT_noncogen", "LTO_Cogen",
+                                                    "AB_SCCT_noncogen", "LTO_Hydro", "LTO_Other", 
+                                                    "LTO_Wind", "LTO_Solar", "LTO_Storage", "EXPORT", "IMPORT"))
+  
+  levels(Sim$Plant_Type) <- c("COAL", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
+                              "WIND", "SOLAR", "STORAGE", "EXPORT", "IMPORT")
+  
+  #Sim$Year <- as.factor(Sim$Year)
+  
+  total <- rbind(Sim,Act)
+  
+  sz <- 12
+  
+  # Plot the data
+  ggplot() +
+    geom_col(data = total, position = "dodge", alpha = 0.8, width = 0.7,
+             aes(x = Plant_Type, y = Ratio, fill = sit, linetype = sit)) +
+    #    geom_text(total, aes(label = gen), vjust = -0.5, angle = 90) +
+    facet_grid(~Year) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
+          axis.title.x = element_blank(),
+          axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz),
+          panel.grid.minor = element_blank(),
+          legend.title = element_blank(),
+          
+          # For transparent background
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) +
+    labs(y = "Achieved Premium to Pool Price", 
+         title = "Annual achieved premium to pool price \nAESO Data vs Simulation",
+         subtitle = DB) +
+    scale_fill_manual(values = AESO_colours) +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c(-0.5,1.1),
+                       breaks = c(-0.5, -0.3, -0.1, 0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.1),
+                       labels = percent
     )
 }
 
@@ -2800,607 +3425,6 @@ wind_cap <- function(year1, year2, case) {
                        labels = percent) +
     scale_y_continuous(expand=c(0,0)
     )
-}
-
-tot_cap <- function(year1, year2, case) {
-  # Plots the year-end capacity by technology for AESO and Sim
-  # Like AESO Market Report 2021 Figure 11
-  
-  Act <- sub_samp %>%
-    filter(! NRG_Stream %in% trade_excl,
-           year(time) >= year1,
-           year(time) <= year2,
-           month(time) == 12,
-           day(time) == 31,
-           hour(time) == 23,
-#           Plant_Type != "STORAGE"
-           ) %>%
-    group_by(time, Plant_Type) %>%
-    summarise(Cap = sum(Capacity)) %>%
-#    subset(., select=c(time, Cap, perc)) %>%
-    mutate(sit = "Actual", Year = as.factor(year(time))) %>%
-    subset(., select=c(Year, Plant_Type, Cap, sit))
-  
-  Act <- na.omit(Act)
-  
-  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "HYDRO",after=Inf)
-  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "WIND",after=Inf)
-  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "SOLAR",after=Inf)
-  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "OTHER",after=Inf)
-  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "STORAGE",after=Inf)
-  
-  Sim <- Hr %>%
-    filter(Run_ID == case,
-           Report_Year >= year1,
-           Report_Year <= year2,
-           Report_Month == 12,
-           Report_Day == 31,
-           Report_Hour == 24,
-           ID == "LTO_Coal" | ID == "AB_NGCONV" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
-             ID == "AB_SCCT_noncogen" | ID == "LTO_Hydro" | ID == "LTO_Other" | 
-             ID == "LTO_Wind" | ID == "LTO_Solar") %>%
-    group_by(Report_Year, ID) %>%
-    subset(., select=c(Report_Year, ID, Capacity)) %>%
-#    summarise(Cap = mean(Capacity_Factor)) %>%
-    mutate(sit = "Simulation")
-  
-  colnames(Sim) <- c("Year", "Plant_Type", "Cap", "sit")
-  
-  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("LTO_Coal", "AB_NGCONV", "AB_CCCT_noncogen", "LTO_Cogen",
-                                                    "AB_SCCT_noncogen", "LTO_Hydro", "LTO_Other", 
-                                                    "LTO_Wind", "LTO_Solar"))
-  levels(Sim$Plant_Type) <- c("COAL", "NGCONV", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
-                              "WIND", "SOLAR")
-  
-  Sim$Year <- as.factor(Sim$Year)
-  
-  total <- rbind(Sim,Act)
-
-  sz <- 15
-  
-  ggplot() +
-    geom_col(data = total, position = "dodge", alpha = 0.8, width = 0.7,
-             aes(x = Plant_Type, y = Cap, fill = sit, linetype = sit)) +
-    facet_grid(~Year) +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-          axis.title.x = element_blank(),
-          axis.text = element_text(size = sz),
-          axis.title = element_text(size = sz),
-          plot.title = element_text(size = sz+2),
-          legend.text = element_text(size = sz),
-          panel.grid = element_blank(),
-          legend.title = element_blank(),
-          
-          # For transparent background
-          panel.background = element_rect(fill = "transparent"),
-          panel.grid.major.x = element_blank(),
-          panel.grid.minor.x = element_blank(),
-          panel.spacing = unit(1.5, "lines"),
-          plot.background = element_rect(fill = "transparent", color = NA),
-          legend.key = element_rect(colour = "transparent", fill = "transparent"),
-          legend.background = element_rect(fill='transparent'),
-          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
-    ) +
-    labs(y = "Installed Generation Capacity (MW)", 
-         title = "Year-end generation capacity AESO Data vs Simulation",
-         subtitle = DB) +
-    scale_fill_manual(values = AESO_colours) +
-    #    scale_x_continuous(expand=c(0,0), 
-    #                       limits = c(0,1.1),
-    #                       labels = percent) +
-    scale_y_continuous(expand=c(0,0),
-                       limits = c(0,6000),
-#                       breaks = seq(0,1, by = 0.2)
-    )
-}
-
-ach_pool <- function(year1, year2, case) {
-  # Plots the achieved premium-to-pool price realized by each generation 
-  # technology. 
-  #
-  #The ratio of the achieved margin to the average pool price
-  # Achieved price represents the average price realized in the wholesale energy 
-  #
-  # market for electricity delivered to the grid and is calculated as the 
-  # weighted average of the hourly pool price, where the price in each settlement 
-  # interval is weighted by the net-to-grid generation in that interval.
-  #
-  # Like AESO Market Report 2021 Figure 18
-  
-  # Filters data set for required timeframe
-  Sample <- sub_samp %>%
-    filter(! NRG_Stream %in% trade_excl,
-           year(time) >= year1,
-           year(time) <= year2,
-           Plant_Type == "COAL" | Plant_Type == "COGEN" | Plant_Type == "NGCC" |
-             Plant_Type == "SCGT" | Plant_Type == "HYDRO" | Plant_Type == "OTHER" |
-             Plant_Type == "WIND" | Plant_Type == "SOLAR" | Plant_Type == "STORAGE" |
-             Plant_Type == "EXPORT" | Plant_Type == "IMPORT"
-    )
-  
-  # This section calculates the annual average pool prices
-  Avg <- Sample %>%
-    group_by(time) %>%
-    summarise(Price = median(Price)) %>%
-    ungroup() %>%
-    mutate(Year = as.factor(year(time))) %>%
-    group_by(Year) %>%
-    summarise(Pool = mean(Price))
-  
-  # This section calculates the achieved prices
-  Ach <- Sample %>%
-    group_by(time, Plant_Type) %>%
-    summarise(Price = median(Price), gen = sum(gen)) %>%
-    mutate(WeighPrice = Price*gen) %>%
-    ungroup() %>%
-    mutate(Year = as.factor(year(time))) %>%
-    group_by(Year, Plant_Type) %>%
-    summarise(WeighPrice = sum(WeighPrice), gen = sum(gen)) %>%
-    mutate(AchPrice = WeighPrice/gen)
-  
-  # Combine the two
-  Act <- merge(Avg, Ach, by = "Year")
-  
-  # Calculate the achieved margin and the achieved premium-to-pool price
-  Act <- Act %>%
-    mutate(Margin = AchPrice-Pool, Ratio = Margin/Pool, sit = "Actual")
-
-  # Reorder the factors for plotting
-  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "HYDRO",after=Inf)
-  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "WIND",after=Inf)
-  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "SOLAR",after=Inf)
-  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "STORAGE",after=Inf)
-  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "OTHER",after=Inf)
-
-  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "EXPORT",after=Inf)
-  Act$Plant_Type<-fct_relevel(Act$Plant_Type, "IMPORT",after=Inf)
-  
-  # Filters data set for required timeframe for simulated data
-  SampleSimZ <- ZH  %>%
-    filter(year(date) >= year1,
-           year(date) <= year2,
-           Run_ID == case,
-           ) %>%
-    subset(., select = c(date, Price, Imports, Exports))
-
-  SampleSim <- Hr %>%
-    filter(year(date) >= year1,
-           year(date) <= year2,
-           Run_ID == case,
-           ID == "LTO_Coal" | ID == "AB_CCCT_noncogen" | ID == "LTO_Cogen" | 
-             ID == "AB_SCCT_noncogen" | ID == "LTO_Hydro" | ID == "LTO_Other" | 
-             ID == "LTO_Wind" | ID == "LTO_Solar" | ID == "LTO_Storage"
-    ) %>%
-    subset(., select = c(date, ID, Output))
-  
-  # Combine the two
-  SampleSim <- merge(SampleSimZ, SampleSim, by = "date")
-  SampleSim <- SampleSim %>%
-    mutate(Year = as.factor(year(date)))
-  
-  # This section calculates the annual average pool prices for simulated data
-  AvgSim <- SampleSim %>%
-    group_by(Year) %>%
-    summarise(Pool = mean(Price))
-  
-  # This section calculates the achieved prices for imports and exports
-  Imp <- SampleSimZ %>%
-    mutate(WeighPrice = Price*Imports, Year = as.factor(year(date))) %>%
-    group_by(Year) %>%
-    summarise(WeighPrice = sum(WeighPrice), gen = sum(Imports)) %>%
-    mutate(AchPrice = WeighPrice/gen, Plant_Type = "IMPORT")
-  
-  Exp <- SampleSimZ %>%
-    mutate(WeighPrice = Price*Exports, Year = as.factor(year(date))) %>%
-    group_by(Year) %>%
-    summarise(WeighPrice = sum(WeighPrice), gen = sum(Exports)) %>%
-    mutate(AchPrice = WeighPrice/gen, Plant_Type = "EXPORT")
-  
-  # This section calculates the achieved prices
-  AchSim <- SampleSim %>%
-    mutate(WeighPrice = Price*Output, Plant_Type = ID) %>%
-#    ungroup() %>%
-#    mutate(Year = as.factor(year(time))) %>%
-    group_by(Year, Plant_Type) %>%
-    summarise(WeighPrice = sum(WeighPrice), gen = sum(Output)) %>%
-    mutate(AchPrice = WeighPrice/gen)
-  
-  AchSim <- rbind(AchSim, Imp, Exp)
-  
-  # Combine the two
-  Sim <- merge(AvgSim, AchSim, by = "Year")
-  
-  # Calculate the achieved margin and the achieved premium-to-pool price
-  Sim <- Sim %>%
-    mutate(Margin = AchPrice-Pool, Ratio = Margin/Pool, sit = "Simulation")
-  
-  Sim$Plant_Type <- factor(Sim$Plant_Type, levels=c("LTO_Coal", "AB_CCCT_noncogen", "LTO_Cogen",
-                                                    "AB_SCCT_noncogen", "LTO_Hydro", "LTO_Other", 
-                                                    "LTO_Wind", "LTO_Solar", "LTO_Storage", "EXPORT", "IMPORT"))
-  
-  levels(Sim$Plant_Type) <- c("COAL", "NGCC", "COGEN", "SCGT", "HYDRO", "OTHER",
-                              "WIND", "SOLAR", "STORAGE", "EXPORT", "IMPORT")
-  
-  #Sim$Year <- as.factor(Sim$Year)
-  
-  total <- rbind(Sim,Act)
-
-  sz <- 12
-  
-  # Plot the data
-  ggplot() +
-    geom_col(data = total, position = "dodge", alpha = 0.8, width = 0.7,
-             aes(x = Plant_Type, y = Ratio, fill = sit, linetype = sit)) +
-    #    geom_text(total, aes(label = gen), vjust = -0.5, angle = 90) +
-    facet_grid(~Year) +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-          axis.title.x = element_blank(),
-          axis.text = element_text(size = sz),
-          axis.title = element_text(size = sz),
-          plot.title = element_text(size = sz+2),
-          legend.text = element_text(size = sz),
-          panel.grid.minor = element_blank(),
-          legend.title = element_blank(),
-          
-          # For transparent background
-          panel.background = element_rect(fill = "transparent"),
-          panel.grid.major.x = element_blank(),
-          panel.grid.minor.x = element_blank(),
-          panel.spacing = unit(1.5, "lines"),
-          plot.background = element_rect(fill = "transparent", color = NA),
-          legend.key = element_rect(colour = "transparent", fill = "transparent"),
-          legend.background = element_rect(fill='transparent'),
-          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
-    ) +
-    labs(y = "Achieved Premium to Pool Price", 
-         title = "Annual achieved premium to pool price \nAESO Data vs Simulation",
-         subtitle = DB) +
-    scale_fill_manual(values = AESO_colours) +
-    scale_y_continuous(expand=c(0,0),
-                       limits = c(-0.5,1.1),
-                       breaks = c(-0.5, -0.3, -0.1, 0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.1),
-                       labels = percent
-    )
-}
-
-capacity_factor <- function(year, plant_type, case) {
-  # Plots the difference between the average capture price realized by each 
-  # generation technology and the mean price for the same time period. 
-  
-  # Based on a plot designed by Dr. Andrew Leach
-  
-  # Filters data set for required timeframe
-  Act <- sub_samp %>% 
-    filter(year(time) == year,
-           Plant_Type %in% gen_set) %>%
-    mutate(Year = year(time)) %>%
-    group_by(ID,Plant_Type,Year) %>%
-    summarize(Cap_Fac = mean(Cap_Fac)) %>%
-    mutate(sit = "Actual", Year = as.factor(Year))
-  
-#  ResourceHr$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",
-#                                                        ResourceHr$Time_Period))), 
-#                                format="%Y-%m-%d %H:%M:%S",tz = "MST")-(60*60)
-  
-  # Filters data set for required timeframe for simulated data
-#  SampleSimZ <- ZH  %>%
-#    filter(year(date) == year,
-#           #           year(date) <= year2,
-#           Run_ID == case,
-#    ) %>%
-#    subset(., select = c(date, Price, Imports, Exports))
-  
-  SampleSim <- ResourceHr %>%
-    subset(., select = c(date,ID,Name,Output_MWH,Capacity_Factor,Primary_Fuel,
-                         Run_ID,Report_Year,#Beg_Date,End_Date,
-                         Condition)) %>%
-    filter(Report_Year == year,
-           #           Report_Year <= year2,
-           Output_MWH >= 0,
-           Run_ID == case,
-    ) %>%
-    mutate(Year = as.factor(Report_Year),
-#           Aurora_ID = ID,
-           ID = str_extract(Name, "(?<=\\().*(?=\\))"),
-           Plant_Type = case_when(str_detect(Primary_Fuel, "Coal")~"COAL",
-                                  str_detect(Primary_Fuel, "NaturalGas")~"NGCC",
-                                  str_detect(Primary_Fuel, "-Peaking")~"SCGT",
-                                  str_detect(Primary_Fuel, "Water")~"HYDRO",
-                                  str_detect(Primary_Fuel, "COGEN")~"COGEN",
-                                  str_detect(Primary_Fuel, "Wind")~"WIND",
-                                  str_detect(Primary_Fuel, "Other")~"OTHER",
-                                  str_detect(Primary_Fuel, "Solar")~"SOLAR",
-                                  str_detect(Primary_Fuel, "Storage")~"STORAGE",
-                                  str_detect(Primary_Fuel, "Trade")~"IMPORT",
-                                  str_detect(Primary_Fuel, "100-Hydrogen")~"H2",
-                                  str_detect(Primary_Fuel, "Simple Cycle")~"SC_BLEND",
-           )) %>%
-    group_by(ID,Plant_Type,Year) %>%
-    summarize(Cap_Fac = mean(Capacity_Factor)) %>%
-    mutate(sit = "Simulation") %>%
-    na.omit()
-
-  total <- rbind(SampleSim,Act) %>%
-    filter(Plant_Type == plant_type) 
-  
-  sz <- 12
-  
-  # Plot the data
-  ggplot(total,
-         aes(Year,Cap_Fac,colour=sit,fill=sit),
-         alpha=0.8)+
-    geom_col(aes(ID,Cap_Fac,colour=sit,fill=sit),
-             size=1.5,position = position_dodge(width = .9),width = .6)+
-    geom_hline(yintercept=0, linetype="solid", color="gray",size=1)+
-    scale_color_manual("",values=c("grey50","royalblue"))+
-    scale_fill_manual("",values=c("grey50","royalblue"))+
-    facet_grid(~Year) +
-    scale_y_continuous(expand=c(0,0),
-                       labels = scales::percent,
-                       #                       limits = c(-50,100),
-                       #                       breaks = seq(-40,100, by = 20)
-    ) +
-    labs(x="",y="Capacity Factor (%)",
-         title=paste0("Capacity Factor for ",plant_type," in ",year," (%)"),
-         subtitle = DB,
-         caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
-    theme(panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
-          panel.grid.minor.y = element_line(color = "lightgray",linetype="dotted"),
-          axis.line.x = element_line(color = "black"),
-          axis.line.y = element_line(color = "black"),
-          axis.text = element_text(size = sz),
-          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-          axis.title = element_text(size = sz),
-          plot.subtitle = element_text(size = sz-2,hjust=0.5),
-          plot.caption = element_text(face="italic",size = sz-4,hjust=0),
-          plot.title = element_text(hjust=0.5,size = sz+2),
-          #          plot.margin=unit(c(1,1,1.5,1.2),"cm"),
-          
-          # For transparent background
-          panel.background = element_rect(fill = "transparent"),
-          panel.grid.major.x = element_blank(),
-          panel.grid.minor.x = element_blank(),
-          panel.spacing = unit(1.5, "lines"),
-          panel.border = element_rect(colour = "black", fill = "transparent"),
-          plot.background = element_rect(fill = "transparent", color = NA),
-          legend.key = element_rect(colour = "transparent", fill = "transparent"),
-          legend.background = element_rect(fill='transparent'),
-          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
-    ) 
-}
-
-cap_fac_diff <- function(year, plant_type, case) {
-  # Plots the difference between the average capture price realized by each 
-  # generation technology and the mean price for the same time period. 
-  
-  # Based on a plot designed by Dr. Andrew Leach
-  
-  # Filters data set for required timeframe
-  Act <- sub_samp %>% 
-    filter(year(time) == year,
-           Plant_Type %in% gen_set,
-           Plant_Type == plant_type) %>%
-#    mutate(Year = year(time)) %>%
-    group_by(ID,
-             #Plant_Type,
-             #Year
-             ) %>%
-    summarize(Act_Cap_Fac = mean(Cap_Fac)) %>%
-    mutate(
-      #sit = "Actual", 
-      #Year = as.factor(Year)
-      )#%>%
-    #filter(Plant_Type == plant_type) 
-  
-  #  ResourceHr$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",
-  #                                                        ResourceHr$Time_Period))), 
-  #                                format="%Y-%m-%d %H:%M:%S",tz = "MST")-(60*60)
-  
-  # Filters data set for required timeframe for simulated data
-  #  SampleSimZ <- ZH  %>%
-  #    filter(year(date) == year,
-  #           #           year(date) <= year2,
-  #           Run_ID == case,
-  #    ) %>%
-  #    subset(., select = c(date, Price, Imports, Exports))
-  
-  SampleSim <- ResourceHr %>%
-    subset(., select = c(date,ID,Name,Output_MWH,Capacity_Factor,Primary_Fuel,
-                         Run_ID,Report_Year,#Beg_Date,End_Date,
-                         Condition)) %>%
-    filter(Report_Year == year,
-           #           Report_Year <= year2,
-           Output_MWH >= 0,
-           Run_ID == case,
-    ) %>%
-    mutate(#Year = as.factor(Report_Year),
-           #           Aurora_ID = ID,
-           ID = str_extract(Name, "(?<=\\().*(?=\\))"),
-           Plant_Type = case_when(str_detect(Primary_Fuel, "Coal")~"COAL",
-                                  str_detect(Primary_Fuel, "NaturalGas")~"NGCC",
-                                  str_detect(Primary_Fuel, "-Peaking")~"SCGT",
-                                  str_detect(Primary_Fuel, "Water")~"HYDRO",
-                                  str_detect(Primary_Fuel, "COGEN")~"COGEN",
-                                  str_detect(Primary_Fuel, "Wind")~"WIND",
-                                  str_detect(Primary_Fuel, "Other")~"OTHER",
-                                  str_detect(Primary_Fuel, "Solar")~"SOLAR",
-                                  str_detect(Primary_Fuel, "Storage")~"STORAGE",
-                                  str_detect(Primary_Fuel, "Trade")~"IMPORT",
-                                  str_detect(Primary_Fuel, "100-Hydrogen")~"H2",
-                                  str_detect(Primary_Fuel, "Simple Cycle")~"SC_BLEND",
-           )) %>%
-    filter(Plant_Type == plant_type)  %>%
-    group_by(ID,
-             #Plant_Type,
-             #Year
-             ) %>%
-    summarize(Sim_Cap_Fac = mean(Capacity_Factor))%>%
-    
-#    mutate(sit = "Simulation") %>%
-    na.omit()
-  
-  total <- merge(Act,SampleSim,by = "ID") %>%
-   mutate(CF_diff = Act_Cap_Fac - Sim_Cap_Fac)
-  
-  sz <- 12
-  
-  # Plot the data
-  ggplot(total,
-         aes(#Year,
-             CF_diff,#colour=sit,fill=sit
-             ),
-         alpha=0.8)+
-    geom_col(aes(ID,CF_diff,#colour=sit,fill=sit
-                 ),
-             size=1.5,position = position_dodge(width = .9),width = .6)+
-    geom_hline(yintercept=0, linetype="solid", color="gray",size=1)+
-    scale_color_manual("",values=c("grey50","royalblue"))+
-    scale_fill_manual("",values=c("grey50","royalblue"))+
-#    facet_grid(~Year) +
-    scale_y_continuous(expand=c(0,0),
-                       labels = scales::percent,
-                       limits = c(-0.2,0.2),
-                       #                       breaks = seq(-40,100, by = 20)
-    ) +
-    labs(x="",y="Difference in Capacity Factor between Actual and Simulation (%)",
-         title=paste0("Difference in Capacity Factor for ",plant_type," in ",year," (%)"),
-         subtitle = DB,
-         caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
-    theme(panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
-          panel.grid.minor.y = element_line(color = "lightgray",linetype="dotted"),
-          axis.line.x = element_line(color = "black"),
-          axis.line.y = element_line(color = "black"),
-          axis.text = element_text(size = sz),
-          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-          axis.title = element_text(size = sz),
-          plot.subtitle = element_text(size = sz-2,hjust=0.5),
-          plot.caption = element_text(face="italic",size = sz-4,hjust=0),
-          plot.title = element_text(hjust=0.5,size = sz+2),
-          #          plot.margin=unit(c(1,1,1.5,1.2),"cm"),
-          
-          # For transparent background
-          panel.background = element_rect(fill = "transparent"),
-          panel.grid.major.x = element_blank(),
-          panel.grid.minor.x = element_blank(),
-          panel.spacing = unit(1.5, "lines"),
-          panel.border = element_rect(colour = "black", fill = "transparent"),
-          plot.background = element_rect(fill = "transparent", color = NA),
-          legend.key = element_rect(colour = "transparent", fill = "transparent"),
-          legend.background = element_rect(fill='transparent'),
-          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
-    ) 
-}
-
-cap_fac_difference <- function(year1, year2, plant_type, case) {
-  # Plots the difference between the average capture price realized by each 
-  # generation technology and the mean price for the same time period. 
-  
-  # Based on a plot designed by Dr. Andrew Leach
-  
-  # Filters data set for required timeframe
-  Act <- sub_samp %>% 
-    filter(year(time) >= year1,
-           year(time) <= year2,
-           Plant_Type %in% gen_set,
-           Plant_Type == plant_type) %>%
-        mutate(Year = year(time)) %>%
-    group_by(ID,
-             #Plant_Type,
-             Year
-    ) %>%
-    summarize(Act_Cap_Fac = mean(Cap_Fac)) %>%
-    mutate(
-      #sit = "Actual", 
-      Year = as.factor(Year)
-    )
-  
-  Sim <- ResourceHr %>%
-    subset(., select = c(date,ID,Name,Output_MWH,Capacity_Factor,Primary_Fuel,
-                         Run_ID,Report_Year,#Beg_Date,End_Date,
-                         Condition)) %>%
-    filter(Report_Year >= year1,
-           Report_Year <= year2,
-           Output_MWH >= 0,
-           Run_ID == case,
-    ) %>%
-    mutate(Year = as.factor(Report_Year),
-      ID = str_extract(Name, "(?<=\\().*(?=\\))"),
-      Plant_Type = case_when(str_detect(Primary_Fuel, "Coal")~"COAL",
-                             str_detect(Primary_Fuel, "NaturalGas")~"NGCC",
-                             str_detect(Primary_Fuel, "-Peaking")~"SCGT",
-                             str_detect(Primary_Fuel, "Water")~"HYDRO",
-                             str_detect(Primary_Fuel, "COGEN")~"COGEN",
-                             str_detect(Primary_Fuel, "Wind")~"WIND",
-                             str_detect(Primary_Fuel, "Other")~"OTHER",
-                             str_detect(Primary_Fuel, "Solar")~"SOLAR",
-                             str_detect(Primary_Fuel, "Storage")~"STORAGE",
-                             str_detect(Primary_Fuel, "Trade")~"IMPORT",
-                             str_detect(Primary_Fuel, "100-Hydrogen")~"H2",
-                             str_detect(Primary_Fuel, "Simple Cycle")~"SC_BLEND",
-      )) %>%
-    filter(Plant_Type == plant_type)  %>%
-    group_by(ID,
-             #Plant_Type,
-             Year
-    ) %>%
-    summarize(Sim_Cap_Fac = mean(Capacity_Factor))%>%
-    
-    #    mutate(sit = "Simulation") %>%
-    na.omit()
-  
-  total <- merge(Act,Sim,by = c("ID","Year")) %>%
-    mutate(CF_diff = Act_Cap_Fac - Sim_Cap_Fac)
-  
-  sz <- 12
-  
-  # Plot the data
-  ggplot(total,
-         aes(#Year,
-           CF_diff,#colour=sit,fill=sit
-         ),
-         alpha=0.8)+
-    geom_col(aes(ID,CF_diff,colour=Year,fill=Year
-    ),
-    size=1.5,position = position_dodge(width = 0.75),width = .6)+
-    geom_hline(yintercept=0, linetype="solid", color="gray",size=1)+
-    scale_color_manual("",values=AESO_colours)+
-    scale_fill_manual("",values=AESO_colours)+
-#    facet_grid(~Year) +
-    scale_y_continuous(expand=c(0,0),
-                       labels = scales::percent,
-                       limits = c(-0.2,0.2),
-                       #                       breaks = seq(-40,100, by = 20)
-    ) +
-    labs(x="",y="Difference in Capacity Factor between Actual and Simulation (%)",
-         title=paste0("Difference in Capacity Factor for ",plant_type," in ",
-                      year1,"-",year2," (%)"),
-         subtitle = DB,
-         caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
-    theme(panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
-          panel.grid.minor.y = element_line(color = "lightgray",linetype="dotted"),
-          axis.line.x = element_line(color = "black"),
-          axis.line.y = element_line(color = "black"),
-          axis.text = element_text(size = sz),
-          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-          axis.title = element_text(size = sz),
-          plot.subtitle = element_text(size = sz-2,hjust=0.5),
-          plot.caption = element_text(face="italic",size = sz-4,hjust=0),
-          plot.title = element_text(hjust=0.5,size = sz+2),
-          #          plot.margin=unit(c(1,1,1.5,1.2),"cm"),
-          
-          # For transparent background
-          panel.background = element_rect(fill = "transparent"),
-          panel.grid.major.x = element_blank(),
-          panel.grid.minor.x = element_blank(),
-          panel.spacing = unit(1.5, "lines"),
-          panel.border = element_rect(colour = "black", fill = "transparent"),
-          plot.background = element_rect(fill = "transparent", color = NA),
-          legend.key = element_rect(colour = "transparent", fill = "transparent"),
-          legend.background = element_rect(fill='transparent'),
-          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
-    ) 
 }
 
 ################################################################################
