@@ -1,9 +1,9 @@
-# Generates plots based on the different change sets
-# Output in GWh vs Time Period
+# Generates maps of Alberta showing the wind speeds, with wind farm locations
+# identified
 # 
 # Author: Taylor Pawlenchuk
 # email: pawlench@ualberta.ca
-# January 2022; Last revision: January 18, 2022
+# January 2022; Last revision: October 20, 2022
 {
 {library(rgeos)
 #  library(maptools)
@@ -56,41 +56,43 @@ legText <- 12
 wind_profile00 <- readRDS("WindAtlas_Data00_0.05")
 colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile01 <- readRDS("WindAtlas_Data01_0.05")
-colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+colnames(wind_profile01) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile02 <- readRDS("WindAtlas_Data02_0.05")
-colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+colnames(wind_profile02) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile03 <- readRDS("WindAtlas_Data03_0.05")
-colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+colnames(wind_profile03) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile04 <- readRDS("WindAtlas_Data04_0.05")
 colnames(wind_profile04) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile10 <- readRDS("WindAtlas_Data10_0.05")
-colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+colnames(wind_profile10) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile11 <- readRDS("WindAtlas_Data11_0.05")
 colnames(wind_profile11) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile12 <- readRDS("WindAtlas_Data12_0.05")
-colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+colnames(wind_profile12) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile13 <- readRDS("WindAtlas_Data13_0.05")
 colnames(wind_profile13) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile14 <- readRDS("WindAtlas_Data14_0.05")
-colnames(wind_profile13) <- c('Latitude', 'Longitude', 'Wind')
+colnames(wind_profile14) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile20 <- readRDS("WindAtlas_Data20_0.05")
-colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+colnames(wind_profile20) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile21 <- readRDS("WindAtlas_Data21_0.05")
-colnames(wind_profile13) <- c('Latitude', 'Longitude', 'Wind')
+colnames(wind_profile21) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile22 <- readRDS("WindAtlas_Data22_0.05")
 colnames(wind_profile22) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile23 <- readRDS("WindAtlas_Data23_0.05")
-colnames(wind_profile13) <- c('Latitude', 'Longitude', 'Wind')
+colnames(wind_profile23) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile24 <- readRDS("WindAtlas_Data24_0.05")
+colnames(wind_profile24) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile30 <- readRDS("WindAtlas_Data30_0.05")
-colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+colnames(wind_profile30) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile31 <- readRDS("WindAtlas_Data31_0.05")
-colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+colnames(wind_profile31) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile33 <- readRDS("WindAtlas_Data33_0.05")
 colnames(wind_profile33) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile40 <- readRDS("WindAtlas_Data40_0.05")
-colnames(wind_profile44) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile44 <- readRDS("WindAtlas_Data44_0.05")
 colnames(wind_profile40) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile44 <- readRDS("WindAtlas_Data44_0.05")
+colnames(wind_profile44) <- c('Latitude', 'Longitude', 'Wind')
 
 wind_profile <- rbind(wind_profile00, wind_profile01, wind_profile02, 
                       wind_profile03, wind_profile04, wind_profile11, 
@@ -200,7 +202,8 @@ AB <- ggplot() +
                aes(x = long, y = lat, group = group), 
                fill = "transparent", colour = "black") +
   scale_fill_gradientn(colors = matlab.like2(100),
-                       limits=c(3,10),oob=squish, name = "Mean wind speed \nat 80m height \n(m/s)") +
+                       limits=c(3,10),oob=squish, 
+                       name = "Mean wind speed \nat 80m height \n(m/s)") +
   theme(panel.background = element_rect(fill = "transparent"),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -212,6 +215,77 @@ AB <- ggplot() +
         legend.box.background = element_rect(fill = "transparent", color = "transparent"),
         legend.text = element_text(size = legText),
         legend.title = element_text(size = legTitle)) 
+
+################################################################################
+################################################################################
+# Map of Alberta with only usable wind speeds shown
+################################################################################
+################################################################################
+
+AB1 <- ggplot() + 
+  geom_tile(data = wind_profile, 
+            aes(x = Longitude, y = Latitude, fill = Wind)) +
+  geom_polygon(data = alberta_ellipsoid1, 
+               aes(x = long, y = lat, group = group), 
+               fill = "transparent", colour = "black") +
+#  scale_fill_gradientn(colors = matlab.like2(100),
+#                       limits=c(3.5,25), na.value="white",#oob=squish, 
+#                       name = "Mean wind speed \nat 80m height \n(m/s)") +
+  scale_fill_gradient(low="white", high="white", limits=c(3.5,25), na.value="red",
+#                      oob=squish, 
+#                      name = "Mean wind speed \nat 80m height \n(m/s)"
+)+
+#  scale_fill_gradientn(colors = c("navy","turquoise1","green",
+#                                  "yellow","orangered","red4"),
+#                       values=c(3.5,5,6.5,7.5,8.5,10),oob=squish, 
+#                       name = "Mean wind speed \nat 80m height \n(m/s)") +
+  theme(panel.background = element_rect(fill = "transparent"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        plot.background = element_rect(fill = "transparent", color = NA),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.background = element_blank(),
+        legend.box.background = element_blank(),
+        legend.text = element_blank(),
+        legend.title = element_blank()) 
+
+################################################################################
+################################################################################
+# Map of Alberta with only ideal wind speeds shown
+################################################################################
+################################################################################
+
+AB2 <- ggplot() + 
+  geom_tile(data = wind_profile, 
+            aes(x = Longitude, y = Latitude, fill = Wind)) +
+  geom_polygon(data = alberta_ellipsoid1, 
+               aes(x = long, y = lat, group = group), 
+               fill = "transparent", colour = "black") +
+  #  scale_fill_gradientn(colors = matlab.like2(100),
+  #                       limits=c(3.5,25), na.value="white",#oob=squish, 
+  #                       name = "Mean wind speed \nat 80m height \n(m/s)") +
+  scale_fill_gradient2(low="deepskyblue", mid="forestgreen", high="yellow", midpoint=13,
+                      limits=c(3.5,25), na.value="red",
+                      #                      oob=squish, 
+                      name = "Mean wind speed \nat 80m height (m/s)"
+  )+
+  #  scale_fill_gradientn(colors = c("navy","turquoise1","green",
+  #                                  "yellow","orangered","red4"),
+  #                       values=c(3.5,5,6.5,7.5,8.5,10),oob=squish, 
+  #                       name = "Mean wind speed \nat 80m height (m/s)") +
+  theme(panel.background = element_rect(fill = "transparent"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        plot.background = element_rect(fill = "transparent", color = NA),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.background = element_rect(fill = "transparent"),
+        legend.box.background = element_rect(fill = "transparent", color = "transparent"),
+        legend.text = element_text(size = legText),
+        legend.title = element_text(size = legTitle))  
 
 ################################################################################
 ################################################################################

@@ -79,7 +79,7 @@
 #
 # Author: Taylor Pawlenchuk
 # email: pawlench@ualberta.ca
-# March 2022; Last revision: April 27, 2022
+# March 2022; Last revision: October 20, 2022
 }
 
 ################################################################################
@@ -109,9 +109,12 @@
 
 ################################################################################
 # Load AESO Data
+# Much of this code is from Dr. Leach
 ################################################################################
 
 {
+  # Set location where AESO data is stored
+  ################################################################################
   setwd("D:/Documents/Education/Masters Degree/Datasets/Market")
   
   load("nrgstream_gen.RData") 
@@ -179,26 +182,26 @@
 ################################################################################
 
 { 
-  DB <- "Oct_12c_2022"
+  DB <- "Sep_30a_2022"
 # Connect to SQL database
 ################################################################################
-#  con <- dbConnect(odbc(),
-#                   Driver = "SQL Server",
-#                   Server = "192.168.0.139,49172",
-#                   Database = DB,
-#                   UID = "admin",
-#                   PWD = "SOB704910",
-#                   Port = 49172)
+  con <- dbConnect(odbc(),
+                   Driver = "SQL Server",
+                   Server = "192.168.0.139,49172",
+                   Database = DB,
+                   UID = "admin",
+                   PWD = "SOB704910",
+                   Port = 49172)
   {  
   # Connect to MySQL database
   ################################################################################
-    con <- dbConnect(RMariaDB::MariaDB(),
-                     user = 'tpawl',
-                     password = 'Aurora2022!',
-                     Driver = "SQL Server",
-                     host='192.168.0.139',
-                     dbname = DB,
-                     port = 3306)
+#    con <- dbConnect(RMariaDB::MariaDB(),
+#                     user = 'tpawl',
+#                     password = 'Aurora2022!',
+#                     Driver = "SQL Server",
+#                     host='192.168.0.139',
+#                     dbname = DB,
+#                     port = 3306)
 
 
 ################################################################################
@@ -219,11 +222,13 @@
     #LTRes <- dbReadTable(con,'LTResValue1')
     #LTMarg <- dbReadTable(con,'LTMargResLog1')
     #LTCap <- dbReadTable(con,'LTCapacLog1')
-    #Build <- dbReadTable(con,'LTBuildReport1')
+    Build <- dbReadTable(con,'LTBuildReport1') # Run this line if doing LTCE; otherwise skip
     #Study <- dbReadTable(con,'StudyLog1')
     #Link <- dbReadTable(con,'LinkYear1')
     #Fuel <- dbReadTable(con,'FuelYear1')
     
+    # Set location where the following codes are found
+    ################################################################################
     setwd("D:/Documents/GitHub/AuroraEval")
     
     source("aeso_sim_comp.R")
@@ -234,6 +239,7 @@
       Yr4Sp <- list(2022,2023,2024,2025)
       Yr2Sp <- list(2020,2021)
       
+      # Abbreviations for Case Studies
       BC <- "Base Case"
       MS  <- "Minimum Solar Constraint"
       LCT <- "Low Carbon Tax"
@@ -245,6 +251,7 @@
       ylimit <- max(Hr$Output_MWH) + max(ZoneHour$Imports)
       
       # Set legend variables
+      ################################################################################
       colours = c("darkslateblue", "grey", "darkslategrey", "coral4", "goldenrod4", 
                   "dodgerblue", "forestgreen", "gold", "darkolivegreen1", "cyan")
       colours1 = c("darkslateblue", "black", "grey", "darkslategrey", "coral4", 
@@ -280,6 +287,8 @@
                    "goldenrod4", "darkcyan", "dodgerblue", 
                    "forestgreen", "gold", "cyan") #10 colours
       
+      # Custom scale fills to tie colours to specific resources
+      ################################################################################
       scale_fill_output <- function(...){
         ggplot2:::manual_scale(
           'fill', 
@@ -372,11 +381,13 @@
     }
 }
 
+# Specific functions I use most often to evaluate a simulation
+################################################################################
 year_price(2021,BC)
 
 gen_comp(2020,2021,BC)
 
-price_comp(2020,2035,BC)
+price_comp(2020,2021,BC)
 
 margin(2020,2021,BC)
 
@@ -398,12 +409,6 @@ comp_dur(2018,2021,BC)
 
 load_dur(2018,2021,BC)
 
-EvalOut(Year,BC)
-
-EvalPerc(Year,BC)
-
-Eval_diffcap(Year,BC)
-
 cap_fac_difference(2020,2021,"WIND",BC)
 
 capturePrice_diff(2020,2021,"WIND",BC)
@@ -415,4 +420,15 @@ capacity_factor(2020,"WIND",BC)
 capacity_factor(2021,"WIND",BC)
 
 capturePrice(2021,"WIND",BC)
+
+# Functions specific to LTCE
+################################################################################
+
+EvalOut(Year,BC)
+
+EvalPerc(Year,BC)
+
+Eval_diffcap(Year,BC)
+
+
  
