@@ -28,12 +28,12 @@ colnames(wind_pot) <- x
 # Create variables to define limits of data
 {
   Lt<-3
-  Ln<-2
+  Ln<-4
   
   maxLat <- 60
   maxLon <- -120
-  minLat <- as.numeric(paste0("49.0",Lat))
-  minLon <- as.numeric(paste0("-110.0",Lon))
+  minLat <- as.numeric(paste0("49.0",Lt))
+  minLon <- as.numeric(paste0("-110.0",Ln))
   
   totLat <- maxLat-minLat
   totLon <- abs(maxLon-minLon)
@@ -85,7 +85,7 @@ row.names(wind_prof) <- 1:nrow(wind_prof)
   # Note the start time
   old <- Sys.time()
   {  
-  for(i in 22781:nrow(wind_prof)) {
+  for(i in 16554:nrow(wind_prof)) {
     tempold <- Sys.time()
     url <- paste(cons1, wind_prof[i,1], cons2, wind_prof[i,2], sep = "")
     wind <- readHTMLTable(url,which=1)
