@@ -8,6 +8,8 @@ library("readxl")
 library(tidyverse)
 #library(ggplot2)
 
+# Data used to plot pie chart
+################################################################################
 setwd("D:/Documents/Education/Masters Degree/Datasets")
 
 GHG <- read_excel("Greenhouse gas emissions by province (Mt Co2 eq).xlsx")
@@ -64,6 +66,10 @@ pie(GHG$e_ghg2020, labels = paste0(GHG$Province, " ",GHG$pct2020, "%"),
 #    main="Public electricity and heat production greenhouse gas emissions by province and territory in 2020 (kt CO2 eq)"
     )
 
+# Data used to plot faceted bar chart
+################################################################################
+setwd("D:/Documents/Education/Masters Degree/Datasets")
+
 ghg <- read_excel("GHG emissions by province (Mt Co2 eq).xlsx") %>%
 #  filter(Year >= 2015) %>%
   mutate(Prov = case_when(str_detect(Province, "AB")~"Alberta",
@@ -100,13 +106,13 @@ ghg_other <- ghg_all %>%
 
 ghg <- rbind(ghg_sig,ghg_other)
 
-sz<-12
+sz<-15
 # Plot the data
 ggplot(ghg,
 #       aes(Province,e_ghg,colour=sit,fill=sit),
        alpha=0.8)+
   geom_col(aes(Year,e_ghg),#colour=sit,fill=sit),
-           size=1.5,position = position_dodge(width = .3),width = 0.95)+
+           size=1.5,position = position_dodge(width = .3),width = 0.9)+
   facet_grid(~reorder(Prov,-perc)) +
   scale_y_continuous(expand=c(0,0),
 #                     labels = scales::percent,
@@ -115,7 +121,7 @@ ggplot(ghg,
   ) +
 #  scale_x_continuous(breaks = seq(2015,2020, by=1),
 #                     expand=c(0,0)) +
-  labs(x="",y="Greenhouse gas emissions (Mt CO2 eq)",
+  labs(x="",y="Greenhouse gas emissions \n(Mt CO2 eq)",
 #       title="Electricity generation greenhouse gas emissions by province",
 #       subtitle = DB,
 #       caption="Source: National inventory report greenhouse gas source and sinks in Canada"
@@ -128,13 +134,14 @@ ggplot(ghg,
         plot.subtitle = element_text(size = sz-2,hjust=0.5),
         plot.caption = element_text(face="italic",size = sz-4,hjust=0),
         plot.title = element_text(hjust=0.5,size = sz+2),
+        strip.text.x = element_text(size=sz-3),
         #          plot.margin=unit(c(1,1,1.5,1.2),"cm"),
         
         # For transparent background
         panel.background = element_rect(fill = "transparent"),
         panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank(),
-        panel.spacing = unit(1.5, "lines"),
+        panel.spacing = unit(1, "lines"),
         panel.border = element_rect(colour = "black", fill = "transparent"),
         plot.background = element_rect(fill = "transparent", color = NA),
         legend.key = element_rect(colour = "transparent", fill = "transparent"),
