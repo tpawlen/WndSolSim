@@ -1188,6 +1188,84 @@ capVScap <- function(plant_type) {
   setwd("D:/Documents/Education/Masters Degree/Datasets/Market")
 }
 
+correlation <- function(plant_type) {
+  # Plots the Capture price as a function of the output correlation to the rest 
+  # of the fleet of that resource type
+  
+  date_s <- "2020-01-01" # Define date for the start of the study period
+  date_e <- "2021-02-01" # Define date for the end of the study period
+  corm <- "pearson" # Define correlation method ("pearson", "kendall", "spearman")
+  
+  # Installations since 2019
+  post2019 <- c("CRR2","CYP1","CYP2","FMG1","HHW1","HLD1","JNR1","JNR2","JNR3",
+                "RIV1","RTL1","WHE1","WHT1","WHT2","WRW1")
+  
+  # Filter data for plant_type, calculate total output for fleet for each period
+  alberta_samp <- sub_samp %>%
+    filter(Plant_Type == plant_type) %>%
+    subset(., select = -c(Demand,AIL,NRG_Stream,Plant_Fuel,GHG_ID,CO2,Heat.Rate,
+                          co2_est,AESO_Name,Latitude,Longitude)) %>%
+    na.omit() %>%
+    group_by(time) %>%
+    mutate(fleet_gen = sum(gen),
+           fleet_cap = sum(Capacity),
+           fleet_CF = fleet_gen/fleet_cap) %>%
+    ungroup() %>%
+    group_by(ID) %>%
+    summarize(Capacity = median(Capacity),
+              Latitude = mean(Latitude),
+              Longitude = mean(Longitude),
+              correlation = cor(Cap_Fac,fleet_CF, method=corm),
+              Dispatched = sum(gen),
+              Revenue = sum(Revenue),
+              Capture_Price = Revenue/Dispatched,
+           
+              ) %>%
+    ungroup() %>%
+    mutate(Installation=case_when(grepl("CRR2",ID)~"post2019",
+                                  grepl("CYP",ID)~"post2019",
+                                  #grepl("CYP2",ID)~"post2019",
+                                  grepl("FMG1",ID)~"post2019",
+                                  grepl("HHW1",ID)~"post2019",
+                                  grepl("HLD1",ID)~"post2019",
+                                  grepl("JNR",ID)~"post2019",
+                                  grepl("RIV1",ID)~"post2019",
+                                  grepl("RTL1",ID)~"post2019",
+                                  grepl("WHE1",ID)~"post2019",
+                                  grepl("WHT",ID)~"post2019",
+                                  grepl("WRW1",ID)~"post2019",),
+           Installation=case_when(is.na(Installation)~"pre2019",
+                                  TRUE~"post2019"))
+  
+  #cor(alberta_samp$gen, alberta_samp$fleet_total, 
+  #         method = corm)#$estimate
+  
+  sz = 15
+  
+  ggplot(alberta_samp, aes(x = correlation, y = Capture_Price, 
+                           shape = Installation, size = Capacity)) + 
+    geom_point() +
+    scale_shape_manual(values=c(16,9), 
+                       name = "Installation Date",
+                       labels=c("2019 or After","Before 2019"))+
+#    geom_text(label=alberta_samp$ID, size = sz-12, hjust = 0, vjust = 0, 
+#              nudge_x = 0.001, nudge_y = 0.3) +
+#    geom_smooth(method = lm, color = "black") +
+    labs(x = "Correlation between single site and aggregate capacity factors",
+         y = "Average Capture Price ($/MWh)") + #, 
+    #       title = "Alberta Wind and Solar Farms", 
+    #       subtitle = "Capture Price vs Correlation") +
+    theme(text = element_text(size = sz),
+          axis.line = element_line(color="black", size = 0.5),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent"),
+          plot.title = element_text(hjust = 0.5),
+          plot.subtitle = element_text(hjust = 0.5),
+          ) #+
+#    scale_x_reverse() 
+}
+
 ################################################################################
 ################################################################################
 # Plot the AESO pool price
