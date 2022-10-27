@@ -1197,24 +1197,24 @@ correlation <- function(plant_type) {
   corm <- "pearson" # Define correlation method ("pearson", "kendall", "spearman")
   
   # Installations since 2019
-  post2019 <- c("CRR2","CYP1","CYP2","FMG1","HHW1","HLD1","JNR1","JNR2","JNR3",
-                "RIV1","RTL1","WHE1","WHT1","WHT2","WRW1")
+  #post2019 <- c("CRR2","CYP1","CYP2","FMG1","HHW1","HLD1","JNR1","JNR2","JNR3",
+  #              "RIV1","RTL1","WHE1","WHT1","WHT2","WRW1")
   
   # Filter data for plant_type, calculate total output for fleet for each period
   alberta_samp <- sub_samp %>%
     filter(Plant_Type == plant_type) %>%
     subset(., select = -c(Demand,AIL,NRG_Stream,Plant_Fuel,GHG_ID,CO2,Heat.Rate,
-                          co2_est,AESO_Name,Latitude,Longitude)) %>%
+                          co2_est,AESO_Name)) %>%
     na.omit() %>%
     group_by(time) %>%
     mutate(fleet_gen = sum(gen),
            fleet_cap = sum(Capacity),
            fleet_CF = fleet_gen/fleet_cap) %>%
-    ungroup() %>%
+    ungroup()# %>%
     group_by(ID) %>%
     summarize(Capacity = median(Capacity),
-              Latitude = mean(Latitude),
-              Longitude = mean(Longitude),
+              Latitude = median(as.numeric(Latitude)),
+              Longitude = median(as.numeric(Longitude)),
               correlation = cor(Cap_Fac,fleet_CF, method=corm),
               Dispatched = sum(gen),
               Revenue = sum(Revenue),
@@ -1264,6 +1264,109 @@ correlation <- function(plant_type) {
           plot.subtitle = element_text(hjust = 0.5),
           ) #+
 #    scale_x_reverse() 
+}
+
+correlation_map <- function(plant_type) {
+  # Plots the Capture price as a function of the output correlation to the rest 
+  # of the fleet of that resource type
+  
+  date_s <- "2020-01-01" # Define date for the start of the study period
+  date_e <- "2021-02-01" # Define date for the end of the study period
+  corm <- "pearson" # Define correlation method ("pearson", "kendall", "spearman")
+  
+  # Filter data for plant_type, calculate total output for fleet for each period
+  alberta_samp <- sub_samp %>%
+    filter(Plant_Type == plant_type) %>%
+    subset(., select = -c(Demand,AIL,NRG_Stream,Plant_Fuel,GHG_ID,CO2,Heat.Rate,
+                          co2_est,AESO_Name)) %>%
+    na.omit() %>%
+    group_by(time) %>%
+    mutate(fleet_gen = sum(gen),
+           fleet_cap = sum(Capacity),
+           fleet_CF = fleet_gen/fleet_cap) %>%
+    ungroup() %>%
+    group_by(ID) %>%
+    summarize(Capacity = median(Capacity),
+              Latitude = median(as.numeric(Latitude)),
+              Longitude = median(as.numeric(Longitude)),
+              correlation = cor(Cap_Fac,fleet_CF, method=corm),
+              Dispatched = sum(gen),
+              Revenue = sum(Revenue),
+              Capture_Price = Revenue/Dispatched,
+              
+    ) %>%
+    ungroup() %>%
+    mutate(Installation=case_when(grepl("CRR2",ID)~"post2019",
+                                  grepl("CYP",ID)~"post2019",
+                                  #grepl("CYP2",ID)~"post2019",
+                                  grepl("FMG1",ID)~"post2019",
+                                  grepl("HHW1",ID)~"post2019",
+                                  grepl("HLD1",ID)~"post2019",
+                                  grepl("JNR",ID)~"post2019",
+                                  grepl("RIV1",ID)~"post2019",
+                                  grepl("RTL1",ID)~"post2019",
+                                  grepl("WHE1",ID)~"post2019",
+                                  grepl("WHT",ID)~"post2019",
+                                  grepl("WRW1",ID)~"post2019",),
+           Installation=case_when(is.na(Installation)~"pre2019",
+                                  TRUE~"post2019"))
+  
+  ################################################################################
+  #Level 1 shows provinces, while level 2 shows individual counties
+  #When getData is removed, use geodata package instead
+  ################################################################################
+  {can_level1 = getData("GADM", country = "CA", level = 1)
+  
+  WGS84 <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+  canada_level1_ellipsoid = spTransform(can_level1, WGS84)
+  
+  alberta_ellipsoid1 = 
+    canada_level1_ellipsoid[which(canada_level1_ellipsoid$NAME_1 == "Alberta"),]
+  }
+  
+  ################################################################################
+  ################################################################################
+  # Map of Alberta with active sites 
+  ################################################################################
+  ################################################################################
+  
+  ggplot() + 
+    geom_tile(data = wind_profile, 
+              aes(x = Longitude, y = Latitude, fill = Wind)) +
+    geom_polygon(data = alberta_ellipsoid1, 
+                 aes(x = long, y = lat, group = group), 
+                 fill = "transparent", colour = "black") +
+    geom_point(data = alberta_samp,
+               aes(x= Longitude, y = Latitude, size = Capture_Price, color=Installation), 
+               shape = 16) +
+    labs(size = "Capture Price ($/MWh)") +
+    scale_color_manual(values = c("darkmagenta", "black"), 
+                       labels = c("Built since 2019","Built before 2019")) +
+      scale_fill_gradientn(colors = matlab.like2(100),
+                           limits=c(3.5,10), na.value="white",oob=squish, 
+                           name = "Mean wind speed \nat 80m height \n(m/s)") +
+    #scale_fill_gradient(low="white", high="white", limits=c(3.5,25), na.value="red",
+    #                      oob=squish, 
+    #                      name = "Mean wind speed \nat 80m height \n(m/s)"
+    #)+
+    #  scale_fill_gradientn(colors = c("navy","turquoise1","green",
+    #                                  "yellow","orangered","red4"),
+    #                       values=c(3.5,5,6.5,7.5,8.5,10),oob=squish, 
+    #                       name = "Mean wind speed \nat 80m height \n(m/s)") +
+  #guides(shape = guide_legend(override.aes = list(size = 5))) +  
+  theme(panel.background = element_rect(fill = "transparent"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        plot.background = element_rect(fill = "transparent", color = NA),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        #legend.background = element_blank(),
+        #legend.box.background = element_blank(),
+        #legend.text = element_blank(),
+        #legend.title = element_blank()
+  ) 
+  
 }
 
 ################################################################################

@@ -49,8 +49,8 @@ legText <- 12
 # Wind Speed data from Canada Wind Atlas 
 # http://www.windatlas.ca/nav-en.php?no=46&field=EU&height=80&season=ANU
 ################################################################################
-#wind_profile <- readRDS("WindAtlas_Data00_0.05")
-#colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile <- readRDS("WindAtlas_Data00_0.05")
+colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
 
 {
 wind_profile00 <- readRDS("WindAtlas_Data00_0.05")

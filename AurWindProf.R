@@ -188,11 +188,11 @@ for (n in 1:imax){
 }
 }
 
-# Calculate the percentage of capacity being used
-TWF$percentage <- TWF$Air/maxOutput
+# Calculate the percentage of capacity being used (capacity factor)
+TWF$CF <- TWF$Air/maxOutput
 
 # Calculate the outage percentage. 
-TWF$Outage <- (1-TWF$percentage)*100
+TWF$Outage <- (1-TWF$CF)*100
 
 
 # Summarize the output to enter into Aurora
