@@ -175,29 +175,184 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
            Cap_Fac = 1-Outage/100,
            ID = "CRR2")
   
-  LesserSlave <- read.csv(file = 'la55435lo244922_LesserSlave.csv') %>%
+  CYP1 <- read.csv(file = 'Cypress(CYP1_2)_la49833lo249637.csv') %>%
     subset(., select = c(year,month,day,hour,Outage)) %>%
     na.omit() %>%
-    mutate(Latitude = 55.435,
-           Longitude = -(360-244.922),
+    mutate(Latitude = 49.84097,
+           Longitude = -110.357,
            Cap_Fac = 1-Outage/100,
-           ID = "LesserSlave")
+           ID = "CYP1")
   
-  PigeonLake <- read.csv(file = 'la53082lo245821_PigeonLake.csv') %>%
+  FMG1 <- read.csv(file = 'FMGranlea(FMG1)_la49660lo248875.csv') %>%
     subset(., select = c(year,month,day,hour,Outage)) %>%
     na.omit() %>%
-    mutate(Latitude = 53.082,
-           Longitude = -(360-245.821),
+    mutate(Latitude = 49.66334,
+           Longitude = -111.1220,
            Cap_Fac = 1-Outage/100,
-           ID = "PigeonLake")
+           ID = "FMG1")
   
-  SwanHills <- read.csv(file = 'la54761lo244344_SwanHills.csv') %>%
+  GRZ1 <- read.csv(file = 'WildRunGrizzlyBear(GRZ1)_la53213lo248903.csv') %>%
     subset(., select = c(year,month,day,hour,Outage)) %>%
     na.omit() %>%
-    mutate(Latitude = 54.761,
-           Longitude = -(360-244.344),
+    mutate(Latitude = 53.21519,
+           Longitude = -111.095,
            Cap_Fac = 1-Outage/100,
-           ID = "SwanHills")
+           ID = "GRZ1")
+  
+  GWW1 <- read.csv(file = 'Soderglen(GWW1)_la50479lo246926.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 50.47987,
+           Longitude = -113.0579,
+           Cap_Fac = 1-Outage/100,
+           ID = "GWW1")
+  
+  HAL1 <- read.csv(file = 'Halkirk(HAL1)_la52283lo247926.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 52.27438,
+           Longitude = -112.0622,
+           Cap_Fac = 1-Outage/100,
+           ID = "HAL1")
+  
+  HHW1 <- read.csv(file = 'HandHills(HHW1)_la51596lo247676.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 51.59,
+           Longitude = -112.32,
+           Cap_Fac = 1-Outage/100,
+           ID = "HHW1")
+  
+  IEW1 <- read.csv(file = 'Summerview1(IEW1)_la49592lo246231.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 49.59720,
+           Longitude = -113.7676,
+           Cap_Fac = 1-Outage/100,
+           ID = "IEW1")
+  
+  IEW2 <- read.csv(file = 'Summerview2(IEW2)_la49630lo246211.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 49.62531,
+           Longitude = -113.7934,
+           Cap_Fac = 1-Outage/100,
+           ID = "IEW2")
+  
+  JNR1 <- read.csv(file = 'Jenner(JNR1)_la50781lo248961.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 50.77712,
+           Longitude = -111.046,
+           Cap_Fac = 1-Outage/100,
+           ID = "JNR1")
+  
+  JNR2 <- read.csv(file = 'Jenner2(JNR2)_la50823lo248918.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 50.82,
+           Longitude = -111.07,
+           Cap_Fac = 1-Outage/100,
+           ID = "JNR2")
+  
+  KHW1 <- read.csv(file = 'KettlesHill(KHW1)_la49505lo246188.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 49.50982,
+           Longitude = -113.8178,
+           Cap_Fac = 1-Outage/100,
+           ID = "KHW1")
+  
+  NEP1 <- read.csv(file = 'GhostPine(NEP1)_la51899lo246649.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 51.89888,
+           Longitude = -113.3650,
+           Cap_Fac = 1-Outage/100,
+           ID = "NEP1")
+  
+  OWF1 <- read.csv(file = 'Oldman2(OWF1)_la49630lo246211.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 49.62531,
+           Longitude = -113.7934,
+           Cap_Fac = 1-Outage/100,
+           ID = "OWF1")
+  
+  RIV1 <- read.csv(file = 'Riverview(RIV1)_la49535lo246028.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 49.53245,
+           Longitude = -113.9770,
+           Cap_Fac = 1-Outage/100,
+           ID = "RIV1")
+  
+  RTL1 <- read.csv(file = 'Rattlesnake(RTL1)_la50573lo248121.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 50.57726,
+           Longitude = -111.8662,
+           Cap_Fac = 1-Outage/100,
+           ID = "RTL1")
+  
+  SCR2 <- read.csv(file = 'Magrath(SCR2)_la49381lo247032.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 49.38747,
+           Longitude = -112.9547,
+           Cap_Fac = 1-Outage/100,
+           ID = "SCR2")
+  
+  SCR3 <- read.csv(file = 'ChinChute(SCR3)_la49687lo247672.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 49.68482,
+           Longitude = -112.3244,
+           Cap_Fac = 1-Outage/100,
+           ID = "SCR3")
+  
+  SCR4 <- read.csv(file = 'WinteringHills(SCR4)_la50332lo247176.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 50.33874,
+           Longitude = -112.8286,
+           Cap_Fac = 1-Outage/100,
+           ID = "SCR4")
+  
+  TAB1 <- read.csv(file = 'Taber(TAB1)_la49706lo248059.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 49.71351,
+           Longitude = -111.9328,
+           Cap_Fac = 1-Outage/100,
+           ID = "TAB1")
+  
+  WHE1 <- read.csv(file = 'Wheatland(WHE1)_la51242lo247571.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 51.2375,
+           Longitude = -112.426,
+           Cap_Fac = 1-Outage/100,
+           ID = "WHE1")
+  
+  WHT1 <- read.csv(file = 'Whitla(WHT1_2)_la49641lo248703.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 49.64029,
+           Longitude = -111.2910,
+           Cap_Fac = 1-Outage/100,
+           ID = "WHT1")
+  
+  WHT2 <- WHT1 %>%
+    mutate(ID = "WHT2")
+  
+  WRW1 <- read.csv(file = 'Windrise(WRW1)_la50573lo248121.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 50.57726,
+           Longitude = -111.8662,
+           Cap_Fac = 1-Outage/100,
+           ID = "WRW1")
   }
 
 saveRDS(Pot_sites, file = "PotentialSites.RData")
