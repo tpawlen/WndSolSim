@@ -1192,8 +1192,8 @@ correlation <- function(plant_type) {
   # Plots the Capture price as a function of the output correlation to the rest 
   # of the fleet of that resource type
   
-  date_s <- "2020-01-01" # Define date for the start of the study period
-  date_e <- "2021-02-01" # Define date for the end of the study period
+#  date_s <- "2020-01-01" # Define date for the start of the study period
+#  date_e <- "2021-02-01" # Define date for the end of the study period
   corm <- "pearson" # Define correlation method ("pearson", "kendall", "spearman")
   
   # Installations since 2019

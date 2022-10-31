@@ -195,6 +195,140 @@ simple <- wind_sim %>%
 #}
 
 ################################################################################
+# Calculates the correlation to the rest of the fleet
+################################################################################
+
+corm <- "pearson" # Define correlation method ("pearson", "kendall", "spearman")
+
+# Installations since 2019
+#post2019 <- c("CRR2","CYP1","CYP2","FMG1","HHW1","HLD1","JNR1","JNR2","JNR3",
+#              "RIV1","RTL1","WHE1","WHT1","WHT2","WRW1")
+
+setwd("D:/Documents/Education/Masters Degree/Datasets/Market")
+load("nrgstream_gen.RData") 
+nrgstream_gen <- nrgstream_gen %>% rename(time=Time)
+
+nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$gen),] 
+nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$time),] 
+
+corrected <- nrgstream_gen %>%
+  filter(is.na(Latitude)) %>%
+  mutate(Latitude=case_when(grepl("BRD1",ID) ~ 49.842735,
+                            grepl("BUR1",ID) ~ 49.814877,
+                            grepl("CLR",ID) ~ 50.032911,
+                            grepl("CLY",ID) ~ 49.840967,
+                            grepl("CHP1",ID) ~ 50.22189,
+                            grepl("COL1",ID) ~ 49.833218,
+                            grepl("CRD",ID) ~ 49.807,
+                            grepl("CRR2",ID) ~ 49.55891,
+                            grepl("FMG1",ID) ~ 49.66334,
+                            grepl("KKP",ID) ~ 53.469986,
+                            grepl("MON1",ID) ~ 49.833144,
+                            grepl("NMK1",ID) ~ 51.026118,
+                            grepl("RIV1",ID) ~ 49.53245,
+                            grepl("STR",ID) ~ 51.033273,
+                            grepl("TVS1",ID) ~ 50.27324,
+                            grepl("VCN1",ID) ~ 50.0975,
+                            grepl("VXH1",ID) ~ 50.095223,
+                            grepl("WEF1",ID) ~ 49.65405,
+                            grepl("WHT",ID) ~ 49.64029),
+         Longitude=case_when(grepl("BRD1",ID) ~ -111.537891,
+                             grepl("BUR1",ID) ~ -111.543323,
+                             grepl("CHP1",ID) ~ -110.437106,
+                             grepl("CLR",ID) ~ -113.484369,
+                             grepl("CLY",ID) ~ -110.356864,
+                             grepl("COL1",ID) ~ -112.97448,
+                             grepl("CRD",ID) ~ -112.578,
+                             grepl("CRR2",ID) ~ -113.983,
+                             grepl("FMG1",ID) ~ -111.122,
+                             grepl("KKP",ID) ~ -113.61337,
+                             grepl("MON1",ID) ~ -112.974231,
+                             grepl("NMK1",ID) ~ -113.163017,
+                             grepl("RIV1",ID) ~ -113.977,
+                             grepl("STR",ID) ~ -113.371296,
+                             grepl("TVS1",ID) ~ -112.73059,
+                             grepl("VCN1",ID) ~ -112.84841,
+                             grepl("VXH1",ID) ~ -112.149936,
+                             grepl("WEF1",ID) ~ -111.515812,
+                             grepl("WHT",ID) ~ -111.291))
+
+nocorrection <- nrgstream_gen %>%
+  filter(!is.na(Latitude))
+
+nrgstream_gen <- rbind(corrected,nocorrection)
+
+sub_samp<-filter(nrgstream_gen, time >= as.Date("2017-01-1"))
+rm(nrgstream_gen)
+
+setwd("D:/Documents/GitHub/AuroraEval/WindProfile")
+Pot_sites <- readRDS("PotentialSites.RData") %>%
+  mutate(year = 2021,
+         time = ymd_h(paste0(year,"-",month,"-",day," ",hour)),
+         gen = 0,
+         Capacity = 0,
+         Revenue = 0) %>%
+  subset(., select = -c(year,month,day,hour,Outage))
+
+
+
+# Filter data for plant_type, calculate total output for fleet for each period
+alberta_samp <- sub_samp %>%
+  filter(Plant_Type == "WIND") %>%
+  subset(., select = -c(Demand,AIL,NRG_Stream,Plant_Fuel,GHG_ID,CO2,Heat.Rate,
+                        co2_est,AESO_Name,date,he,Price,Plant_Type)) %>%
+  na.omit()
+
+alberta_samp <- rbind(Pot_sites,alberta_samp) %>%
+  group_by(time) %>%
+  mutate(fleet_gen = sum(gen),
+         fleet_cap = sum(Capacity),
+         fleet_CF = fleet_gen/fleet_cap) %>%
+  ungroup() %>%
+  na.omit() %>%
+group_by(ID) %>%
+  summarize(Capacity = median(Capacity),
+            Latitude = median(as.numeric(Latitude)),
+            Longitude = median(as.numeric(Longitude)),
+            correlation = cor(Cap_Fac,fleet_CF, method=corm),
+            Dispatched = sum(gen),
+            Revenue = sum(Revenue),
+            Capture_Price = Revenue/Dispatched,
+            Cap_Fac = mean(Cap_Fac),
+            #fleet_cap = mean(fleet_cap),
+            #fleet_gen = mean(fleet_gen),
+            #fleet_CF = mean(fleet_CF)
+            
+  ) %>%
+  ungroup() %>%
+  mutate(Installation=case_when(grepl("CRR2",ID)~"post2019",
+                                grepl("CYP",ID)~"post2019",
+                                #grepl("CYP2",ID)~"post2019",
+                                grepl("FMG1",ID)~"post2019",
+                                grepl("HHW1",ID)~"post2019",
+                                grepl("HLD1",ID)~"post2019",
+                                grepl("JNR",ID)~"post2019",
+                                grepl("RIV1",ID)~"post2019",
+                                grepl("RTL1",ID)~"post2019",
+                                grepl("WHE1",ID)~"post2019",
+                                grepl("WHT",ID)~"post2019",
+                                grepl("WRW1",ID)~"post2019",
+                                grepl("Anzac",ID)~"Potential",
+                                grepl("BisonLake",ID)~"Potential",
+                                grepl("ChainLakes",ID)~"Potential",
+                                grepl("ClearPrairie",ID)~"Potential",
+                                grepl("Falher",ID)~"Potential",
+                                grepl("GrandeCache",ID)~"Potential",
+                                grepl("Hinton",ID)~"Potential",
+                                grepl("JohnDOr",ID)~"Potential",
+                                grepl("Kehewin",ID)~"Potential",
+                                grepl("LesserSlave",ID)~"Potential",
+                                grepl("PigeonLake",ID)~"Potential",
+                                grepl("SwanHills",ID)~"Potential",
+                                TRUE~"pre2019"
+                                ),
+         )
+
+################################################################################
 ################################################################################
 # Map of Alberta with wind speeds
 ################################################################################
@@ -233,13 +367,13 @@ AB1 <- ggplot() +
   geom_polygon(data = alberta_ellipsoid1, 
                aes(x = long, y = lat, group = group), 
                fill = "transparent", colour = "black") +
-#  scale_fill_gradientn(colors = matlab.like2(100),
-#                       limits=c(3.5,25), na.value="white",#oob=squish, 
-#                       name = "Mean wind speed \nat 80m height \n(m/s)") +
-  scale_fill_gradient(low="white", high="white", limits=c(3.5,25), na.value="red",
+  scale_fill_gradientn(colors = matlab.like2(100),
+                       limits=c(3.5,12), na.value="white",oob=squish, 
+                       name = "Mean wind speed \nat 80m height \n(m/s)") +
+#  scale_fill_gradient(low="white", high="white", limits=c(3.5,25), na.value="red",
 #                      oob=squish, 
 #                      name = "Mean wind speed \nat 80m height \n(m/s)"
-)+
+#)+
 #  scale_fill_gradientn(colors = c("navy","turquoise1","green",
 #                                  "yellow","orangered","red4"),
 #                       values=c(3.5,5,6.5,7.5,8.5,10),oob=squish, 
@@ -425,6 +559,29 @@ Sim_wind <- AB + geom_point(data = wind_sim,
 ################################################################################
 
 ggsave(path = "images", filename = "simplewindfarmpotential.png", bg = "transparent")
+
+################################################################################
+# Map of Alberta with active and potential farms and their wind profile 
+# correlations
+################################################################################
+labs5 <- c("Built after 2019","Potential","Built before 2019")
+
+wind_corr <- AB + geom_point(data = alberta_samp,
+                               aes(x= Longitude, y = Latitude, size = correlation, 
+                                   color = Installation),shape=16
+                             ) + 
+  geom_point(data = alberta_samp,
+             aes(x= Longitude, y = Latitude, size = correlation),colour="black",
+             shape=1) + 
+  #scale_shape_manual(values = c(16,17,18), labels = labs5) +
+  scale_color_manual(values = c("gray", "red4", "black"), 
+                     labels = labs5) +
+  scale_size("Correlation",trans='reverse',range=c(0.5,9)) +
+  guides(shape = guide_legend(override.aes = list(size = 7))) +
+  ggtitle("Correlation between \nwind farms' profiles in Aurora") +
+  theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
+        legend.text = element_text(size = legText),
+        legend.title = element_text(size = legTitle))
 
 ################################################################################
 # Extract the legend

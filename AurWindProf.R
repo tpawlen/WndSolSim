@@ -23,7 +23,8 @@
 
 
 # Define variables
-{{location <- "la54059lo249196.csv"  # The location lat and long as it appears on file.
+{{location <- "la50573lo248121.csv"  # The location lat and long as it appears on file.
+  site <- "Windrise(WRW1)" # Name of the site
   hbht <- 100   #Hubheight of wind turbine in meters
   cutin <- 3    #Cut in wind speed (m/s)
   rated <- 12   #Wind speed at maximum capacity (m/s)
@@ -203,5 +204,6 @@ Aurora <- TWF %>%
 }
 
 #SAVE FILE (To save the processed data) This is to be entered into Aurora.
-write.csv(Aurora, file=paste(location,"_Output.csv"))
+setwd("D:/Documents/GitHub/AuroraEval/WindProfile")
+write.csv(Aurora, file=paste0(site,"_",location,".csv"))
 }
