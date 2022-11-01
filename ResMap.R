@@ -197,7 +197,7 @@ simple <- wind_sim %>%
 ################################################################################
 # Calculates the correlation to the rest of the fleet
 ################################################################################
-
+{
 corm <- "pearson" # Define correlation method ("pearson", "kendall", "spearman")
 
 # Installations since 2019
@@ -270,11 +270,6 @@ Pot_sites <- readRDS("PotentialSites.RData") %>%
          Revenue = 0) %>%
   subset(., select = -c(year,month,day,hour,Outage))
 
-SiteProf <- readRDS("SitesProfiles.RData") %>%
-  mutate(time = ymd_h(paste0(year,"-",month,"-",day," ",hour)),
-         sim_gen = Capacity * Cap_Fac) %>%
-  subset(., select = c(time,ID,Latitude,Longitude,Capacity,sim_gen,Cap_Fac,Installation))
-
 # Filter data for plant_type, calculate total output for fleet for each period
 alberta_samp <- sub_samp %>%
   filter(Plant_Type == "WIND") %>%
@@ -333,6 +328,11 @@ group_by(ID) %>%
                                 ),
          )
 
+SiteProf <- readRDS("SitesProfiles.RData") %>%
+  mutate(time = ymd_h(paste0(year,"-",month,"-",day," ",hour)),
+         sim_gen = Capacity * Cap_Fac) %>%
+  subset(., select = c(time,ID,Latitude,Longitude,Capacity,sim_gen,Cap_Fac,Installation))
+
 alberta_corr <- SiteProf %>%
   group_by(time) %>%
   mutate(fleet_gen = sum(sim_gen),
@@ -355,34 +355,39 @@ alberta_corr <- SiteProf %>%
             
   ) %>%
   ungroup() %>%
-  mutate(Built=case_when(grepl("CRR2",ID)~"post2019",
-                                grepl("CYP",ID)~"post2019",
-                                #grepl("CYP2",ID)~"post2019",
-                                grepl("FMG1",ID)~"post2019",
-                                grepl("GRZ1",ID)~"post2019",
-                                grepl("HHW1",ID)~"post2019",
-                                grepl("HLD1",ID)~"post2019",
-                                grepl("JNR",ID)~"post2019",
-                                grepl("RIV1",ID)~"post2019",
-                                grepl("RTL1",ID)~"post2019",
-                                grepl("WHE1",ID)~"post2019",
-                                grepl("WHT",ID)~"post2019",
-                                grepl("WRW1",ID)~"post2019",
-                                grepl("Anzac",ID)~"Potential",
-                                grepl("BisonLake",ID)~"Potential",
-                                grepl("ChainLakes",ID)~"Potential",
-                                grepl("ClearPrairie",ID)~"Potential",
-                                grepl("Falher",ID)~"Potential",
-                                grepl("GrandeCache",ID)~"Potential",
-                                grepl("Hinton",ID)~"Potential",
-                                grepl("JohnDOr",ID)~"Potential",
-                                grepl("Kehewin",ID)~"Potential",
-                                grepl("LesserSlave",ID)~"Potential",
-                                grepl("PigeonLake",ID)~"Potential",
-                                grepl("SwanHills",ID)~"Potential",
-                                TRUE~"pre2019"
+  mutate(Built=case_when(grepl("BUL",ID)~"post2015",
+                         grepl("CRR2",ID)~"post2015",
+                         grepl("CYP",ID)~"post2015",
+                         #grepl("CYP2",ID)~"post2015",
+                         grepl("FMG1",ID)~"post2015",
+                         grepl("GRZ1",ID)~"post2015",
+                         grepl("HHW1",ID)~"post2015",
+                         grepl("HLD1",ID)~"post2015",
+                         grepl("JNR",ID)~"post2015",
+                         grepl("RIV1",ID)~"post2015",
+                         grepl("RTL1",ID)~"post2015",
+                         grepl("WHE1",ID)~"post2015",
+                         grepl("WHT",ID)~"post2015",
+                         grepl("WRW1",ID)~"post2015",
+                         grepl("Anzac",ID)~"Potential",
+                         grepl("BisonLake",ID)~"Potential",
+                         grepl("ChainLakes",ID)~"Potential",
+                         grepl("ClearPrairie",ID)~"Potential",
+                         grepl("Falher",ID)~"Potential",
+                         grepl("FortSaskatchewan",ID)~"Potential",
+                         grepl("GrandeCache",ID)~"Potential",
+                         grepl("Hinton",ID)~"Potential",
+                         grepl("JohnDOr",ID)~"Potential",
+                         grepl("Kehewin",ID)~"Potential",
+                         grepl("LesserSlave",ID)~"Potential",
+                         grepl("PigeonLake",ID)~"Potential",
+                         grepl("SwanHills",ID)~"Potential",
+                         TRUE~"pre2015"
   ),
   )
+}
+
+setwd("D:/Documents/GitHub/AuroraEval")
 
 ################################################################################
 ################################################################################
@@ -411,6 +416,9 @@ AB <- ggplot() +
         legend.text = element_text(size = legText),
         legend.title = element_text(size = legTitle)) 
 
+AB
+ggsave(path = "images", filename = "WindSpeeds.png", bg = "transparent")
+
 ################################################################################
 ################################################################################
 # Map of Alberta with only usable wind speeds shown
@@ -424,7 +432,7 @@ AB1 <- ggplot() +
                aes(x = long, y = lat, group = group), 
                fill = "transparent", colour = "black") +
   scale_fill_gradientn(colors = matlab.like2(100),
-                       limits=c(3.5,12), na.value="white",oob=squish, 
+                       limits=c(3.5,25), na.value="white",oob=squish, 
                        name = "Mean wind speed \nat 80m height \n(m/s)") +
 #  scale_fill_gradient(low="white", high="white", limits=c(3.5,25), na.value="red",
 #                      oob=squish, 
@@ -488,8 +496,19 @@ AB2 <- ggplot() +
 ################################################################################
 ################################################################################
 #ID_labels <- as.list(active$ID)
+labsa <- c("Built before 2015","Built after 2015")
 
-Act_wind <- ggplot(active, aes(x= Longitude, y = Latitude, #label=ID_labels
+wind_active <- wind_Aurora %>%
+  filter(Status == "Active") %>%
+  mutate(Built = case_when(Year >= 2015 ~ "post2015",
+                           TRUE~"pre2015")) %>%
+  arrange(match(Built, c("pre2015", "post2015")), 
+          desc(Built))
+
+wind_active$Built <- factor(wind_active$Built, 
+                             levels = c("pre2015","post2015"))
+
+Act_wind <- ggplot(wind_active, aes(x= Longitude, y = Latitude, #label=ID_labels
                                )) + 
   geom_tile(data = wind_profile, 
             aes(x = Longitude, y = Latitude, fill = Wind)) +
@@ -498,9 +517,16 @@ Act_wind <- ggplot(active, aes(x= Longitude, y = Latitude, #label=ID_labels
                fill = "transparent", colour = "black") +
   scale_fill_gradientn(colors = matlab.like2(100),
                        limits=c(3,10),oob=squish, name = "Mean wind speed \nat 80m height \n(m/s)") +
-  geom_point(data = active,
-                aes(x= Longitude, y = Latitude, size = Capacity, ), 
-                shape = 16, color = "black") +
+  geom_point(data = wind_active,
+                aes(x= Longitude, y = Latitude, size = Capacity, color = Built), 
+                shape = 16) +#, color = "black") +
+  geom_point(data = wind_active,
+             aes(x= Longitude, y = Latitude, size = Capacity),colour="black",
+             shape=1) + 
+  scale_color_manual(values = c("grey39", "black"), 
+                     labels = labsa) +
+  guides(color = guide_legend(override.aes = list(size = 4), order = 1)) +
+  guides(size = guide_legend(order = 2)) +
 #  ggtitle("Active Wind Farms") +
   theme(panel.background = element_rect(fill = "transparent"),
         panel.grid.major = element_blank(),
@@ -511,7 +537,10 @@ Act_wind <- ggplot(active, aes(x= Longitude, y = Latitude, #label=ID_labels
         plot.background = element_rect(fill = "transparent", color = NA),
         plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
         legend.text = element_text(size = legText),
-        legend.title = element_text(size = legTitle)) 
+        legend.title = element_text(size = legTitle),
+        legend.background = element_rect(fill = "transparent"),
+        legend.key=element_rect(fill = "transparent"),
+        rect = element_rect(fill="transparent")) 
 
 ################################################################################
 # Save map as png
@@ -528,16 +557,29 @@ ggsave(path = "images", filename = "windfarmactive.png", bg = "transparent")
 {
 labs1 <- c("Active","AESO Queue")
 
-AESO_wind <- AB + geom_point(data = wind_farm,
+wind_AESO <- wind_Aurora %>%
+  filter(Status != "Potential" & Status != "Simulated")
+
+AESO_wind <- AB + geom_point(data = wind_AESO,#wind_farm,
                 aes(x= Longitude, y = Latitude, size = Capacity, shape = Status, color = Status)) + 
   scale_shape_manual(values = c(16,18), labels = labs1) +
-  scale_color_manual(values = c("black", "grey39"), 
+  scale_color_manual(values = c("black", "forestgreen"), 
                      labels = labs1) +
   guides(shape = guide_legend(override.aes = list(size = 5))) +
 #  ggtitle("Active and Queued Wind Farms") +
-  theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
+  theme(panel.background = element_rect(fill = "transparent"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        plot.background = element_rect(fill = "transparent", color = NA),
+        plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
         legend.text = element_text(size = legText),
-        legend.title = element_text(size = legTitle)) 
+        legend.title = element_text(size = legTitle),
+        legend.background = element_rect(fill = "transparent"),
+        legend.key=element_rect(fill = "transparent"),
+        rect = element_rect(fill="transparent")) 
 }
 ################################################################################
 # Save map as png
@@ -595,25 +637,39 @@ Sim_wind <- AB + geom_point(data = wind_sim,
 ################################################################################
 ################################################################################
 {
-  labs4 <- c("Active","Simulated","AESO Queue")
+  labs4 <- c("Active","AESO Queue","Simulated")
+  
+  wind_Aurora <- wind_Aurora %>%
+    mutate(Status = str_replace(Status, "Potential","Simulated")) %>%
+    arrange(desc(Status))
   
   Aurora_wind <- AB + geom_point(data = wind_Aurora,
                               aes(x= Longitude, y = Latitude, size = Capacity, 
                                   shape = Status, color = Status)) + 
-    scale_shape_manual(values = c(16,17,18), labels = labs4) +
-    scale_color_manual(values = c("black", "red4", "grey39"), 
+    scale_shape_manual(values = c(16,18,17), labels = labs4) +
+    scale_color_manual(values = c("black", "grey39", "red4"), 
                        labels = labs4) +
     guides(shape = guide_legend(override.aes = list(size = 5))) +
     ggtitle("Active, Queued, & Potential \nWind Farms in Aurora") +
-    theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.title = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
           legend.text = element_text(size = legText),
-          legend.title = element_text(size = legTitle)) 
+          legend.title = element_text(size = legTitle),
+          legend.background = element_rect(fill = "transparent"),
+          legend.key=element_rect(fill = "transparent"),
+          rect = element_rect(fill="transparent")) 
 }
 
 ################################################################################
 # Save map as png
 ################################################################################
-
+Aurora_wind
 ggsave(path = "images", filename = "simplewindfarmpotential.png", bg = "transparent")
 
 ################################################################################
@@ -643,7 +699,14 @@ wind_corr <- AB + geom_point(data = alberta_samp,
 # Map of Alberta with active and potential farms and their wind profile 
 # correlations
 ################################################################################
-labs5 <- c("Built after 2019","Potential","Built before 2019")
+labs6 <- c("Built before 2015","Built after 2015","Potential")
+
+alberta_corr <- alberta_corr %>%
+  arrange(match(Built, c("Potential","pre2015", "post2015")), 
+          desc(Built))
+
+alberta_corr$Built <- factor(alberta_corr$Built, 
+                             levels = c("pre2015","post2015","Potential"))
 
 wind_corr1 <- AB + geom_point(data = alberta_corr,
                              aes(x= Longitude, y = Latitude, size = correlation, 
@@ -659,14 +722,29 @@ wind_corr1 <- AB + geom_point(data = alberta_corr,
 #            nudge_y = 0.25,
 #            ) +
   #scale_shape_manual(values = c(16,17,18), labels = labs5) +
-  scale_color_manual(values = c("black", "red4", "gray"), 
-                     labels = labs5) +
+  scale_color_manual(values = c("gray", "black", "red4"), 
+                     labels = labs6) +
   scale_size("Wind profile \ncorrelation",trans='reverse',range=c(0.5,7)) +
-  guides(shape = guide_legend(override.aes = list(size = 7))) +
+  guides(color = guide_legend(override.aes = list(size = 4), order = 1)) +
+  guides(size = guide_legend(order = 2)) +
 #  ggtitle("Correlation between \nwind sites' profiles in Aurora") +
   theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
         legend.text = element_text(size = legText),
-        legend.title = element_text(size = legTitle))
+        legend.title = element_text(size = legTitle),
+        panel.background = element_rect(fill = "transparent"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        plot.background = element_rect(fill = "transparent", color = NA),
+        legend.background = element_rect(fill = "transparent"),
+        legend.key=element_rect(fill = "transparent"),
+        rect = element_rect(fill="transparent"))
+
+wind_corr1
+
+ggsave(path = "images", filename = "Correlation_map_potential.png", bg = "transparent")
 
 ################################################################################
 # Extract the legend

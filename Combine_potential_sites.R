@@ -43,6 +43,14 @@ getwd()
            Cap_Fac = 1-Outage/100,
            ID = "Falher")
   
+  FortSaskatchewan <- read.csv(file = 'la53680lo246840_FortSaskatchewan.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 53.67672,
+           Longitude = -(360-246.830),
+           Cap_Fac = 1-Outage/100,
+           ID = "FortSaskatchewan")
+  
   GrandeCache <- read.csv(file = 'la54435lo240672_GrandeCache.csv') %>%
     subset(., select = c(year,month,day,hour,Outage)) %>%
     na.omit() %>%
@@ -100,8 +108,10 @@ getwd()
            ID = "SwanHills")
 }
 
-Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
-                   Hinton,JohnDOr,Kehewin,LesserSlave,PigeonLake,SwanHills) %>%
+Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,FortSaskatchewan,
+                   GrandeCache,Hinton,JohnDOr,Kehewin,LesserSlave,PigeonLake
+                   #SwanHills
+                   ) %>%
   mutate(Capacity = 0,
          Installation = "Potential")
 
