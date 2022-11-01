@@ -260,6 +260,7 @@ nrgstream_gen <- rbind(corrected,nocorrection)
 sub_samp<-filter(nrgstream_gen, time >= as.Date("2017-01-1"))
 rm(nrgstream_gen)
 
+# Load predicted capacity factors
 setwd("D:/Documents/GitHub/AuroraEval/WindProfile")
 Pot_sites <- readRDS("PotentialSites.RData") %>%
   mutate(year = 2021,
@@ -269,7 +270,10 @@ Pot_sites <- readRDS("PotentialSites.RData") %>%
          Revenue = 0) %>%
   subset(., select = -c(year,month,day,hour,Outage))
 
-
+SiteProf <- readRDS("SitesProfiles.RData") %>%
+  mutate(time = ymd_h(paste0(year,"-",month,"-",day," ",hour)),
+         sim_gen = Capacity * Cap_Fac) %>%
+  subset(., select = c(time,ID,Latitude,Longitude,Capacity,sim_gen,Cap_Fac,Installation))
 
 # Filter data for plant_type, calculate total output for fleet for each period
 alberta_samp <- sub_samp %>%
@@ -304,6 +308,7 @@ group_by(ID) %>%
                                 grepl("CYP",ID)~"post2019",
                                 #grepl("CYP2",ID)~"post2019",
                                 grepl("FMG1",ID)~"post2019",
+                                grepl("GRZ1",ID)~"post2019",
                                 grepl("HHW1",ID)~"post2019",
                                 grepl("HLD1",ID)~"post2019",
                                 grepl("JNR",ID)~"post2019",
@@ -327,6 +332,57 @@ group_by(ID) %>%
                                 TRUE~"pre2019"
                                 ),
          )
+
+alberta_corr <- SiteProf %>%
+  group_by(time) %>%
+  mutate(fleet_gen = sum(sim_gen),
+         fleet_cap = sum(Capacity),
+         fleet_CF = fleet_gen/fleet_cap) %>%
+  ungroup() %>%
+  na.omit() %>%
+  group_by(ID) %>%
+  summarize(Capacity = median(Capacity),
+            Latitude = median(as.numeric(Latitude)),
+            Longitude = median(as.numeric(Longitude)),
+            correlation = cor(Cap_Fac,fleet_CF, method=corm),
+            #Dispatched = sum(gen),
+            #Revenue = sum(Revenue),
+            #Capture_Price = Revenue/Dispatched,
+            #Cap_Fac = mean(Cap_Fac),
+            #fleet_cap = mean(fleet_cap),
+            #fleet_gen = mean(fleet_gen),
+            #fleet_CF = mean(fleet_CF)
+            
+  ) %>%
+  ungroup() %>%
+  mutate(Built=case_when(grepl("CRR2",ID)~"post2019",
+                                grepl("CYP",ID)~"post2019",
+                                #grepl("CYP2",ID)~"post2019",
+                                grepl("FMG1",ID)~"post2019",
+                                grepl("GRZ1",ID)~"post2019",
+                                grepl("HHW1",ID)~"post2019",
+                                grepl("HLD1",ID)~"post2019",
+                                grepl("JNR",ID)~"post2019",
+                                grepl("RIV1",ID)~"post2019",
+                                grepl("RTL1",ID)~"post2019",
+                                grepl("WHE1",ID)~"post2019",
+                                grepl("WHT",ID)~"post2019",
+                                grepl("WRW1",ID)~"post2019",
+                                grepl("Anzac",ID)~"Potential",
+                                grepl("BisonLake",ID)~"Potential",
+                                grepl("ChainLakes",ID)~"Potential",
+                                grepl("ClearPrairie",ID)~"Potential",
+                                grepl("Falher",ID)~"Potential",
+                                grepl("GrandeCache",ID)~"Potential",
+                                grepl("Hinton",ID)~"Potential",
+                                grepl("JohnDOr",ID)~"Potential",
+                                grepl("Kehewin",ID)~"Potential",
+                                grepl("LesserSlave",ID)~"Potential",
+                                grepl("PigeonLake",ID)~"Potential",
+                                grepl("SwanHills",ID)~"Potential",
+                                TRUE~"pre2019"
+  ),
+  )
 
 ################################################################################
 ################################################################################
@@ -579,6 +635,35 @@ wind_corr <- AB + geom_point(data = alberta_samp,
   scale_size("Correlation",trans='reverse',range=c(0.5,9)) +
   guides(shape = guide_legend(override.aes = list(size = 7))) +
   ggtitle("Correlation between \nwind farms' profiles in Aurora") +
+  theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
+        legend.text = element_text(size = legText),
+        legend.title = element_text(size = legTitle))
+
+################################################################################
+# Map of Alberta with active and potential farms and their wind profile 
+# correlations
+################################################################################
+labs5 <- c("Built after 2019","Potential","Built before 2019")
+
+wind_corr1 <- AB + geom_point(data = alberta_corr,
+                             aes(x= Longitude, y = Latitude, size = correlation, 
+                                 color = Built),shape=16
+) + 
+  geom_point(data = alberta_corr,
+             aes(x= Longitude, y = Latitude, size = correlation),colour="black",
+             shape=1) + 
+#  geom_text(data = alberta_corr,
+#            aes(x=Longitude, y = Latitude),
+#            label=alberta_corr$ID,
+#            size = 2,
+#            nudge_y = 0.25,
+#            ) +
+  #scale_shape_manual(values = c(16,17,18), labels = labs5) +
+  scale_color_manual(values = c("black", "red4", "gray"), 
+                     labels = labs5) +
+  scale_size("Wind profile \ncorrelation",trans='reverse',range=c(0.5,7)) +
+  guides(shape = guide_legend(override.aes = list(size = 7))) +
+#  ggtitle("Correlation between \nwind sites' profiles in Aurora") +
   theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
         legend.text = element_text(size = legText),
         legend.title = element_text(size = legTitle))

@@ -102,7 +102,8 @@ getwd()
 
 Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
                    Hinton,JohnDOr,Kehewin,LesserSlave,PigeonLake,SwanHills) %>%
-  mutate(Installation = "Potential")
+  mutate(Capacity = 0,
+         Installation = "Potential")
 
 {
   AKE1 <- read.csv(file = 'McBride(AKE1)_la49551lo246524.csv') %>%
@@ -110,6 +111,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 49.54506,
            Longitude = -113.4770,
+           Capacity = 73.3,
            Cap_Fac = 1-Outage/100,
            ID = "AKE1")
   
@@ -118,6 +120,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 49.55412,
            Longitude = -113.4320,
+           Capacity = 68.2,
            Cap_Fac = 1-Outage/100,
            ID = "ARD1")
   
@@ -126,28 +129,33 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 49.65405,
            Longitude = -113.4674,
+           Capacity = 300,
            Cap_Fac = 1-Outage/100,
            ID = "BSR1")
   
   BTR1 <- BSR1 %>%
-    mutate(ID = "BTR1")
+    mutate(Capacity = 66,
+           ID = "BTR1")
   
   BUL1 <- read.csv(file = 'BullCreek(BUL1_2)_la52506lo249926.csv') %>%
     subset(., select = c(year,month,day,hour,Outage)) %>%
     na.omit() %>%
     mutate(Latitude = 52.50956,
            Longitude = -110.0588,
+           Capacity = 13.65,
            Cap_Fac = 1-Outage/100,
            ID = "BUL1")
   
   BUL2 <- BUL1 %>%
-    mutate(ID = "BUL2")
+    mutate(Capacity = 16,
+           ID = "BUL2")
   
   CR1 <- read.csv(file = 'CastleRiver(CR1)_la49503lo245969.csv') %>%
     subset(., select = c(year,month,day,hour,Outage)) %>%
     na.omit() %>%
     mutate(Latitude = 49.50690,
            Longitude = -114.0419,
+           Capacity = 39,
            Cap_Fac = 1-Outage/100,
            ID = "CR1")
   
@@ -156,6 +164,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 49.56257,
            Longitude = -114.1077,
+           Capacity = 20,
            Cap_Fac = 1-Outage/100,
            ID = "CRE3")
   
@@ -164,6 +173,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 50.58452,
            Longitude = -113.0134,
+           Capacity = 77,
            Cap_Fac = 1-Outage/100,
            ID = "CRR1")
   
@@ -172,6 +182,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 49.55891,
            Longitude = -113.9830,
+           Capacity = 29,
            Cap_Fac = 1-Outage/100,
            ID = "CRR2")
   
@@ -180,14 +191,20 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 49.84097,
            Longitude = -110.357,
+           Capacity = 196,
            Cap_Fac = 1-Outage/100,
            ID = "CYP1")
+  
+  CYP2 <- CYP1 %>%
+    mutate(Capacity = 46,
+           ID = "CYP2")
   
   FMG1 <- read.csv(file = 'FMGranlea(FMG1)_la49660lo248875.csv') %>%
     subset(., select = c(year,month,day,hour,Outage)) %>%
     na.omit() %>%
     mutate(Latitude = 49.66334,
            Longitude = -111.1220,
+           Capacity = 200,
            Cap_Fac = 1-Outage/100,
            ID = "FMG1")
   
@@ -196,6 +213,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 53.21519,
            Longitude = -111.095,
+           Capacity = 152,
            Cap_Fac = 1-Outage/100,
            ID = "GRZ1")
   
@@ -204,6 +222,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 50.47987,
            Longitude = -113.0579,
+           Capacity = 71,
            Cap_Fac = 1-Outage/100,
            ID = "GWW1")
   
@@ -211,6 +230,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     subset(., select = c(year,month,day,hour,Outage)) %>%
     na.omit() %>%
     mutate(Latitude = 52.27438,
+           Capacity = 150,
            Longitude = -112.0622,
            Cap_Fac = 1-Outage/100,
            ID = "HAL1")
@@ -220,6 +240,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 51.59,
            Longitude = -112.32,
+           Capacity = 150.8,
            Cap_Fac = 1-Outage/100,
            ID = "HHW1")
   
@@ -228,6 +249,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 49.59720,
            Longitude = -113.7676,
+           Capacity = 66,
            Cap_Fac = 1-Outage/100,
            ID = "IEW1")
   
@@ -236,6 +258,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 49.62531,
            Longitude = -113.7934,
+           Capacity = 66,
            Cap_Fac = 1-Outage/100,
            ID = "IEW2")
   
@@ -244,6 +267,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 50.77712,
            Longitude = -111.046,
+           Capacity = 109.2,
            Cap_Fac = 1-Outage/100,
            ID = "JNR1")
   
@@ -252,6 +276,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 50.82,
            Longitude = -111.07,
+           Capacity = 71.4,
            Cap_Fac = 1-Outage/100,
            ID = "JNR2")
   
@@ -260,6 +285,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 49.50982,
            Longitude = -113.8178,
+           Capacity = 63,
            Cap_Fac = 1-Outage/100,
            ID = "KHW1")
   
@@ -268,6 +294,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 51.89888,
            Longitude = -113.3650,
+           Capacity = 82,
            Cap_Fac = 1-Outage/100,
            ID = "NEP1")
   
@@ -276,6 +303,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 49.62531,
            Longitude = -113.7934,
+           Capacity = 46,
            Cap_Fac = 1-Outage/100,
            ID = "OWF1")
   
@@ -284,6 +312,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 49.53245,
            Longitude = -113.9770,
+           Capacity = 105,
            Cap_Fac = 1-Outage/100,
            ID = "RIV1")
   
@@ -292,6 +321,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 50.57726,
            Longitude = -111.8662,
+           Capacity = 130,
            Cap_Fac = 1-Outage/100,
            ID = "RTL1")
   
@@ -300,6 +330,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 49.38747,
            Longitude = -112.9547,
+           Capacity = 30.2,
            Cap_Fac = 1-Outage/100,
            ID = "SCR2")
   
@@ -308,6 +339,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 49.68482,
            Longitude = -112.3244,
+           Capacity = 30,
            Cap_Fac = 1-Outage/100,
            ID = "SCR3")
   
@@ -316,6 +348,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 50.33874,
            Longitude = -112.8286,
+           Capacity = 88,
            Cap_Fac = 1-Outage/100,
            ID = "SCR4")
   
@@ -324,6 +357,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 49.71351,
            Longitude = -111.9328,
+           Capacity = 81,
            Cap_Fac = 1-Outage/100,
            ID = "TAB1")
   
@@ -332,6 +366,7 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 51.2375,
            Longitude = -112.426,
+           Capacity = 120,
            Cap_Fac = 1-Outage/100,
            ID = "WHE1")
   
@@ -340,19 +375,29 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,GrandeCache,
     na.omit() %>%
     mutate(Latitude = 49.64029,
            Longitude = -111.2910,
+           Capacity = 202,
            Cap_Fac = 1-Outage/100,
            ID = "WHT1")
   
   WHT2 <- WHT1 %>%
-    mutate(ID = "WHT2")
+    mutate(Capacity = 151,
+           ID = "WHT2")
   
   WRW1 <- read.csv(file = 'Windrise(WRW1)_la50573lo248121.csv') %>%
     subset(., select = c(year,month,day,hour,Outage)) %>%
     na.omit() %>%
     mutate(Latitude = 50.57726,
            Longitude = -111.8662,
+           Capacity = 207,
            Cap_Fac = 1-Outage/100,
            ID = "WRW1")
   }
 
-saveRDS(Pot_sites, file = "PotentialSites.RData")
+Act_sites <- rbind(AKE1,ARD1,BSR1,BTR1,BUL1,BUL2,CR1,CRE3,CRR1,CRR2,CYP1,CYP2,
+                   FMG1,GRZ1,GWW1,HAL1,HHW1,IEW1,IEW2,JNR1,JNR2,KHW1,NEP1,OWF1,
+                   RIV1,RTL1,SCR2,SCR3,SCR4,TAB1,WHE1,WHT1,WHT2,WRW1) %>%
+  mutate(Installation = "Active")
+
+sites <- rbind(Pot_sites,Act_sites)
+
+saveRDS(sites, file = "SitesProfiles.RData")

@@ -205,5 +205,5 @@ Aurora <- TWF %>%
 
 #SAVE FILE (To save the processed data) This is to be entered into Aurora.
 setwd("D:/Documents/GitHub/AuroraEval/WindProfile")
-write.csv(Aurora, file=paste0(site,"_",location,".csv"))
+write.csv(Aurora, file=paste0(site,"_",location))#,".csv"))
 }
