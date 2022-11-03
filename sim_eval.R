@@ -666,7 +666,7 @@
     # Filters for the desired case study
     data <- input %>%
       filter(Run_ID == case & Condition == "Average") %>%
-      select(ID, Time_Period, Output_MWH) %>%
+      subset(., select=c(ID, Time_Period, Output_MWH)) %>%
       sim_filt1(.) %>%
       rbind(.,Imp) 
       
@@ -766,7 +766,7 @@
     # Filters for the desired case study
     data <- input %>%
       filter(Run_ID == case & Condition == "Average") %>%
-      select(ID, Time_Period, Capacity) %>%
+      subset(.,select=c(ID, Time_Period, Capacity)) %>%
       sim_filt1(.) %>%
       group_by(ID) %>%
       arrange(Time_Period) %>%
@@ -917,8 +917,8 @@
     
     data$Fuel_Type <- factor(data$Fuel_Type, 
                              levels = c("WND","SUN","PS","UR","WAT","OT","H2",
-                                        "GasB_CC","GasB_SC","Gas2","Gas1","Gas0",
-                                        "Gas","COAL"
+                                        "GasB_CC","GasB_SC","Gas3","Gas2","Gas1",
+                                        "Gas0","Gas","COAL"
                                         ))
     
 #    data$Fuel_Type[is.na(data$Fuel_Type)] <- "GasB"
@@ -1088,7 +1088,7 @@
       scale_y_continuous(expand = c(0,0),
                          #limits = c(0,(max(data$Units_Built)+1))
                          ) +
-      theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1),
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
             panel.background = element_rect(fill = "transparent"),
             panel.grid.major.x = element_blank(),
             panel.grid.minor.x = element_blank(),

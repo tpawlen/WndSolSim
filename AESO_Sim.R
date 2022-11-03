@@ -171,6 +171,8 @@
     filter(!is.na(Latitude))
   
   nrgstream_gen <- rbind(corrected,nocorrection)
+  
+  rm(corrected,nocorrection)
     
   demand <- nrgstream_gen %>%
     group_by(time) %>%
@@ -369,13 +371,13 @@
           'fill', 
           values = setNames(c("black", 
                               "darkslategrey", "darkslategrey", 
-                              "coral4","goldenrod4", 
+                              "coral4","goldenrod4", "goldenrod3",
                               "darkorange1", "lightsalmon", "firebrick1", 
                               "darkcyan", "dodgerblue", 
                               "chartreuse","forestgreen", "gold", "cyan"), 
                             c("COAL", 
                               "Gas", "Gas1", 
-                              "Gas0","Gas2",
+                              "Gas0","Gas2","Gas3",
                               "GasB_CC","GasB_SC","H2",
                               "WAT","OT","UR","WND","SUN","PS")), 
           ...

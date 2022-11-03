@@ -558,7 +558,11 @@ ggsave(path = "images", filename = "windfarmactive.png", bg = "transparent")
 labs1 <- c("Active","AESO Queue")
 
 wind_AESO <- wind_Aurora %>%
-  filter(Status != "Potential" & Status != "Simulated")
+  filter(Status != "Potential" & Status != "Simulated") #%>%
+  mutate(Built = case_when(Year >= 2015 ~ "post2015",
+                           TRUE~"pre2015")) %>%
+  arrange(match(Built, c("pre2015", "post2015")), 
+          desc(Built))
 
 AESO_wind <- AB + geom_point(data = wind_AESO,#wind_farm,
                 aes(x= Longitude, y = Latitude, size = Capacity, shape = Status, color = Status)) + 
