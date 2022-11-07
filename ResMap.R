@@ -121,11 +121,11 @@ wind_profile <- rbind(wind_profile00, wind_profile01, wind_profile02,
 # using Google Maps
 # https://www.aeso.ca/grid/projects/connection-project-reporting/
 ################################################################################
-res_pot <- read_excel("AESO_Connection_List.xlsx")
-turb_pot <- res_pot %>%
-  filter(Technology=="Wind")
-turb_pot$Status <- "Planning"
-turb_pot <- subset(turb_pot, select = -Technology)
+#res_pot <- read_excel("AESO_Connection_List.xlsx")
+#turb_pot <- res_pot %>%
+#  filter(Technology=="Wind")
+#turb_pot$Status <- "Planning"
+#turb_pot <- subset(turb_pot, select = -Technology)
 
 ################################################################################
 # Potential locations

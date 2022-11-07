@@ -234,26 +234,26 @@
 ################################################################################
 
 { 
-  DB <- "Oct_24_2022"
+  DB <- "Nov_07_2022"
 # Connect to SQLEXPRESS database
 ################################################################################
-#  con <- dbConnect(odbc(),
-#                   Driver = "SQL Server",
-#                   Server = "192.168.0.139,49172",
-#                   Database = DB,
-#                   UID = "admin",
-#                   PWD = "SOB704910",
-#                   Port = 49172)
+  con <- dbConnect(odbc(),
+                   Driver = "SQL Server",
+                   Server = "192.168.0.139,49172",
+                   Database = DB,
+                   UID = "admin",
+                   PWD = "Aurora2022!",
+                   Port = 49172)
   
   # Connect to MSSQL database
   ################################################################################
-  con <- dbConnect(odbc(),
-                   Driver = "SQL Server",
-                   Server = "192.168.0.139,1434",
-                   Database = DB,
-                   UID = "admin",
-                   PWD = "MSSQL704910",
-                   Port = 1434)
+#  con <- dbConnect(odbc(),
+#                   Driver = "SQL Server",
+#                   Server = "192.168.0.139,1434",
+#                   Database = DB,
+#                   UID = "admin",
+#                   PWD = "MSSQL704910",
+#                   Port = 1434)
   
   {  
   # Connect to MySQL database
@@ -278,7 +278,7 @@
     Year  <- dbReadTable(con,'ResourceGroupYear1')
     ZoneHour <- dbReadTable(con,'ZoneHour1')
     ResourceYr <- dbReadTable(con,'ResourceYear1')
-    ResourceHr <- dbReadTable(con,'ResourceHour1')
+    #ResourceHr <- dbReadTable(con,'ResourceHour1')
     #StackHr <- dbReadTable(con,'ResourceStackHour1')
     StackYr <- dbReadTable(con,'ResourceStackYear1')
     
