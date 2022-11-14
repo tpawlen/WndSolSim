@@ -666,7 +666,7 @@
     # Filters for the desired case study
     data <- input %>%
       filter(Run_ID == case & Condition == "Average") %>%
-      select(ID, Time_Period, Output_MWH) %>%
+      subset(., select=c(ID, Time_Period, Output_MWH)) %>%
       sim_filt1(.) %>%
       rbind(.,Imp) 
       
@@ -766,7 +766,7 @@
     # Filters for the desired case study
     data <- input %>%
       filter(Run_ID == case & Condition == "Average") %>%
-      select(ID, Time_Period, Capacity) %>%
+      subset(.,select=c(ID, Time_Period, Capacity)) %>%
       sim_filt1(.) %>%
       group_by(ID) %>%
       arrange(Time_Period) %>%
@@ -917,8 +917,8 @@
     
     data$Fuel_Type <- factor(data$Fuel_Type, 
                              levels = c("WND","SUN","PS","UR","WAT","OT","H2",
-                                        "GasB_CC","GasB_SC","Gas2","Gas1","Gas0",
-                                        "Gas","COAL"
+                                        "GasB_CC","GasB_SC","Gas3","Gas2","Gas1",
+                                        "Gas0","Gas","COAL"
                                         ))
     
 #    data$Fuel_Type[is.na(data$Fuel_Type)] <- "GasB"
@@ -1088,7 +1088,7 @@
       scale_y_continuous(expand = c(0,0),
                          #limits = c(0,(max(data$Units_Built)+1))
                          ) +
-      theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1),
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
             panel.background = element_rect(fill = "transparent"),
             panel.grid.major.x = element_blank(),
             panel.grid.minor.x = element_blank(),
@@ -1173,6 +1173,63 @@
                          labels = percent) +
       scale_y_continuous(expand=c(0,0)
       )
+  }
+  
+  ################################################################################
+  # Capacity factors for new resources built
+  ################################################################################
+  
+  CF_NR <- function(fuel,type,case) {
+    
+    #ResourceHr <- dbReadTable(con,'ResourceHour1')
+    
+    data <- ResourceHr %>%
+      filter(Run_ID == case,
+             grepl('New Resource',Name),
+             grepl(type,Name),
+             #Output != 0,
+             Primary_Fuel == fuel,
+             !is.na(Capacity_Factor)
+             ) %>%
+      mutate(Name = gsub("^.*?from ","",Name),
+             Name = gsub("^.*? ","",Name),
+             #time = as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",Time_Period))), 
+              #                 tz = "MST")-(60*60)
+             ) #%>%
+      #na.omit() %>%
+      subset(.,select=c(Name,Condition,Time_Period,Output_MWH,Capacity,
+                        #Percent_Marginal,Capacity,Capability,ID,Primary_Fuel,
+                        Capacity_Factor,
+                        #Beg_Date,End_Date,
+                        Report_Year)) %>%
+      group_by(Report_Year,Name) %>%
+      summarise(Capacity = sum(Capacity),
+                Output_MWH = sum(Output_MWH),
+                Cap_Fac = Output_MWH/Capacity,
+                #CF = mean(Capacity_Factor),
+                #diff = Cap_Fac-CF
+                ) #%>%
+      #mutate(time = as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",Time_Period))),
+      #                         tz = "MST")-(60*60))
+    
+    ggplot() +
+      geom_line(data = data, 
+                aes(x = Report_Year, y = Cap_Fac,colour=Name), 
+                size = 1.5) +
+      theme(panel.background = element_rect(fill = "transparent"),
+            panel.grid = element_blank(),
+            plot.background = element_rect(fill = "transparent", color = NA),
+            #axix.title.x = element_blank(),
+            axis.line.x = element_line(color = "black"),
+            axis.line.y = element_line(color = "black"),
+            text = element_text(size= 15),
+            legend.key = element_rect(colour = "transparent", fill = "transparent"),
+            legend.background = element_rect(fill='transparent'),
+            legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+      ) +
+      labs(x = "", y = "Capacity Factor (%)", fill = "Potential New Resource") +
+      scale_x_continuous(expand=c(0,0)) +
+      scale_color_viridis(discrete = TRUE)
   }
   
   ################################################################################

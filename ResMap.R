@@ -121,11 +121,11 @@ wind_profile <- rbind(wind_profile00, wind_profile01, wind_profile02,
 # using Google Maps
 # https://www.aeso.ca/grid/projects/connection-project-reporting/
 ################################################################################
-res_pot <- read_excel("AESO_Connection_List.xlsx")
-turb_pot <- res_pot %>%
-  filter(Technology=="Wind")
-turb_pot$Status <- "Planning"
-turb_pot <- subset(turb_pot, select = -Technology)
+#res_pot <- read_excel("AESO_Connection_List.xlsx")
+#turb_pot <- res_pot %>%
+#  filter(Technology=="Wind")
+#turb_pot$Status <- "Planning"
+#turb_pot <- subset(turb_pot, select = -Technology)
 
 ################################################################################
 # Potential locations
@@ -385,6 +385,61 @@ alberta_corr <- SiteProf %>%
                          TRUE~"pre2015"
   ),
   )
+
+AuroraProf <- readRDS("AuroraProfiles.RData") 
+
+Aurora_corr <- AuroraProf %>%
+  group_by(time) %>%
+  mutate(fleet_gen = sum(gen),
+         fleet_cap = sum(Capacity),
+         fleet_CF = fleet_gen/fleet_cap) %>%
+  ungroup() %>%
+  na.omit() %>%
+  group_by(ID) %>%
+  summarize(Capacity = median(Capacity),
+            Latitude = median(as.numeric(Latitude)),
+            Longitude = median(as.numeric(Longitude)),
+            correlation = cor(Cap_Fac,fleet_CF, method=corm),
+            #Dispatched = sum(gen),
+            #Revenue = sum(Revenue),
+            #Capture_Price = Revenue/Dispatched,
+            #Cap_Fac = mean(Cap_Fac),
+            #fleet_cap = mean(fleet_cap),
+            #fleet_gen = mean(fleet_gen),
+            #fleet_CF = mean(fleet_CF)
+            
+  ) %>%
+  ungroup() %>%
+  mutate(Built=case_when(grepl("BUL",ID)~"post2015",
+                         grepl("CRR2",ID)~"post2015",
+                         grepl("CYP",ID)~"post2015",
+                         #grepl("CYP2",ID)~"post2015",
+                         grepl("FMG1",ID)~"post2015",
+                         grepl("GRZ1",ID)~"post2015",
+                         grepl("HHW1",ID)~"post2015",
+                         grepl("HLD1",ID)~"post2015",
+                         grepl("JNR",ID)~"post2015",
+                         grepl("RIV1",ID)~"post2015",
+                         grepl("RTL1",ID)~"post2015",
+                         grepl("WHE1",ID)~"post2015",
+                         grepl("WHT",ID)~"post2015",
+                         grepl("WRW1",ID)~"post2015",
+                         grepl("Anzac",ID)~"Potential",
+                         grepl("BisonLake",ID)~"Potential",
+                         grepl("ChainLakes",ID)~"Potential",
+                         grepl("ClearPrairie",ID)~"Potential",
+                         grepl("Falher",ID)~"Potential",
+                         grepl("FortSaskatchewan",ID)~"Potential",
+                         grepl("GrandeCache",ID)~"Potential",
+                         grepl("Hinton",ID)~"Potential",
+                         grepl("JohnDOr",ID)~"Potential",
+                         grepl("Kehewin",ID)~"Potential",
+                         grepl("LesserSlave",ID)~"Potential",
+                         grepl("PigeonLake",ID)~"Potential",
+                         grepl("SwanHills",ID)~"Potential",
+                         TRUE~"pre2015"
+  ),
+  )
 }
 
 setwd("D:/Documents/GitHub/AuroraEval")
@@ -417,6 +472,7 @@ AB <- ggplot() +
         legend.title = element_text(size = legTitle)) 
 
 AB
+setwd("D:/Documents/GitHub/AuroraEval")
 ggsave(path = "images", filename = "WindSpeeds.png", bg = "transparent")
 
 ################################################################################
@@ -547,6 +603,7 @@ Act_wind <- ggplot(wind_active, aes(x= Longitude, y = Latitude, #label=ID_labels
 ################################################################################
 
 Act_wind
+setwd("D:/Documents/GitHub/AuroraEval")
 ggsave(path = "images", filename = "windfarmactive.png", bg = "transparent")
 
 ################################################################################
@@ -558,7 +615,11 @@ ggsave(path = "images", filename = "windfarmactive.png", bg = "transparent")
 labs1 <- c("Active","AESO Queue")
 
 wind_AESO <- wind_Aurora %>%
-  filter(Status != "Potential" & Status != "Simulated")
+  filter(Status != "Potential" & Status != "Simulated") #%>%
+  mutate(Built = case_when(Year >= 2015 ~ "post2015",
+                           TRUE~"pre2015")) %>%
+  arrange(match(Built, c("pre2015", "post2015")), 
+          desc(Built))
 
 AESO_wind <- AB + geom_point(data = wind_AESO,#wind_farm,
                 aes(x= Longitude, y = Latitude, size = Capacity, shape = Status, color = Status)) + 
@@ -586,6 +647,7 @@ AESO_wind <- AB + geom_point(data = wind_AESO,#wind_farm,
 ################################################################################
 
 AESO_wind
+setwd("D:/Documents/GitHub/AuroraEval")
 ggsave(path = "images", filename = "windfarmlocations.png", bg = "transparent")
 
 ################################################################################
@@ -670,6 +732,7 @@ Sim_wind <- AB + geom_point(data = wind_sim,
 # Save map as png
 ################################################################################
 Aurora_wind
+setwd("D:/Documents/GitHub/AuroraEval")
 ggsave(path = "images", filename = "simplewindfarmpotential.png", bg = "transparent")
 
 ################################################################################
@@ -744,7 +807,59 @@ wind_corr1 <- AB + geom_point(data = alberta_corr,
 
 wind_corr1
 
+setwd("D:/Documents/GitHub/AuroraEval")
 ggsave(path = "images", filename = "Correlation_map_potential.png", bg = "transparent")
+
+################################################################################
+# Map of Alberta with Aurora wind profile correlations
+################################################################################
+labs6 <- c("Built before 2015","Built after 2015","Hypothetical Sites")
+
+Aurora_corr <- Aurora_corr %>%
+  arrange(match(Built, c("Potential","pre2015", "post2015")), 
+          desc(Built))
+
+Aurora_corr$Built <- factor(Aurora_corr$Built, 
+                             levels = c("pre2015","post2015","Potential"))
+
+wind_corr2 <- AB + geom_point(data = Aurora_corr,
+                              aes(x= Longitude, y = Latitude, size = correlation, 
+                                  color = Built),shape=16
+) + 
+  geom_point(data = alberta_corr,
+             aes(x= Longitude, y = Latitude, size = correlation),colour="black",
+             shape=1) + 
+  #  geom_text(data = alberta_corr,
+  #            aes(x=Longitude, y = Latitude),
+  #            label=alberta_corr$ID,
+  #            size = 2,
+  #            nudge_y = 0.25,
+  #            ) +
+  #scale_shape_manual(values = c(16,17,18), labels = labs5) +
+  scale_color_manual(values = c("gray", "black", "red4"), 
+                     labels = labs6) +
+  scale_size("Wind profile \ncorrelation",trans='reverse',range=c(0.5,7)) +
+  guides(color = guide_legend(override.aes = list(size = 4), order = 1)) +
+  guides(size = guide_legend(order = 2)) +
+  #  ggtitle("Correlation between \nwind sites' profiles in Aurora") +
+  theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
+        legend.text = element_text(size = legText),
+        legend.title = element_text(size = legTitle),
+        panel.background = element_rect(fill = "transparent"),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        plot.background = element_rect(fill = "transparent", color = NA),
+        legend.background = element_rect(fill = "transparent"),
+        legend.key=element_rect(fill = "transparent"),
+        rect = element_rect(fill="transparent"))
+
+wind_corr2
+
+setwd("D:/Documents/GitHub/AuroraEval")
+ggsave(path = "images", filename = "Aurora_correlation.png", bg = "transparent")
 
 ################################################################################
 # Extract the legend
