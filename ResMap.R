@@ -5,7 +5,8 @@
 # email: pawlench@ualberta.ca
 # January 2022; Last revision: October 20, 2022
 {
-{library(rgeos)
+{
+  library(rgeos)
 #  library(maptools)
 #  library(ggmap) 
   library(ggplot2)
@@ -15,7 +16,7 @@
 #  library(patchwork)
 #  library(sp)
 #  library(rgdal)
-  library(raster)
+#  library(raster)
   library(tidyverse)
   library(dplyr)
 #  library(plotly) # For interactive charts
@@ -49,8 +50,8 @@ legText <- 12
 # Wind Speed data from Canada Wind Atlas 
 # http://www.windatlas.ca/nav-en.php?no=46&field=EU&height=80&season=ANU
 ################################################################################
-wind_profile <- readRDS("WindAtlas_Data00_0.05")
-colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
+wind_profileAA <- readRDS("WindAtlas_Data00_0.05")
+colnames(wind_profileAA) <- c('Latitude', 'Longitude', 'Wind')
 
 {
 wind_profile00 <- readRDS("WindAtlas_Data00_0.05")
@@ -91,21 +92,51 @@ wind_profile32 <- readRDS("WindAtlas_Data32_0.05")
 colnames(wind_profile32) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile33 <- readRDS("WindAtlas_Data33_0.05")
 colnames(wind_profile33) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile34 <- readRDS("WindAtlas_Data34_0.05")
+colnames(wind_profile34) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile40 <- readRDS("WindAtlas_Data40_0.05")
 colnames(wind_profile40) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile41 <- readRDS("WindAtlas_Data41_0.05")
+colnames(wind_profile41) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile42 <- readRDS("WindAtlas_Data42_0.05")
+colnames(wind_profile42) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile43 <- readRDS("WindAtlas_Data43_0.05")
+colnames(wind_profile43) <- c('Latitude', 'Longitude', 'Wind')
 wind_profile44 <- readRDS("WindAtlas_Data44_0.05")
 colnames(wind_profile44) <- c('Latitude', 'Longitude', 'Wind')
 
-wind_profile <- rbind(wind_profile00, wind_profile01, wind_profile02, 
-                      wind_profile03, wind_profile04, wind_profile10, 
-                      wind_profile11, wind_profile12, wind_profile13, 
-                      wind_profile14, wind_profile20, wind_profile21, 
-                      wind_profile22, wind_profile23, wind_profile24, 
-                      wind_profile30, wind_profile31, wind_profile32,
-                      wind_profile33, wind_profile34, wind_profile40, 
-                      wind_profile41, wind_profile42, wind_profile43,
-                      wind_profile44)
+wind_profile <- rbind(wind_profile00, 
+                      wind_profile01, 
+                      wind_profile02, 
+                      wind_profile03, 
+                      wind_profile04, 
+                      wind_profile10, 
+                      wind_profile11,
+                      wind_profile12, wind_profile13, 
+                      wind_profile14, 
+                      wind_profile20, 
+                      wind_profile21, 
+                      wind_profile22,
+                      wind_profile23, 
+                      wind_profile24, 
+                      wind_profile30, 
+                      wind_profile31, 
+                      wind_profile32,
+                      wind_profile33,
+                      wind_profile34, 
+                      wind_profile40, 
+                      #wind_profile41, 
+                      wind_profile42, 
+                      wind_profile43,
+                      wind_profile44
+                      )%>%
+  distinct()
+
+
 }
+
+#saveRDS(wind_profile41, file="wind_profile41")
+wind_profile <- readRDS("wind_profile")
 
 {
 ################################################################################
