@@ -234,7 +234,7 @@
 ################################################################################
 
 { 
-  DB <- "Nov_07_2022"
+  DB <- "Nov_09_2022"
 # Connect to SQLEXPRESS database
 ################################################################################
   con <- dbConnect(odbc(),
@@ -279,7 +279,9 @@
     ZoneHour <- dbReadTable(con,'ZoneHour1')
     ResourceYr <- dbReadTable(con,'ResourceYear1')
     #ResourceHr <- dbReadTable(con,'ResourceHour1')
-    #StackHr <- dbReadTable(con,'ResourceStackHour1')
+    ResourceHr <- dbGetQuery(con,"SELECT Run_ID,Name,Primary_Fuel,Capacity_Factor,
+                             Condition,Time_Period,Output_MWH,Capacity,Report_Year FROM ResourceHour1")
+     #StackHr <- dbReadTable(con,'ResourceStackHour1')
     StackYr <- dbReadTable(con,'ResourceStackYear1')
     
     #LTRes <- dbReadTable(con,'LTResValue1')
@@ -293,6 +295,7 @@
     # Set location where the following codes are found
     ################################################################################
     setwd("D:/Documents/GitHub/AuroraEval")
+    #write.csv(Study, file=paste0("StudyLog_",DB,".csv"))
     
     source("aeso_sim_comp.R")
     source("sim_eval.R")

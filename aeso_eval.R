@@ -2878,3 +2878,132 @@ monthly_dmd_ave <- function() {
     labs(y = "Load (MWh)",
          )
 }
+
+load_duration <- function(year1, year2) {
+  # Plots the load duration vs percentile for AESO
+  # Like AESO Market Report 2021 Figures 7 and 8
+  
+  # Load and filter AESO data, 
+  # Calculate the percentage of time
+  # Use AIL as demand
+  # Create column 'sit' to indicate Actual AESO data
+  Actual <- na.omit(demand)
+  Actual$Year <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%Y")
+  Actual$Hour <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%H")
+  
+  totAct <- Actual %>%
+    filter(Year >= year1, 
+           Year <= year2,) %>%
+    mutate(Condition = if_else(between(Hour, 08, 23), 
+                               "On-Peak WECC", "Off-Peak WECC")) %>%
+    group_by(Year, Condition) %>%
+    mutate(perc = 1-ecdf(AIL)(AIL)) %>%
+    subset(., select = c(Condition, Year, AIL, perc)) %>%
+    ungroup() %>%
+    mutate(Demand = AIL) %>%
+    dplyr::select(Condition, Year, Demand, perc)
+
+  # Set font size for plot
+  sz <- 15
+  
+  ggplot() +
+    geom_line(data = totAct, 
+              aes(x = perc, y = Demand, colour = Year), size = 1) +
+    facet_grid(cols = vars(Condition)) +
+    theme_bw() +
+    theme(axis.text = element_text(size = sz),
+          axis.title = element_text(size = sz),
+          plot.title = element_text(size = sz+2),
+          legend.text = element_text(size = sz),
+          panel.grid = element_blank(),
+          legend.title = element_blank(),
+          
+          # For transparent background
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid.major.x = element_blank(),
+          panel.grid.minor.x = element_blank(),
+          panel.spacing = unit(1.5, "lines"),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          legend.key = element_rect(colour = "transparent", fill = "transparent"),
+          legend.background = element_rect(fill='transparent'),
+          legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+    ) +
+    labs(y = "Hourly Alberta Internal Load (MW)", 
+         x = "Percentage of Time", 
+    #     title = "AESO Historical Data"
+    ) +
+    scale_color_manual(values = c("gray60", "forestgreen", "cornflowerblue",
+                                  "goldenrod1","firebrick")) +
+    scale_x_continuous(expand=c(0,0), 
+                       limits = c(0,1.1),
+                       labels = percent) +
+    scale_y_continuous(expand=c(0,0)
+    )
+}
+
+power_curve <- function() {
+  # a function to plot a typical wind turbine power curve
+  
+  # Define cut-in, rated, and cut-out
+  cutin <- 3.5
+  rated <- 13
+  cutout <- 25
+  
+  P_rated <- 1.225/2*3.14*300*rated^3/1000
+  
+  data <- data.frame(u = seq(0,27, by=0.01),
+                     P = 0)
+                       
+  data <- data %>%
+    mutate(P = case_when(u >= rated & u < cutout ~ (1.225/2*3.14*300*rated^3/1000),
+                         u < rated & u >= cutin ~ (1.225/2*3.14*300*u^3/1000),
+                         u < cutin | u >= cutout ~ 0))
+  
+  sz <- 10
+  
+  ggplot(data,aes(u,P)) +
+    geom_hline(yintercept = P_rated, linetype="dashed", color="gray",size=1) +
+    geom_vline(xintercept = cutin, linetype="dashed", color="gray",size=1) +
+    geom_vline(xintercept = rated, linetype="dashed", color="gray",size=1) +
+    geom_vline(xintercept = cutout, linetype="dashed", color="gray",size=1) +
+    geom_line(size = 1) +
+    geom_text(data = data.frame(x = cutin, y = -30, 
+                                 label = "italic('v')[italic('cut-in')]"),
+               aes(x=x,y=y,label=label),parse=TRUE,
+               x = cutin, y = -(sz*10),
+              color = "black",size=sz,family="serif",fontface="italic") +
+    geom_text(data = data.frame(x = rated, y = -30, 
+                                 label = "italic('v')[italic('rated')]"),
+               aes(x=x,y=y,label=label), parse=TRUE,
+              x = rated, y = -(sz*10),
+              color = "black",size=sz,family="serif",fontface="italic") +
+    geom_text(data = data.frame(x = cutout, y = -30, 
+                                 label = "italic('v')[italic('cut-out')]"),
+               aes(x=x,y=y,label=label), parse=TRUE,
+              x = cutout, y = -(sz*10),
+              color = "black",size=sz,family="serif",fontface="italic") +
+    geom_text(data = data.frame(x = -1, y = P_rated, 
+                                 label = "italic('P')[italic('rated')]"),
+               aes(x=x,y=y,label=label), parse=TRUE,
+               x = -1.5, y = P_rated,
+               color = "black",size=sz,family="serif",fontface="italic") +
+    scale_x_continuous(expand=c(0,0),
+                       breaks = c(cutin,rated,cutout)) +
+    scale_y_continuous(expand=c(0,0),
+                       breaks = P_rated,
+                       limits = c(0,P_rated+100)) +
+    labs(y = "Power Output \n(kW)", x = "Wind Speed (m/s)") +
+    coord_cartesian(xlim = c(0, 27), # This focuses the x-axis on the range of interest
+                    clip = 'off') + 
+    theme(axis.line.x = element_line(color = "black"),
+          axis.line.y = element_line(color = "black"),
+          axis.text = element_blank(),
+          axis.title.x = element_text(vjust=-5,size=sz+15),
+          axis.title.y = element_text(vjust=3,size=sz+15),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          plot.margin = unit(c(1,1,2.5,2),"lines"),
+          text = element_text(size= 15)
+    )
+}

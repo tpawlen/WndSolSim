@@ -1186,7 +1186,7 @@
     data <- ResourceHr %>%
       filter(Run_ID == case,
              grepl('New Resource',Name),
-             grepl(type,Name),
+             #grepl(type,Name),
              #Output != 0,
              Primary_Fuel == fuel,
              !is.na(Capacity_Factor)
@@ -1195,7 +1195,7 @@
              Name = gsub("^.*? ","",Name),
              #time = as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",Time_Period))), 
               #                 tz = "MST")-(60*60)
-             ) #%>%
+             ) %>%
       #na.omit() %>%
       subset(.,select=c(Name,Condition,Time_Period,Output_MWH,Capacity,
                         #Percent_Marginal,Capacity,Capability,ID,Primary_Fuel,
@@ -1228,7 +1228,7 @@
             legend.box.background = element_rect(fill='transparent', colour = "transparent"),
       ) +
       labs(x = "", y = "Capacity Factor (%)", fill = "Potential New Resource") +
-      scale_x_continuous(expand=c(0,0)) +
+      scale_x_continuous(expand=c(0,0)) #+
       scale_color_viridis(discrete = TRUE)
   }
   

@@ -146,8 +146,8 @@ pot <- read_excel("Potential_Sim.xlsx") %>%
 ################################################################################
 # Combine the active and planned wind farms
 ################################################################################
-wind_farm <- rbind(plant,turb_pot)
-wind_sim <- rbind(plant,turb_pot,pot)
+#wind_farm <- rbind(plant,turb_pot)
+#wind_sim <- rbind(plant,turb_pot,pot)
 }
 
 ################################################################################
@@ -615,7 +615,7 @@ ggsave(path = "images", filename = "windfarmactive.png", bg = "transparent")
 labs1 <- c("Active","AESO Queue")
 
 wind_AESO <- wind_Aurora %>%
-  filter(Status != "Potential" & Status != "Simulated") #%>%
+  filter(Status != "Potential" & Status != "Simulated") %>%
   mutate(Built = case_when(Year >= 2015 ~ "post2015",
                            TRUE~"pre2015")) %>%
   arrange(match(Built, c("pre2015", "post2015")), 
@@ -623,6 +623,12 @@ wind_AESO <- wind_Aurora %>%
 
 AESO_wind <- AB + geom_point(data = wind_AESO,#wind_farm,
                 aes(x= Longitude, y = Latitude, size = Capacity, shape = Status, color = Status)) + 
+#  geom_text(data = wind_AESO,
+#            aes(x=Longitude, y = Latitude),
+#            label=wind_AESO$ID,
+#            size = 2,
+#            nudge_y = 0.25,
+#            ) +
   scale_shape_manual(values = c(16,18), labels = labs1) +
   scale_color_manual(values = c("black", "forestgreen"), 
                      labels = labs1) +
@@ -658,10 +664,24 @@ ggsave(path = "images", filename = "windfarmlocations.png", bg = "transparent")
 ################################################################################
 {
 labs2 <- c("Active","AESO Queue","Simulated")
+labs2a <- c("AESO Queue","Simulated")
 
-Sim_wind <- AB + geom_point(data = wind_sim,
+wind_Aurora1 <- wind_Aurora %>%
+  filter(Status != "Active") #%>%
+#  mutate(Built = case_when(Year >= 2015 ~ "post2015",
+#                           TRUE~"pre2015")) %>%
+#  arrange(match(Built, c("pre2015", "post2015")), 
+#          desc(Built))
+
+Sim_wind <- AB + geom_point(data = wind_Aurora1,
                              aes(x= Longitude, y = Latitude, size = Capacity, shape = Status, color = Status)) + 
-  scale_shape_manual(values = c(16,18,17), labels = labs2) +
+    geom_text(data = wind_Aurora1,
+              aes(x=Longitude, y = Latitude),
+              label=wind_Aurora1$ID,
+              size = 2,
+              nudge_y = 0.25,
+              ) +
+  scale_shape_manual(values = c(16,18,17), labels = labs2a) +
   scale_color_manual(values = c("black", "grey39","red4"), 
                      labels = labs2) +
   guides(shape = guide_legend(override.aes = list(size = 5))) +
@@ -670,6 +690,7 @@ Sim_wind <- AB + geom_point(data = wind_sim,
         legend.text = element_text(size = legText),
         legend.title = element_text(size = legTitle)) 
 }
+Sim_wind
 
 ################################################################################
 ################################################################################
@@ -739,6 +760,7 @@ ggsave(path = "images", filename = "simplewindfarmpotential.png", bg = "transpar
 # Map of Alberta with active and potential farms and their wind profile 
 # correlations
 ################################################################################
+{
 labs5 <- c("Built after 2019","Potential","Built before 2019")
 
 wind_corr <- AB + geom_point(data = alberta_samp,
@@ -757,11 +779,12 @@ wind_corr <- AB + geom_point(data = alberta_samp,
   theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
         legend.text = element_text(size = legText),
         legend.title = element_text(size = legTitle))
-
+}
 ################################################################################
 # Map of Alberta with active and potential farms and their wind profile 
 # correlations
 ################################################################################
+{
 labs6 <- c("Built before 2015","Built after 2015","Potential")
 
 alberta_corr <- alberta_corr %>%
@@ -809,7 +832,7 @@ wind_corr1
 
 setwd("D:/Documents/GitHub/AuroraEval")
 ggsave(path = "images", filename = "Correlation_map_potential.png", bg = "transparent")
-
+}
 ################################################################################
 # Map of Alberta with Aurora wind profile correlations
 ################################################################################
