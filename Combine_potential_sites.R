@@ -218,6 +218,15 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,FortSaskatchew
            Cap_Fac = 1-Outage/100,
            ID = "FMG1")
   
+  GDP1 <- read.csv(file = 'GardenPlain(GDP1)_la51970lo248172.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 51.97348,
+           Longitude = -111.833,
+           Capacity = 130,
+           Cap_Fac = 1-Outage/100,
+           ID = "GDP1")
+  
   GRZ1 <- read.csv(file = 'WildRunGrizzlyBear(GRZ1)_la53213lo248903.csv') %>%
     subset(., select = c(year,month,day,hour,Outage)) %>%
     na.omit() %>%
@@ -253,6 +262,15 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,FortSaskatchew
            Capacity = 150.8,
            Cap_Fac = 1-Outage/100,
            ID = "HHW1")
+  
+  HLD1 <- read.csv(file = 'Hilda(HLD1)_la50556lo249864.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 50.55398,
+           Longitude = -110.124,
+           Capacity = 100,
+           Cap_Fac = 1-Outage/100,
+           ID = "HLD1")
   
   IEW1 <- read.csv(file = 'Summerview1(IEW1)_la49592lo246231.csv') %>%
     subset(., select = c(year,month,day,hour,Outage)) %>%
@@ -298,6 +316,15 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,FortSaskatchew
            Capacity = 63,
            Cap_Fac = 1-Outage/100,
            ID = "KHW1")
+  
+  LAN1 <- read.csv(file = 'Lanfine(LAN1)_la51318lo249418.csv') %>%
+    subset(., select = c(year,month,day,hour,Outage)) %>%
+    na.omit() %>%
+    mutate(Latitude = 51.32123,
+           Longitude = -110.567,
+           Capacity = 145,
+           Cap_Fac = 1-Outage/100,
+           ID = "LAN1")
   
   NEP1 <- read.csv(file = 'GhostPine(NEP1)_la51899lo246649.csv') %>%
     subset(., select = c(year,month,day,hour,Outage)) %>%
@@ -404,7 +431,8 @@ Pot_sites <- rbind(Anzac,BisonLake,ChainLakes,ClearPrairie,Falher,FortSaskatchew
   }
 
 Act_sites <- rbind(AKE1,ARD1,BSR1,BTR1,BUL1,BUL2,CR1,CRE3,CRR1,CRR2,CYP1,CYP2,
-                   FMG1,GRZ1,GWW1,HAL1,HHW1,IEW1,IEW2,JNR1,JNR2,KHW1,NEP1,OWF1,
+                   FMG1,GDP1,GRZ1,GWW1,HAL1,HHW1,HLD1,IEW1,IEW2,JNR1,JNR2,KHW1,
+                   LAN1,NEP1,OWF1,
                    RIV1,RTL1,SCR2,SCR3,SCR4,TAB1,WHE1,WHT1,WHT2,WRW1) %>%
   mutate(Installation = "Active")
 

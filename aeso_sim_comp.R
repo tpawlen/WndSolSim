@@ -204,75 +204,8 @@ price_interval <- function(year1, year2, case) {
   # Based on code from Dr. Leach with simulation data overlaid ontop.
   # Plots the average price with bands showing the range between on and off peak
   # prices.
-  assign_peaks<-function(data_orig,time_var=time){
-    #default is that we're receiving a data_frame with time as the time variable
-    #create temp_time with whatever the time variable might be, then use that to create stats and peaks
-    #modify data_sent so you have a data-frame with only the time varible
-    #data_mod<-data_orig %>% mutate_(temp_time=`time_var`) %>% select(temp_time)
-    temp_time<- enquo(time_var)
-    Yr<- enquo(year)
-    data_mod<-data_orig%>% select(!!temp_time)
-    #first, figure out the holidays
-    #Holidays:
-    #xNew Year's Day  January 1
-    #xAlberta Family Day   Third Monday in February
-    #xGood Friday   Friday before Easter
-    #Victoria Day  Monday before May 25
-    #xCanada Day July 1, except when it falls on a Sunday, then it is July 2
-    #xLabour Day  First Monday in September
-    #xThanksgiving Day  Second Monday in October
-    #xRemembrance Day   November 11
-    #xChristmas Day   December 25
-    holiday_list<-c("Christmas","NYD","CDA_Day","Rem_Day","Labour_Day","Good_Friday","Family_Day",  
-                    "Thanksgiving", "Victoria_Day")
-    data_mod<-data_mod%>%mutate(
-      Christmas=ifelse(month(!!temp_time)==12 & day(!!temp_time)==25,T,F),
-      NYD=ifelse(month(!!temp_time)==1 & day(!!temp_time)==1,T,F),
-      CDA_Day=ifelse(month(!!temp_time)==7 & day(!!temp_time)==1 & wday(!!temp_time,label = T)!="Sun" ,T,F), #Canada Day Holiday if it's not a Sunday
-      CDA_Day=ifelse(month(!!temp_time)==7 & day(!!temp_time)==2 & wday(!!temp_time,label = T)=="Mon" ,T,F), #Canada Day Stat if the 2nd is a monday
-      Rem_Day=ifelse(month(!!temp_time)==11 & day(!!temp_time)==11,T,F),
-      Labour_Day=ifelse(month(!!temp_time)==9 & day(!!temp_time)<=7 & wday(!!temp_time,label = T)=="Mon",T,F), #first Monday in September
-      Good_Friday=ifelse(date(!!temp_time)==as.Date(Easter(year(!!temp_time)))-days(2),T,F),
-      #Family day - third monday in february so earliest it can be is day 15, latest is day 21
-      Family_Day=ifelse(month(!!temp_time)==2 & day(!!temp_time)<=21 & day(!!temp_time)>=15 & wday(!!temp_time,label = T)=="Mon",T,F), #third Monday in Feb
-      #Thanksgiving day - second monday in Oct so earliest it can be is day 8, latest is day 14
-      Thanksgiving=ifelse(month(!!temp_time)==10 & day(!!temp_time)<=14 & day(!!temp_time)>=8 & wday(!!temp_time,label = T)=="Mon",T,F), #second Monday in Oct
-      #Victoria day - monday before May 25, so earliest it can be is day 18, latest is day 24
-      Victoria_Day=ifelse(month(!!temp_time)==5 & day(!!temp_time)<=24 & day(!!temp_time)>=18 & wday(!!temp_time,label = T)=="Mon",T,F) #Monday before May 25
-    ) %>% 
-      mutate(
-        stat = select(., holiday_list) %>% rowSums()>0
-      )
-    #On-Peak: hour ending HE8 to HE23 Monday through Saturday, excluding Sundays and NERC holidays
-    #Off-Peak: HE1 to HE7 and HE24 Monday through Saturday, and all hours on Sundays and NERC holidays
-    #Extended Peak: HE8 to HE23 every day in the contract period
-    #Extended Off-Peak: HE1 to HE7 and HE24 every day in the contract period
-    #Super Peak: HE17 to HE22 each day in the contract period
-    #for AS, AESO does AM super peak HE 6, 7, 8 and a winter PM Super Peak (HE 17-34, in Nov, Dec, Jan)
-    data_mod<-data_mod%>%mutate(
-      on_peak=ifelse(wday(!!temp_time,label = T)!="Sun" & stat==F & hour(!!temp_time)>=8 & hour(!!temp_time)<=23,T,F), #Peak hours, not stat or Sunday
-      off_peak=ifelse(wday(!!temp_time,label = T)=="Sun" | stat==T | hour(!!temp_time)>=24 | hour(!!temp_time)<=7,T,F), #Off-Peak hours, stat or Sunday
-      ext_peak=ifelse(hour(!!temp_time)>=8 & hour(!!temp_time)<=23,T,F), #Ext Peak hours
-      ext_off_peak=ifelse(hour(!!temp_time)<8 & hour(!!temp_time)>23,T,F), #Ext Off Peak hours
-      super_peak=ifelse(hour(!!temp_time)>=17 & hour(!!temp_time)<=22,T,F), #Super Peak hours
-    )
-    #return indicators for stats and peaks - same # of rows as data sent
-    data_mod<-data_mod %>% select(stat,on_peak,off_peak,ext_peak,ext_off_peak,super_peak)
-    bind_cols(data_orig,data_mod)
-  }
   
-  assign_date_time_days<-function(data_sent,time_var=time){
-    quo_time<- enquo(time_var)
-    data_sent %>%
-      mutate(year=year(!!quo_time),
-             month=month(!!quo_time), #month dummies
-             month_fac=factor(month.abb[month],levels = month.abb),
-             day=day(!!quo_time),
-             wday=wday(!!quo_time,label=T),
-             hour=hour(!!quo_time),
-             temp_time=NULL
-      )
-  }
+  source("DrLeach_Code.R")
   
   dataAct <- merit_filt %>%
     filter(year >= year1 & year <= year2) %>%
@@ -360,8 +293,8 @@ price_interval <- function(year1, year2, case) {
     #geom_col(aes(time,actual_posted_pool_price,fill=on_peak,colour=on_peak),size=.8)+
     scale_color_manual("",values = c("black","royalblue4"))+
     scale_fill_manual("",values = c("grey50","royalblue"),
-                      labels=c("Two-tailed 90th percentile range Actual",
-                               "Two-tailed 90th percentile range Simulation"))+
+                      labels=c("Two-tailed 90th percentile\nrange Actual",
+                               "Two-tailed 90th percentile\nrange Simulation"))+
     scale_linetype_manual("",values = c("solid","11"),
                           labels=c("Peak \nperiod average","Off-peak \nperiod average"))+
     scale_x_date(expand=c(0,0),breaks="3 month",labels = date_format("%b\n%Y",tz="America/Denver"))+
@@ -885,7 +818,7 @@ tot_gen <- function(year1, year2, case) {
     summarise(gen = sum(Exports)) %>%
     mutate(Plant_Type = "EXPORT", sit = "Simulation")
   
-  Sim <- Hr %>%
+  Sim <- Hour %>%
     filter(Run_ID == case,
            Report_Year >= year1,
            Report_Year <= year2,
@@ -895,7 +828,7 @@ tot_gen <- function(year1, year2, case) {
     ) %>%
     mutate(Plant_Type = ID, Year = Report_Year) %>%
     group_by(Year, Plant_Type) %>%
-    summarise(gen = sum(Output)) %>%
+    summarise(gen = sum(Output_MWH)) %>%
     mutate(sit = "Simulation")
   
   Sim <- rbind(Sim, Imp, Exp)
@@ -924,7 +857,7 @@ tot_gen <- function(year1, year2, case) {
           axis.title.x = element_blank(),
           axis.text = element_text(size = sz),
           axis.title = element_text(size = sz),
-          plot.title = element_text(size = sz+2),
+          #plot.title = element_text(size = sz+2),
           legend.text = element_text(size = sz),
           panel.grid = element_blank(),
           legend.title = element_blank(),
@@ -940,9 +873,10 @@ tot_gen <- function(year1, year2, case) {
           legend.box.background = element_rect(fill='transparent', colour = "transparent"),
     ) +
     labs(y = "Total Yearly Generation (GWh)", 
-         title = "Yearly total generation AESO Data vs Simulation",
-         subtitle = DB) +
-    scale_fill_manual(values = c("grey50","royalblue")) +
+         #title = "Yearly total generation AESO Data vs Simulation",
+         #subtitle = DB
+         ) +
+    scale_fill_manual(values = c("grey50","black")) +
     #    scale_x_continuous(expand=c(0,0), 
     #                       limits = c(0,1.1),
     #                       labels = percent) +
@@ -992,7 +926,7 @@ market_share <- function(year1, year2, case) {
     summarise(gen = sum(Imports)) %>%
     mutate(Plant_Type = "IMPORT", sit = "Simulation")
   
-  Sim <- Hr %>%
+  Sim <- Hour %>%
     filter(Run_ID == case,
            Report_Year >= year1,
            Report_Year <= year2,
@@ -1002,7 +936,7 @@ market_share <- function(year1, year2, case) {
     ) %>%
     mutate(Plant_Type = ID, Year = Report_Year) %>%
     group_by(Year, Plant_Type) %>%
-    summarise(gen = abs(sum(Output)))
+    summarise(gen = abs(sum(Output_MWH)))
   
   Sim <- rbind(Sim, Imp)%>%#, Exp) %>%
     group_by(Year)%>%
@@ -1030,8 +964,8 @@ market_share <- function(year1, year2, case) {
     geom_col(aes(Plant_Type,share,colour=sit,fill=sit),
              size=1.5,position = position_dodge(width = .9),width = .6)+
     geom_hline(yintercept=0, linetype="solid", color="gray",size=1)+
-    scale_color_manual("",values=c("grey50","royalblue"))+
-    scale_fill_manual("",values=c("grey50","royalblue"))+
+    scale_color_manual("",values=c("grey50","black"))+
+    scale_fill_manual("",values=c("grey50","black"))+
     facet_grid(~Year) +
     scale_y_continuous(expand=c(0,0),
                        labels = scales::percent,
@@ -1039,25 +973,25 @@ market_share <- function(year1, year2, case) {
                        breaks = seq(0,0.5,by = 0.1)
     ) +
     labs(x="",y="Percentage of Market",
-         title=paste0("Market Share by Technology (%, ",year1,"-",year2,")"),
-         subtitle = DB,
-         caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
-    theme(panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
-          panel.grid.minor.y = element_line(color = "lightgray",linetype="dotted"),
+         #title=paste0("Market Share by Technology (%, ",year1,"-",year2,")"),
+         #subtitle = DB,
+         #caption="Source: AESO Data, accessed via NRGStream"
+         ) +
+    theme(#panel.grid.major.y = element_line(color = "gray",linetype="dotted"),
+          #panel.grid.minor.y = element_line(color = "lightgray",linetype="dotted"),
           axis.line.x = element_line(color = "black"),
           axis.line.y = element_line(color = "black"),
           axis.text = element_text(size = sz),
           axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
           axis.title = element_text(size = sz),
-          plot.subtitle = element_text(size = sz-2,hjust=0.5),
-          plot.caption = element_text(face="italic",size = sz-4,hjust=0),
-          plot.title = element_text(hjust=0.5,size = sz+2),
+          #plot.subtitle = element_text(size = sz-2,hjust=0.5),
+          #plot.caption = element_text(face="italic",size = sz-4,hjust=0),
+          #plot.title = element_text(hjust=0.5,size = sz+2),
           #          plot.margin=unit(c(1,1,1.5,1.2),"cm"),
           
           # For transparent background
           panel.background = element_rect(fill = "transparent"),
-          panel.grid.major.x = element_blank(),
-          panel.grid.minor.x = element_blank(),
+          panel.grid = element_blank(),
           panel.spacing = unit(1.5, "lines"),
           panel.border = element_rect(colour = "black", fill = "transparent"),
           plot.background = element_rect(fill = "transparent", color = NA),
@@ -1295,13 +1229,13 @@ capturePrice <- function(year, plant_type, case) {
            #year(time) <= year,
            Plant_Type %in% gen_set) %>%
     mutate(Year = year(time)) %>%
-    group_by(ID,Year) %>% 
-    mutate(capture = sum(Revenue)/sum(gen),
-              avg_rev = sum(Revenue)/sum(gen),
+    group_by(ID,Year,Plant_Type) %>% 
+    summarize(capture = sum(Revenue)/sum(gen),
+              #avg_rev = sum(Revenue)/sum(gen),
               p_mean=mean(Price, na.rm = TRUE)) %>%
-    mutate(sit = "Actual", Year = as.factor(Year)) %>%
-    subset(., select = c(time,Price,ID,AESO_Name,Plant_Type,Cap_Fac,
-                         Year,capture,avg_rev,p_mean,sit))
+    mutate(sit = "Actual", Year = as.factor(Year)) #%>%
+    #subset(., select = c(time,Price,ID,AESO_Name,Plant_Type,Cap_Fac,
+    #                     Year,capture,avg_rev,p_mean,sit))
   
   ResourceHr$date <- as.POSIXct(as.character(ymd_h(gsub(" Hr ", "_",
                                                         ResourceHr$Time_Period))), 
@@ -1348,15 +1282,16 @@ capturePrice <- function(year, plant_type, case) {
   
   
   SamSim <- SamSim %>%
-    group_by(ID,Year) %>%
-    mutate(capture = sum(Revenue)/sum(Output_MWH),
-           avg_rev = sum(Revenue)/sum(Output_MWH),
+    group_by(ID,Year,sit,Plant_Type) %>%
+    summarize(capture = sum(Revenue)/sum(Output_MWH),
+           #avg_rev = sum(Revenue)/sum(Output_MWH),
            p_mean=mean(Price, na.rm = TRUE),
-           time = date,
-           AESO_Name = Name,
-           Cap_Fac=Capacity_Factor) %>%
-    subset(., select=c(time,Price,ID,AESO_Name,Plant_Type,Cap_Fac,Year,capture,avg_rev,
-                        p_mean,sit))
+           #time = date,
+           #AESO_Name = Name,
+           #Cap_Fac=Capacity_Factor
+           ) #%>%
+    #subset(., select=c(time,Price,ID,AESO_Name,Plant_Type,Cap_Fac,Year,capture,avg_rev,
+    #                    p_mean,sit))
   
   # This section calculates the achieved prices for imports and exports
 #  Imp <- SampleSimZ %>%
@@ -1400,7 +1335,8 @@ capturePrice <- function(year, plant_type, case) {
 #                              "WIND", "SOLAR", "STORAGE")
   
   total <- rbind(SamSim,Act) %>%
-    filter(Plant_Type == plant_type)
+    filter(Plant_Type == plant_type) %>%
+    na.omit()
   
   sz <- 12
   
@@ -2339,7 +2275,7 @@ comp_dur <- function(year1, year2, case) {
   Actual$Hour <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%H")
   
   totAct <- Actual %>%
-    filter(Year >= (year1-2), 
+    filter(Year >= (year1-3), 
            Year <= year2,) %>%
     mutate(Condition = if_else(between(Hour, 08, 23), 
                                "On-Peak WECC", "Off-Peak WECC")) %>%
@@ -2377,17 +2313,19 @@ comp_dur <- function(year1, year2, case) {
           legend.background = element_rect(fill='transparent'),
           legend.box.background = element_rect(fill='transparent', colour = "transparent"),
     ) +
-    labs(y = "Pool Price$/MWh", 
+    labs(y = "Pool Price ($/MWh)", 
          x = "Percentage of Time", 
-         title = "AESO Data vs Simulation",
-         subtitle = DB) +
-    scale_color_manual(values = c("goldenrod1", "forestgreen", "cornflowerblue",
-                                  "firebrick","gray60", "orange")) +
+         #title = "AESO Data vs Simulation",
+         #subtitle = DB
+         ) +
+    scale_color_manual(values = c("gray60", "forestgreen", "cornflowerblue",
+                                  "goldenrod1", "firebrick","orange")) +
     scale_x_continuous(expand=c(0,0), 
                        limits = c(0,1.1),
                        labels = percent) +
     scale_y_continuous(expand=c(0,0)
-    )
+    ) +
+    scale_linetype_manual(values = c("dotted","solid"))
 }
 
 load_dur <- function(year1, year2, case) {
@@ -2437,7 +2375,7 @@ load_dur <- function(year1, year2, case) {
   
   ggplot() +
     geom_line(data = total, 
-              aes(x = perc, y = Demand, colour = Year, linetype = sit), size = 1) +
+              aes(x = perc, y = Demand, colour = Year, linetype = sit), size = 1.25) +
     facet_grid(cols = vars(Condition)) +
     theme_bw() +
     theme(axis.text = element_text(size = sz),
@@ -2459,15 +2397,17 @@ load_dur <- function(year1, year2, case) {
     ) +
     labs(y = "Hourly Alberta Internal Load (MW)", 
          x = "Percentage of Time", 
-         title = "AESO Data vs Simulation",
-         subtitle = DB) +
-    scale_color_manual(values = c("goldenrod1", "forestgreen", "cornflowerblue",
-                                  "firebrick","gray60")) +
+         #title = "AESO Data vs Simulation",
+         #subtitle = DB
+         ) +
+    scale_color_manual(values = c("gray60", "forestgreen", "cornflowerblue",
+                                  "goldenrod1", "firebrick")) +
     scale_x_continuous(expand=c(0,0), 
                        limits = c(0,1.1),
                        labels = percent) +
     scale_y_continuous(expand=c(0,0)
-    )
+    ) +
+    scale_linetype_manual(values = c("dotted","solid"))
 }
 
 tot_cap <- function(year1, year2, case) {
@@ -2551,9 +2491,10 @@ tot_cap <- function(year1, year2, case) {
           legend.box.background = element_rect(fill='transparent', colour = "transparent"),
     ) +
     labs(y = "Installed Generation Capacity (MW)", 
-         title = "Year-end generation capacity AESO Data vs Simulation",
-         subtitle = DB) +
-    scale_fill_manual(values = AESO_colours) +
+         #title = "Year-end generation capacity AESO Data vs Simulation",
+         #subtitle = DB
+         ) +
+    scale_fill_manual(values = c("grey50","black")) +
     #    scale_x_continuous(expand=c(0,0), 
     #                       limits = c(0,1.1),
     #                       labels = percent) +
@@ -2633,9 +2574,10 @@ tech_cap <- function(year1, year2, case) {
           legend.box.background = element_rect(fill='transparent', colour = "transparent"),
     ) +
     labs(y = "Capacity Factor", 
-         title = "AESO Data vs Simulation",
-         subtitle = DB) +
-    scale_fill_manual(values = c("grey50","royalblue"
+         #title = "AESO Data vs Simulation",
+         #subtitle = DB
+         ) +
+    scale_fill_manual(values = c("grey50","black"
 #      "goldenrod1", "forestgreen"
 #                                 "darkseagreen", "cornflowerblue",
 #                                  "firebrick","gray60", "forestgreen"

@@ -23,8 +23,9 @@
 
 
 # Define variables
-{{location <- "la53680lo246840"  # The location lat and long as it appears on file.
-  site <- "FortSaskatchewan" # Name of the site
+{{
+  location <- "la51970lo248172"  # The location lat and long as it appears on file.
+  site <- "GardenPlain(GDP1)" # Name of the site
   hbht <- 100   #Hubheight of wind turbine in meters
   cutin <- 3    #Cut in wind speed (m/s)
   rated <- 12   #Wind speed at maximum capacity (m/s)
@@ -65,7 +66,7 @@ getSeasonPOSIXct <- function(DATES) {
 # Open the data file
 # Identify the location of the downloaded csv file
 setwd("D:/Documents/Education/Masters Degree/Datasets/Wind Data/Wind Atlas Data")
-TWF<-read.csv(location, header = TRUE,
+TWF<-read.csv(paste0(location,".csv"), header = TRUE,
               na.strings = 999.99, stringsAsFactors = F)
 
 # Date Formatting
@@ -205,6 +206,6 @@ Aurora <- TWF %>%
 
 #SAVE FILE (To save the processed data) This is to be entered into Aurora.
 setwd("D:/Documents/GitHub/AuroraEval/WindProfile")
-#write.csv(Aurora, file=paste0(site,"_",location,".csv"))
-write.csv(Aurora, file=paste0(location,"_",site,".csv"))
+write.csv(Aurora, file=paste0(site,"_",location,".csv"))
+#write.csv(Aurora, file=paste0(location,"_",site,".csv"))
 }

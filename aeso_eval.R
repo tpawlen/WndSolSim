@@ -1188,19 +1188,549 @@ capVScap <- function(plant_type) {
   setwd("D:/Documents/Education/Masters Degree/Datasets/Market")
 }
 
-correlation <- function(plant_type) {
+AvCP <- function(year1,year2) {
+  alberta_Price <- sub_samp %>%
+    filter(Plant_Type == "WIND",
+           #gen != 0,
+           time >= as.POSIXct(paste0(year1,"/01/01"),"%Y/%m/%d",tz = "MST"),
+           time <= as.POSIXct(paste0(year2,"/12/01"),"%Y/%m/%d",tz = "MST")) %>%
+    subset(., select = -c(he,date,Latitude,Longitude,Demand,AIL,NRG_Stream,
+                          Plant_Fuel,Plant_Type,GHG_ID,CO2,Heat.Rate,
+                          co2_est,AESO_Name)) %>%
+    na.omit() %>%
+    group_by(time) %>%
+    mutate(fleet_gen = sum(gen),
+           fleet_cap = sum(Capacity),
+           fleet_CF = fleet_gen/fleet_cap,
+           delta_CF = Cap_Fac-fleet_CF,
+           stand_Price = Price*delta_CF,
+    ) %>%
+    ungroup() %>%
+    group_by(ID) %>%
+    summarize(Revenue = sum(Revenue),
+              Dispatched = sum(gen),
+              Capture_Price = Revenue/Dispatched,
+              Capacity = median(Capacity))
+  
+  ggplot(alberta_Price,aes(x=fct_reorder(ID,Capture_Price),Capture_Price)) +
+    geom_col(aes(fill=Capacity)) +
+    scale_y_continuous(expand=c(0,0)) +
+    scale_fill_viridis() +
+    labs(x = "Wind Farms",
+         y = "Average Capture Price ($/MWh)") +
+    theme(text = element_text(size = sz),
+          axis.text.x = element_text(angle=90),
+          axis.line = element_line(color="black", size = 0.5),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent"),
+          plot.title = element_text(hjust = 0.5),
+          plot.subtitle = element_text(hjust = 0.5),
+          legend.background = element_rect(fill = "transparent"),
+          legend.box.background = element_rect(fill = "transparent", 
+                                               color = "transparent"),
+          legend.key = element_rect(fill="transparent"),
+          rect = element_rect(fill="transparent")
+    )
+}
+
+correlation <- function(year1,year2) {
   # Plots the Capture price as a function of the output correlation to the rest 
   # of the fleet of that resource type
   
-#  date_s <- "2020-01-01" # Define date for the start of the study period
-#  date_e <- "2021-02-01" # Define date for the end of the study period
-  corm <- "pearson" # Define correlation method ("pearson", "kendall", "spearman")
-  
-  # Installations since 2019
-  #post2019 <- c("CRR2","CYP1","CYP2","FMG1","HHW1","HLD1","JNR1","JNR2","JNR3",
-  #              "RIV1","RTL1","WHE1","WHT1","WHT2","WRW1")
+  limit <- 2232
   
   # Filter data for plant_type, calculate total output for fleet for each period
+  alberta_samp <- sub_samp %>%
+    filter(Plant_Type == "WIND",
+           #gen != 0,
+           time >= as.POSIXct(paste0(year1,"/01/01"),"%Y/%m/%d",tz = "MST"),
+           time <= as.POSIXct(paste0(year2,"/12/31"),"%Y/%m/%d",tz = "MST")) %>%
+    subset(., select = -c(he,date,#Latitude,Longitude,
+                          Demand,AIL,NRG_Stream,
+                          Plant_Fuel,Plant_Type,GHG_ID,CO2,Heat.Rate,
+                          co2_est,AESO_Name,Revenue,Price)) %>%
+    na.omit() %>%
+    group_by(ID) %>%
+    filter(n() >= limit) %>%
+    ungroup() %>%
+    group_by(time) %>%
+    mutate(fleet_CF = sum(gen)/sum(Capacity),
+           other_CF = (sum(gen)-gen)/(sum(Capacity)-Capacity),
+           deviance_CF = abs(Cap_Fac-other_CF),
+           ) %>%
+    ungroup() %>%
+    group_by(ID) %>%
+    #filter(n() >= 2232) %>%
+    summarize(IOD = sqrt(mean(deviance_CF)),
+              Capacity = median(Capacity),
+              Latitude = median(as.numeric(Latitude)),
+              Longitude = median(as.numeric(Longitude)),
+              ) %>%
+
+    mutate(Installation=case_when(grepl("CRR2",ID)~"post2019",
+                                  grepl("CYP",ID)~"post2019",
+                                  #grepl("CYP2",ID)~"post2019",
+                                  grepl("FMG1",ID)~"post2019",
+                                  grepl("HHW1",ID)~"post2019",
+                                  grepl("HLD1",ID)~"post2019",
+                                  grepl("JNR",ID)~"post2019",
+                                  grepl("RIV1",ID)~"post2019",
+                                  grepl("RTL1",ID)~"post2019",
+                                  grepl("WHE1",ID)~"post2019",
+                                  grepl("WHT",ID)~"post2019",
+                                  grepl("WRW1",ID)~"post2019",),
+           Installation=case_when(is.na(Installation)~"pre2019",
+                                  TRUE~"post2019"))
+  
+  alberta_Price <- sub_samp %>%
+    filter(Plant_Type == "WIND",
+           time >= as.POSIXct(paste0(year1,"/01/01"),"%Y/%m/%d",tz = "MST"),
+           time <= as.POSIXct(paste0(year2,"/12/31"),"%Y/%m/%d",tz = "MST")) %>%
+    subset(., select = -c(he,date,Latitude,Longitude,Demand,AIL,NRG_Stream,
+                          Plant_Fuel,Plant_Type,GHG_ID,CO2,Heat.Rate,
+                          co2_est,AESO_Name)) %>%
+    na.omit() %>%
+    group_by(ID) %>%
+    filter(n() >= limit) %>%
+    summarize(Revenue = sum(Revenue),
+              Rev = mean(Revenue),
+              Dispatched = sum(gen),
+              Capture_Price = Revenue/Dispatched,
+              Capacity = median(Capacity)) %>%
+    subset(.,select=c("ID","Capture_Price","Rev"))
+  
+  ab_data <- merge(alberta_samp,alberta_Price, by="ID")
+  
+  equ <- summary(lm(Capture_Price ~ IOD, data=ab_data))
+  
+  sz = 15
+  
+  ch <- ggplot(ab_data, aes(x = IOD, y = Capture_Price, 
+                           )) +
+    geom_smooth(method='lm', 
+                show.legend=FALSE,fullrange=TRUE) +
+    #stat_regline_equation(label.x=0.4,label.y=90,show.legend=FALSE) +
+    #stat_cor(aes(label=..rr.label..), label.x=0.4,label.y=88,show.legend=FALSE) + 
+    geom_point(aes(size=Capacity,#color=Installation
+                   )) +
+    #geom_text(label=ab_data$ID, size = sz-12,
+    #          nudge_x = 0.001, nudge_y = 0.5
+    #          ) +
+    labs(x = paste0("Capacity factor index of deviation from fleet in ",year1),
+         y = "Plant Average Revenue ($/MWh)") + 
+    theme(text = element_text(size = sz),
+          axis.line = element_line(color="black", size = 0.5),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent"),
+          plot.title = element_text(hjust = 0.5),
+          plot.subtitle = element_text(hjust = 0.5),
+          legend.background = element_rect(fill = "transparent"),
+          legend.box.background = element_rect(fill = "transparent", 
+                                               color = "transparent"),
+          legend.key = element_rect(fill="transparent"),
+          rect = element_rect(fill="transparent")
+          )
+  
+  setwd("D:/Documents/GitHub/AuroraEval")
+  ################################################################################
+  # Load in the data
+  # Wind Speed data from Canada Wind Atlas 
+  # http://www.windatlas.ca/nav-en.php?no=46&field=EU&height=80&season=ANU
+  ################################################################################
+  wind_profileAA <- readRDS("WindAtlas_Data00_0.05")
+  colnames(wind_profileAA) <- c('Latitude', 'Longitude', 'Wind')
+  
+  {can_level1 = getData("GADM", country = "CA", level = 1)
+    
+    WGS84 <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+    canada_level1_ellipsoid = spTransform(can_level1, WGS84)
+    
+    alberta_ellipsoid1 = 
+      canada_level1_ellipsoid[which(canada_level1_ellipsoid$NAME_1 == "Alberta"),]
+    }
+  
+  ################################################################################
+  ################################################################################
+  # Map of Alberta with active sites 
+  ################################################################################
+  ################################################################################
+  
+  corr_map <- ggplot() + 
+    geom_tile(data = wind_profileAA, 
+              aes(x = Longitude, y = Latitude, fill = Wind)) +
+    geom_polygon(data = alberta_ellipsoid1, 
+                 aes(x = long, y = lat, group = group), 
+                 fill = "transparent", colour = "black") +
+    geom_point(data = ab_data,
+               aes(x= Longitude, y = Latitude, size = IOD, color=Installation), 
+               shape = 16) +
+    labs(size = "Capacity Factor \nIndex of Deviation") +
+    scale_color_manual(values = c("darkmagenta", "black"), 
+                       labels = c("Built since 2019","Built before 2019")) +
+    scale_fill_gradientn(colors = matlab.like2(100),
+                         limits=c(3.5,10), na.value="white",oob=squish, 
+                         name = "Mean wind speed \nat 80m height \n(m/s)") +
+    scale_size(range = c(0.5,8)) +
+    guides(color = guide_legend(override.aes = list(size = 5))) +  
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          axis.title = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          legend.background = element_blank(),
+          legend.box.background = element_blank(),
+          legend.key=element_rect(fill = "transparent"),
+          #legend.text = element_blank(),
+          #legend.title = element_blank()
+    )
+  
+  return(list(equ,ch))
+}
+
+correlation_hypoth <- function(year1,year2) {
+  # Plots the Capture price as a function of the output correlation to the rest 
+  # of the fleet of that resource type
+  
+  # Filter data for plant_type, calculate total output for fleet for each period
+  
+  limit <- 2232
+  
+  alberta_samp <- sub_samp %>%
+    filter(Plant_Type == "WIND",
+           #gen != 0,
+           time >= as.POSIXct(paste0(year1,"/01/01"),"%Y/%m/%d",tz = "MST"),
+           time <= as.POSIXct(paste0(year2,"/12/31"),"%Y/%m/%d",tz = "MST")) %>%
+    subset(., select = -c(he,date,#Latitude,Longitude,
+                          Demand,AIL,NRG_Stream,
+                          Plant_Fuel,Plant_Type,GHG_ID,CO2,Heat.Rate,
+                          co2_est,AESO_Name,Revenue,Price)) %>%
+    na.omit() %>%
+    group_by(ID) %>%
+    filter(n() >= limit) %>%
+    ungroup() %>%
+    group_by(time) %>%
+    mutate(fleet_CF = sum(gen)/sum(Capacity),
+           other_CF = (sum(gen)-gen)/(sum(Capacity)-Capacity),
+           deviance_CF = abs(Cap_Fac-other_CF),
+    ) %>%
+    ungroup() %>%
+    group_by(ID) %>%
+    #filter(n() >= 2232) %>%
+    summarize(IOD = sqrt(mean(deviance_CF)),
+              Capacity = median(Capacity),
+              Latitude = median(as.numeric(Latitude)),
+              Longitude = median(as.numeric(Longitude)),
+    ) %>%
+    mutate(Installation = "Active")
+  
+#  alberta_samp <- rbind(alberta_samp,hypothetical)
+  
+  alberta_Price <- sub_samp %>%
+    filter(Plant_Type == "WIND",
+           time >= as.POSIXct(paste0(year1,"/01/01"),"%Y/%m/%d",tz = "MST"),
+           time <= as.POSIXct(paste0(year2,"/12/31"),"%Y/%m/%d",tz = "MST")) %>%
+    subset(., select = -c(he,date,Latitude,Longitude,Demand,AIL,NRG_Stream,
+                          Plant_Fuel,Plant_Type,GHG_ID,CO2,Heat.Rate,
+                          co2_est,AESO_Name)) %>%
+    na.omit() %>%
+    group_by(ID) %>%
+    filter(n() >= limit) %>%
+    summarize(Revenue = sum(Revenue),
+              Dispatched = sum(gen),
+              Capture_Price = Revenue/Dispatched,
+              Capacity = median(Capacity)) %>%
+    subset(.,select=c("ID","Capture_Price"))
+  
+  ab_data <- merge(alberta_samp,alberta_Price, by="ID",all=T)
+  
+  # Calculate the linear regression equation
+  linreg <- lm(Capture_Price ~ IOD, 
+               data=filter(ab_data,Installation == "Active"))
+  equ <- summary(linreg)
+  
+  # Change working directory
+  setwd("D:/Documents/GitHub/AuroraEval/WindProfile")
+  
+  hypothetical <- readRDS("SitesProfiles.RData") %>%
+    mutate(time = as.POSIXct(as.character(paste0(year,"/",month,"/",day," ",hour,":00:00")),
+                             "%Y/%m/%d %H:%M:%S",
+                             tz = "MST"),
+           gen = Capacity * Cap_Fac) %>%
+    group_by(time) %>%
+    mutate(fleet_CF = sum(gen)/sum(Capacity),
+           other_CF = (sum(gen)-gen)/(sum(Capacity)-Capacity),
+           deviance_CF = abs(Cap_Fac-other_CF),
+    ) %>%
+    ungroup() %>%
+    group_by(ID,Installation) %>%
+    summarize(IOD = sqrt(mean(deviance_CF)),
+              Capacity = 100,
+              CF = mean(Cap_Fac),
+              Latitude = median(as.numeric(Latitude)),
+              Longitude = median(as.numeric(Longitude)),
+    ) %>%
+    #filter(Installation == "Potential",
+    #       ID != "ChainLakes", ID != "FortSaskatchewan", ID != "Falher",
+    #       ID != "GrandeCache", ID != "ClearPrairie") %>%
+    mutate(Capture_Price = linreg$coefficients[2] * IOD + linreg$coefficients[1])
+  
+  ab_data <- rbind(ab_data,hypothetical%>%subset(.,select=-CF))
+  
+  sz = 15
+
+  ch <- ggplot(ab_data, aes(x = IOD, y = Capture_Price, 
+                      #                           colour = Installation, size = Capacity
+  )) +
+    geom_smooth(data=filter(ab_data,Installation == "Active"),
+                method='lm', #aes(colour=Installation),
+                show.legend=FALSE,fullrange=TRUE) +
+#        stat_regline_equation(data=filter(ab_data,Installation == "Active"),
+#                              label.x=0.4,label.y=82,show.legend=FALSE) +
+#        stat_cor(data=filter(ab_data,Installation == "Active"),
+#                 aes(label=..rr.label..), label.x=0.4,label.y=80,show.legend=FALSE) + 
+    geom_point(aes(size=Capacity,shape=Installation
+    )) +
+    scale_shape_manual(values=c(16,9), 
+                       name = "",
+                       labels=c("Active wind farm","Hypothetical site"))+
+#   geom_text(label=ab_data$ID, size = sz-12,# hjust = 0, vjust = 0, 
+#             nudge_x = 0.001, nudge_y = 0.7
+#             ) +
+   labs(x = paste0("Wind farm capacity factor index of deviation from fleet capacity factor in ",year1),
+       y = "Average Plant Revenue ($/MWh)") + 
+   guides(shape = guide_legend(override.aes = list(size = 5)),
+               ) +
+    theme(text = element_text(size = sz),
+          axis.line = element_line(color="black", size = 0.5),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent"),
+          plot.title = element_text(hjust = 0.5),
+          plot.subtitle = element_text(hjust = 0.5),
+          legend.background = element_rect(fill = "transparent"),
+          legend.box.background = element_rect(fill = "transparent", 
+                                               color = "transparent"),
+          legend.key = element_rect(fill="transparent"),
+          rect = element_rect(fill="transparent")
+    )
+  
+  hypothetical <- hypothetical %>%
+    mutate(AE = CF*8760,
+ #          years = (1700000-(50*0.52*AE))/(AE*Capture_Price-(1700000*0.0175)),
+           years = 8*(21250-2847*CF)/(876*CF*Capture_Price-2975)
+           )
+  
+  col <- ggplot(hypothetical, aes(x = fct_reorder(ID,years),
+                                  y = years)) +
+    geom_col()+#aes(fill=fct_reorder(sort,desc(sort)))) +
+    labs(x = "Hypothetical site",
+         y = "Estimated Payback Period (yrs)") + 
+    theme(text = element_text(size = sz),
+          axis.text.x = element_text(angle=90),
+          axis.line = element_line(color="black", size = 0.5),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent"),
+          plot.title = element_text(hjust = 0.5),
+          plot.subtitle = element_text(hjust = 0.5),
+          legend.background = element_rect(fill = "transparent"),
+          legend.box.background = element_rect(fill = "transparent", 
+                                               color = "transparent"),
+          legend.key = element_rect(fill="transparent"),
+          rect = element_rect(fill="transparent")
+    )
+  
+  setwd("D:/Documents/GitHub/AuroraEval")
+  ################################################################################
+  # Load in the data
+  # Wind Speed data from Canada Wind Atlas 
+  # http://www.windatlas.ca/nav-en.php?no=46&field=EU&height=80&season=ANU
+  ################################################################################
+  wind_profile <- readRDS("WindAtlas_Data00_0.05")
+  colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
+  
+  {can_level1 = getData("GADM", country = "CA", level = 1)
+    
+    WGS84 <- CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+    canada_level1_ellipsoid = spTransform(can_level1, WGS84)
+    
+    alberta_ellipsoid1 = 
+      canada_level1_ellipsoid[which(canada_level1_ellipsoid$NAME_1 == "Alberta"),]
+  }
+  
+  ################################################################################
+  ################################################################################
+  # Map of Alberta with active sites 
+  ################################################################################
+  ################################################################################
+  
+  corr_map <- ggplot() + 
+    geom_tile(data = wind_profile, 
+              aes(x = Longitude, y = Latitude, fill = Wind)) +
+    geom_polygon(data = alberta_ellipsoid1, 
+                 aes(x = long, y = lat, group = group), 
+                 fill = "transparent", colour = "black") +
+    geom_point(data = ab_data,
+               aes(x= Longitude, y = Latitude, size = IOD, color=Installation), 
+               shape = 16) +
+    labs(size = "Capacity Factor \nIndex of Deviation") +
+    scale_color_manual(values = c("black","red4"), 
+                       labels = c("Active","Hypothetical")) +
+    scale_fill_gradientn(colors = matlab.like2(100),
+                         limits=c(3.5,10), na.value="white",oob=squish, 
+                         name = "Mean annual\nwind speed \nat 80m height \n(m/s)") +
+    scale_size(range = c(0.1,8)) +
+    guides(color = guide_legend(override.aes = list(size = 5))) +  
+    coord_fixed(ratio=5/3) +
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          axis.title = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          legend.background = element_blank(),
+          legend.box.background = element_blank(),
+          legend.key=element_rect(fill = "transparent"),
+          #legend.text = element_blank(),
+          #legend.title = element_blank()
+    )
+  
+  equ <- summary(lm(Capture_Price ~ IOD, 
+                    data=filter(ab_data,Installation == "Active")))
+  
+  return(list(equ,ch,col,corr_map))
+}
+
+sd_difference <- function() {
+  # Plots the Capture price as a function of the output correlation to the rest 
+  # of the fleet of that resource type, with the hypothetical sites added
+  
+  corm <- "pearson" # Define correlation method ("pearson", "kendall", "spearman")
+  
+  setwd("D:/Documents/GitHub/AuroraEval/WindProfile")
+  
+  data <- readRDS("SitesProfiles.RData") %>%
+    mutate(time = as.POSIXct(as.character(paste0(year,"/",month,"/",day," ",hour,":00:00")),
+                             "%Y/%m/%d %H:%M:%S",
+                             tz = "MST"),
+           gen = Capacity * Cap_Fac) %>%
+    group_by(time) %>%
+    mutate(fleet_CF = sum(gen)/sum(Capacity),
+           deviance_CF = (Cap_Fac-fleet_CF)^2,
+           ) %>%
+    ungroup() %>%
+    group_by(ID,Installation) %>%
+    filter(n() >= 2232) %>%
+    summarize(sd_wind = sqrt(mean(deviance_CF))) 
+  
+  alberta_samp <- sub_samp %>%
+    filter(Plant_Type == "WIND",
+           time >= as.POSIXct("2021/01/01","%Y/%m/%d",tz = "MST"),
+           time <= as.POSIXct("2021/12/31","%Y/%m/%d",tz = "MST")) %>%
+    subset(., select = -c(he,date,Latitude,Longitude,Demand,AIL,NRG_Stream,
+                          Plant_Fuel,Plant_Type,GHG_ID,CO2,Heat.Rate,
+                          co2_est,AESO_Name,Revenue,Price)) %>%
+    na.omit() %>%
+    group_by(time) %>%
+    mutate(fleet_CF = sum(gen)/sum(Capacity),
+           deviance_CF = (Cap_Fac-fleet_CF)^2,
+           ) %>%
+    ungroup() %>%
+    group_by(ID) %>%
+    filter(n() >= 2232) %>%
+    summarize(sd_CF = sqrt(mean(deviance_CF))
+              )
+  
+  ab_data <- merge(data,alberta_samp, by="ID",#all=T
+                   ) %>%
+    mutate(diff = sd_wind-sd_CF,
+           Installation=case_when(grepl("AKE1",ID)~2003,
+                                  grepl("ARD1",ID)~2010,
+                                  grepl("BSR1",ID)~2014,
+                                  grepl("BTR1",ID)~2009,
+                                  grepl("BUL",ID)~2015,
+                                  grepl("CR1",ID)~2001,
+                                  grepl("CRE3",ID)~2001,
+                                  grepl("CRR1",ID)~2012,
+                                  grepl("CRR2",ID)~2019,
+                                  grepl("CYP",ID)~2022,
+                                  grepl("FMG1",ID)~2022,
+                                  grepl("GDP1",ID)~2022,
+                                  grepl("GRZ1",ID)~2022,
+                                  grepl("GWW1",ID)~2006,
+                                  grepl("HAL1",ID)~2012,
+                                  grepl("HHW1",ID)~2022,
+                                  grepl("HLD1",ID)~2022,
+                                  grepl("IEW",ID)~2010,
+                                  grepl("JNR",ID)~2022,
+                                  grepl("KHW1",ID)~2007,
+                                  grepl("LAN1",ID)~2022,
+                                  grepl("NEP1",ID)~2010,
+                                  grepl("OWF1",ID)~2014,
+                                  grepl("RIV1",ID)~2019,
+                                  grepl("RTL1",ID)~2021,
+                                  grepl("SCR2",ID)~2004,
+                                  grepl("SCR3",ID)~2006,
+                                  grepl("SCR4",ID)~2011,
+                                  grepl("TAB1",ID)~2007,
+                                  grepl("WHE1",ID)~2022,
+                                  grepl("WHT1",ID)~2019,
+                                  grepl("WHT2",ID)~2021,
+                                  grepl("WRW1",ID)~2021,),
+           sort = case_when(Installation < 2021~"old",
+                            Installation >=2021~"new"))
+  
+  sz = 15
+  
+  ggplot(ab_data, aes(x = ID, y = diff)) +
+    geom_col()+#aes(fill=fct_reorder(sort,desc(sort)))) +
+#    scale_fill_manual(name="Installation Date", 
+#                        labels=c("Before 2019","2019 or After"),
+#                        values=c("royalblue3","forestgreen")
+                        #values=c("black","grey45")
+#    ) +
+    #    scale_shape_manual(values=c(16,9), 
+    #                       name = "Installation Date",
+    #                       labels=c("2019 or After","Before 2019"))+
+    #    geom_text(label=alberta_samp$ID, size = sz-12, hjust = 0, vjust = 0, 
+    #              nudge_x = 0.001, nudge_y = 0.3) +
+    labs(x = "Wind farm site",
+         y = "Difference in standard deviation") + 
+    theme(text = element_text(size = sz),
+          axis.text.x = element_text(angle=90),
+          axis.line = element_line(color="black", size = 0.5),
+          panel.background = element_rect(fill = "transparent"),
+          panel.grid = element_blank(),
+          plot.background = element_rect(fill = "transparent"),
+          plot.title = element_text(hjust = 0.5),
+          plot.subtitle = element_text(hjust = 0.5),
+          legend.background = element_rect(fill = "transparent"),
+          legend.box.background = element_rect(fill = "transparent", 
+                                               color = "transparent"),
+          legend.key = element_rect(fill="transparent"),
+          rect = element_rect(fill="transparent")
+    )
+}
+
+correlation_Aurora <- function() {
+  # Plots the Capture price as a function of the output correlation to the rest 
+  # of the fleet of that resource type, with the hypothetical sites added
+  
+  corm <- "pearson" # Define correlation method ("pearson", "kendall", "spearman")
+  
+  data <- ResourceHr %>%
+    filter(Run_ID == BC,
+           Primary_Fuel == "Wind")
+  
+  setwd("D:/Documents/GitHub/AuroraEval/WindProfile")
+  
+  AuroraProf <- readRDS("AuroraProfiles.RData") 
+  
   alberta_samp <- sub_samp %>%
     filter(Plant_Type == plant_type) %>%
     subset(., select = -c(Demand,AIL,NRG_Stream,Plant_Fuel,GHG_ID,CO2,Heat.Rate,
@@ -1210,17 +1740,17 @@ correlation <- function(plant_type) {
     mutate(fleet_gen = sum(gen),
            fleet_cap = sum(Capacity),
            fleet_CF = fleet_gen/fleet_cap) %>%
-    ungroup()# %>%
+    ungroup() %>%
     group_by(ID) %>%
-    summarize(Capacity = median(Capacity),
-              Latitude = median(as.numeric(Latitude)),
-              Longitude = median(as.numeric(Longitude)),
+    summarize(#Capacity = median(Capacity),
+              #Latitude = median(as.numeric(Latitude)),
+              #Longitude = median(as.numeric(Longitude)),
               correlation = cor(Cap_Fac,fleet_CF, method=corm),
               Dispatched = sum(gen),
               Revenue = sum(Revenue),
               Capture_Price = Revenue/Dispatched,
-           
-              ) %>%
+              
+    ) %>%
     ungroup() %>%
     mutate(Installation=case_when(grepl("CRR2",ID)~"post2019",
                                   grepl("CYP",ID)~"post2019",
@@ -1237,24 +1767,90 @@ correlation <- function(plant_type) {
            Installation=case_when(is.na(Installation)~"pre2019",
                                   TRUE~"post2019"))
   
-  #cor(alberta_samp$gen, alberta_samp$fleet_total, 
-  #         method = corm)#$estimate
+  Aurora_corr <- AuroraProf %>%
+    group_by(time) %>%
+    mutate(fleet_gen = sum(gen),
+           fleet_cap = sum(Capacity),
+           fleet_CF = fleet_gen/fleet_cap) %>%
+    ungroup() %>%
+    na.omit() %>%
+    group_by(ID) %>%
+    summarize(Capacity = median(Capacity),
+              Latitude = median(as.numeric(Latitude)),
+              Longitude = median(as.numeric(Longitude)),
+              correlation = cor(Cap_Fac,fleet_CF, method=corm),
+              #Dispatched = sum(gen),
+              #Revenue = sum(Revenue),
+              #Capture_Price = Revenue/Dispatched,
+              #Cap_Fac = mean(Cap_Fac),
+              #fleet_cap = mean(fleet_cap),
+              #fleet_gen = mean(fleet_gen),
+              #fleet_CF = mean(fleet_CF)
+              
+    ) %>%
+    ungroup() %>%
+    mutate(Built=case_when(grepl("BUL",ID)~"post2015",
+                           grepl("CRR2",ID)~"post2015",
+                           grepl("CYP",ID)~"post2015",
+                           #grepl("CYP2",ID)~"post2015",
+                           grepl("FMG1",ID)~"post2015",
+                           grepl("GRZ1",ID)~"post2015",
+                           grepl("HHW1",ID)~"post2015",
+                           grepl("HLD1",ID)~"post2015",
+                           grepl("JNR",ID)~"post2015",
+                           grepl("RIV1",ID)~"post2015",
+                           grepl("RTL1",ID)~"post2015",
+                           grepl("WHE1",ID)~"post2015",
+                           grepl("WHT",ID)~"post2015",
+                           grepl("WRW1",ID)~"post2015",
+                           grepl("Anzac",ID)~"Potential",
+                           grepl("BisonLake",ID)~"Potential",
+                           grepl("ChainLakes",ID)~"Potential",
+                           grepl("ClearPrairie",ID)~"Potential",
+                           grepl("Falher",ID)~"Potential",
+                           grepl("FortSaskatchewan",ID)~"Potential",
+                           grepl("GrandeCache",ID)~"Potential",
+                           grepl("Hinton",ID)~"Potential",
+                           grepl("JohnDOr",ID)~"Potential",
+                           grepl("Kehewin",ID)~"Potential",
+                           grepl("LesserSlave",ID)~"Potential",
+                           grepl("PigeonLake",ID)~"Potential",
+                           grepl("SwanHills",ID)~"Potential",
+                           TRUE~"pre2015"
+    ),
+    ) %>%
+    arrange(match(Built, c("Potential","pre2015", "post2015")), 
+            desc(Built))
+  
+  Aurora_corr$Built <- factor(Aurora_corr$Built, 
+                              levels = c("pre2015","post2015","Potential"))
   
   sz = 15
   
-  ggplot(alberta_samp, aes(x = correlation, y = Capture_Price, 
-                           shape = Installation, size = Capacity)) + 
+  ggplot(Aurora_corr, aes(x = correlation, y = Capture_Price, 
+                           colour = Installation, size = Capacity)) +
+    geom_smooth(method='lm', aes(colour=Installation),
+                show.legend=FALSE,fullrange=TRUE) +
+    stat_regline_equation(label.x=0.6,show.legend=FALSE) +
+    stat_cor(aes(label=..rr.label..), label.x=0.68,show.legend=FALSE) + 
     geom_point() +
-    scale_shape_manual(values=c(16,9), 
-                       name = "Installation Date",
-                       labels=c("2019 or After","Before 2019"))+
-#    geom_text(label=alberta_samp$ID, size = sz-12, hjust = 0, vjust = 0, 
-#              nudge_x = 0.001, nudge_y = 0.3) +
-#    geom_smooth(method = lm, color = "black") +
+    scale_colour_manual(name="Installation Date", 
+                        labels=c("Before 2019","2019 or After"),
+                        values=c("royalblue3","forestgreen")
+                        #values=c("black","grey45")
+    ) +
+    #    scale_shape_manual(values=c(16,9), 
+    #                       name = "Installation Date",
+    #                       labels=c("2019 or After","Before 2019"))+
+    #    geom_text(label=alberta_samp$ID, size = sz-12, hjust = 0, vjust = 0, 
+    #              nudge_x = 0.001, nudge_y = 0.3) +
     labs(x = "Correlation between single site and aggregate capacity factors",
          y = "Average Capture Price ($/MWh)") + #, 
     #       title = "Alberta Wind and Solar Farms", 
     #       subtitle = "Capture Price vs Correlation") +
+    guides(colour = guide_legend(override.aes = list(size = 5))#,
+           #colour = guide_legend(override.aes = list(size =2))
+    ) +
     theme(text = element_text(size = sz),
           axis.line = element_line(color="black", size = 0.5),
           panel.background = element_rect(fill = "transparent"),
@@ -1262,8 +1858,13 @@ correlation <- function(plant_type) {
           plot.background = element_rect(fill = "transparent"),
           plot.title = element_text(hjust = 0.5),
           plot.subtitle = element_text(hjust = 0.5),
-          ) #+
-#    scale_x_reverse() 
+          legend.background = element_rect(fill = "transparent"),
+          legend.box.background = element_rect(fill = "transparent", 
+                                               color = "transparent"),
+          legend.key = element_rect(fill="transparent"),
+          rect = element_rect(fill="transparent")
+    ) #+
+  #    scale_x_reverse() 
 }
 
 correlation_map <- function(plant_type) {

@@ -19,6 +19,7 @@
 #  library(raster)
   library(tidyverse)
   library(dplyr)
+  library(lubridate)
 #  library(plotly) # For interactive charts
 #  library(odbc)
 #  library(DBI)
@@ -50,93 +51,93 @@ legText <- 12
 # Wind Speed data from Canada Wind Atlas 
 # http://www.windatlas.ca/nav-en.php?no=46&field=EU&height=80&season=ANU
 ################################################################################
-wind_profileAA <- readRDS("WindAtlas_Data00_0.05")
-colnames(wind_profileAA) <- c('Latitude', 'Longitude', 'Wind')
+wind_profile <- readRDS("WindAtlas_Data00_0.05")
+colnames(wind_profile) <- c('Latitude', 'Longitude', 'Wind')
 
 {
-wind_profile00 <- readRDS("WindAtlas_Data00_0.05")
-colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile01 <- readRDS("WindAtlas_Data01_0.05")
-colnames(wind_profile01) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile02 <- readRDS("WindAtlas_Data02_0.05")
-colnames(wind_profile02) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile03 <- readRDS("WindAtlas_Data03_0.05")
-colnames(wind_profile03) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile04 <- readRDS("WindAtlas_Data04_0.05")
-colnames(wind_profile04) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile10 <- readRDS("WindAtlas_Data10_0.05")
-colnames(wind_profile10) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile11 <- readRDS("WindAtlas_Data11_0.05")
-colnames(wind_profile11) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile12 <- readRDS("WindAtlas_Data12_0.05")
-colnames(wind_profile12) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile13 <- readRDS("WindAtlas_Data13_0.05")
-colnames(wind_profile13) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile14 <- readRDS("WindAtlas_Data14_0.05")
-colnames(wind_profile14) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile20 <- readRDS("WindAtlas_Data20_0.05")
-colnames(wind_profile20) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile21 <- readRDS("WindAtlas_Data21_0.05")
-colnames(wind_profile21) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile22 <- readRDS("WindAtlas_Data22_0.05")
-colnames(wind_profile22) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile23 <- readRDS("WindAtlas_Data23_0.05")
-colnames(wind_profile23) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile24 <- readRDS("WindAtlas_Data24_0.05")
-colnames(wind_profile24) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile30 <- readRDS("WindAtlas_Data30_0.05")
-colnames(wind_profile30) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile31 <- readRDS("WindAtlas_Data31_0.05")
-colnames(wind_profile31) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile32 <- readRDS("WindAtlas_Data32_0.05")
-colnames(wind_profile32) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile33 <- readRDS("WindAtlas_Data33_0.05")
-colnames(wind_profile33) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile34 <- readRDS("WindAtlas_Data34_0.05")
-colnames(wind_profile34) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile40 <- readRDS("WindAtlas_Data40_0.05")
-colnames(wind_profile40) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile41 <- readRDS("WindAtlas_Data41_0.05")
-colnames(wind_profile41) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile42 <- readRDS("WindAtlas_Data42_0.05")
-colnames(wind_profile42) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile43 <- readRDS("WindAtlas_Data43_0.05")
-colnames(wind_profile43) <- c('Latitude', 'Longitude', 'Wind')
-wind_profile44 <- readRDS("WindAtlas_Data44_0.05")
-colnames(wind_profile44) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile00 <- readRDS("WindAtlas_Data00_0.05")
+#colnames(wind_profile00) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile01 <- readRDS("WindAtlas_Data01_0.05")
+#colnames(wind_profile01) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile02 <- readRDS("WindAtlas_Data02_0.05")
+#colnames(wind_profile02) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile03 <- readRDS("WindAtlas_Data03_0.05")
+#colnames(wind_profile03) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile04 <- readRDS("WindAtlas_Data04_0.05")
+#colnames(wind_profile04) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile10 <- readRDS("WindAtlas_Data10_0.05")
+#colnames(wind_profile10) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile11 <- readRDS("WindAtlas_Data11_0.05")
+#colnames(wind_profile11) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile12 <- readRDS("WindAtlas_Data12_0.05")
+#colnames(wind_profile12) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile13 <- readRDS("WindAtlas_Data13_0.05")
+#colnames(wind_profile13) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile14 <- readRDS("WindAtlas_Data14_0.05")
+#colnames(wind_profile14) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile20 <- readRDS("WindAtlas_Data20_0.05")
+#colnames(wind_profile20) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile21 <- readRDS("WindAtlas_Data21_0.05")
+#colnames(wind_profile21) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile22 <- readRDS("WindAtlas_Data22_0.05")
+#colnames(wind_profile22) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile23 <- readRDS("WindAtlas_Data23_0.05")
+#colnames(wind_profile23) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile24 <- readRDS("WindAtlas_Data24_0.05")
+#colnames(wind_profile24) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile30 <- readRDS("WindAtlas_Data30_0.05")
+#colnames(wind_profile30) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile31 <- readRDS("WindAtlas_Data31_0.05")
+#colnames(wind_profile31) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile32 <- readRDS("WindAtlas_Data32_0.05")
+#colnames(wind_profile32) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile33 <- readRDS("WindAtlas_Data33_0.05")
+#colnames(wind_profile33) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile34 <- readRDS("WindAtlas_Data34_0.05")
+#colnames(wind_profile34) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile40 <- readRDS("WindAtlas_Data40_0.05")
+#colnames(wind_profile40) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile41 <- readRDS("WindAtlas_Data41_0.05")
+#colnames(wind_profile41) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile42 <- readRDS("WindAtlas_Data42_0.05")
+#colnames(wind_profile42) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile43 <- readRDS("WindAtlas_Data43_0.05")
+#colnames(wind_profile43) <- c('Latitude', 'Longitude', 'Wind')
+#wind_profile44 <- readRDS("WindAtlas_Data44_0.05")
+#colnames(wind_profile44) <- c('Latitude', 'Longitude', 'Wind')
 
-wind_profile <- rbind(wind_profile00, 
-                      wind_profile01, 
-                      wind_profile02, 
-                      wind_profile03, 
-                      wind_profile04, 
-                      wind_profile10, 
-                      wind_profile11,
-                      wind_profile12, wind_profile13, 
-                      wind_profile14, 
-                      wind_profile20, 
-                      wind_profile21, 
-                      wind_profile22,
-                      wind_profile23, 
-                      wind_profile24, 
-                      wind_profile30, 
-                      wind_profile31, 
-                      wind_profile32,
-                      wind_profile33,
-                      wind_profile34, 
-                      wind_profile40, 
-                      #wind_profile41, 
-                      wind_profile42, 
-                      wind_profile43,
-                      wind_profile44
-                      )%>%
-  distinct()
+#wind_profile <- rbind(wind_profile00, 
+#                      wind_profile01, 
+#                      wind_profile02, 
+#                      wind_profile03, 
+#                      wind_profile04, 
+#                      wind_profile10, 
+#                      wind_profile11,
+#                      wind_profile12, wind_profile13, 
+#                      wind_profile14, 
+#                      wind_profile20, 
+#                      wind_profile21, 
+#                      wind_profile22,
+#                      wind_profile23, 
+#                      wind_profile24, 
+#                      wind_profile30, 
+#                      wind_profile31, 
+#                      wind_profile32,
+#                      wind_profile33,
+#                      wind_profile34, 
+#                      wind_profile40, 
+#                      #wind_profile41, 
+#                      wind_profile42, 
+#                      wind_profile43,
+#                      wind_profile44
+#                      )%>%
+#  distinct()
 
 
 }
 
 #saveRDS(wind_profile41, file="wind_profile41")
-wind_profile <- readRDS("wind_profile")
+#wind_profile <- readRDS("wind_profile")
 
 {
 ################################################################################
@@ -236,146 +237,96 @@ corm <- "pearson" # Define correlation method ("pearson", "kendall", "spearman")
 #              "RIV1","RTL1","WHE1","WHT1","WHT2","WRW1")
 
 setwd("D:/Documents/Education/Masters Degree/Datasets/Market")
-load("nrgstream_gen.RData") 
-nrgstream_gen <- nrgstream_gen %>% rename(time=Time)
+nrgstream_gen <- readRDS("nrgstream_gen_corrected.RData")
 
-nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$gen),] 
-nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$time),] 
-
-corrected <- nrgstream_gen %>%
-  filter(is.na(Latitude)) %>%
-  mutate(Latitude=case_when(grepl("BRD1",ID) ~ 49.842735,
-                            grepl("BUR1",ID) ~ 49.814877,
-                            grepl("CLR",ID) ~ 50.032911,
-                            grepl("CLY",ID) ~ 49.840967,
-                            grepl("CHP1",ID) ~ 50.22189,
-                            grepl("COL1",ID) ~ 49.833218,
-                            grepl("CRD",ID) ~ 49.807,
-                            grepl("CRR2",ID) ~ 49.55891,
-                            grepl("FMG1",ID) ~ 49.66334,
-                            grepl("KKP",ID) ~ 53.469986,
-                            grepl("MON1",ID) ~ 49.833144,
-                            grepl("NMK1",ID) ~ 51.026118,
-                            grepl("RIV1",ID) ~ 49.53245,
-                            grepl("STR",ID) ~ 51.033273,
-                            grepl("TVS1",ID) ~ 50.27324,
-                            grepl("VCN1",ID) ~ 50.0975,
-                            grepl("VXH1",ID) ~ 50.095223,
-                            grepl("WEF1",ID) ~ 49.65405,
-                            grepl("WHT",ID) ~ 49.64029),
-         Longitude=case_when(grepl("BRD1",ID) ~ -111.537891,
-                             grepl("BUR1",ID) ~ -111.543323,
-                             grepl("CHP1",ID) ~ -110.437106,
-                             grepl("CLR",ID) ~ -113.484369,
-                             grepl("CLY",ID) ~ -110.356864,
-                             grepl("COL1",ID) ~ -112.97448,
-                             grepl("CRD",ID) ~ -112.578,
-                             grepl("CRR2",ID) ~ -113.983,
-                             grepl("FMG1",ID) ~ -111.122,
-                             grepl("KKP",ID) ~ -113.61337,
-                             grepl("MON1",ID) ~ -112.974231,
-                             grepl("NMK1",ID) ~ -113.163017,
-                             grepl("RIV1",ID) ~ -113.977,
-                             grepl("STR",ID) ~ -113.371296,
-                             grepl("TVS1",ID) ~ -112.73059,
-                             grepl("VCN1",ID) ~ -112.84841,
-                             grepl("VXH1",ID) ~ -112.149936,
-                             grepl("WEF1",ID) ~ -111.515812,
-                             grepl("WHT",ID) ~ -111.291))
-
-nocorrection <- nrgstream_gen %>%
-  filter(!is.na(Latitude))
-
-nrgstream_gen <- rbind(corrected,nocorrection)
-
-sub_samp<-filter(nrgstream_gen, time >= as.Date("2017-01-1"))
+sub_samp <- readRDS("nrgstream_sub_samp.RData")
 rm(nrgstream_gen)
 
 # Load predicted capacity factors
 setwd("D:/Documents/GitHub/AuroraEval/WindProfile")
-Pot_sites <- readRDS("PotentialSites.RData") %>%
-  mutate(year = 2021,
-         time = ymd_h(paste0(year,"-",month,"-",day," ",hour)),
-         gen = 0,
-         Capacity = 0,
-         Revenue = 0) %>%
-  subset(., select = -c(year,month,day,hour,Outage))
+#Pot_sites <- readRDS("PotentialSites.RData") %>%
+#  mutate(year = 2021,
+#         time = ymd_h(paste0(year,"-",month,"-",day," ",hour)),
+#         gen = 0,
+#         Capacity = 0,
+#         Revenue = 0) %>%
+#  subset(., select = -c(year,month,day,hour,Outage))
 
 # Filter data for plant_type, calculate total output for fleet for each period
-alberta_samp <- sub_samp %>%
-  filter(Plant_Type == "WIND") %>%
-  subset(., select = -c(Demand,AIL,NRG_Stream,Plant_Fuel,GHG_ID,CO2,Heat.Rate,
-                        co2_est,AESO_Name,date,he,Price,Plant_Type)) %>%
-  na.omit()
+#alberta_samp <- sub_samp %>%
+#  filter(Plant_Type == "WIND") %>%
+#  subset(., select = -c(Demand,AIL,NRG_Stream,Plant_Fuel,GHG_ID,CO2,Heat.Rate,
+#                        co2_est,AESO_Name,date,he,Price,Plant_Type)) %>%
+#  na.omit()#
 
-alberta_samp <- rbind(Pot_sites,alberta_samp) %>%
-  group_by(time) %>%
-  mutate(fleet_gen = sum(gen),
-         fleet_cap = sum(Capacity),
-         fleet_CF = fleet_gen/fleet_cap) %>%
-  ungroup() %>%
-  na.omit() %>%
-group_by(ID) %>%
-  summarize(Capacity = median(Capacity),
-            Latitude = median(as.numeric(Latitude)),
-            Longitude = median(as.numeric(Longitude)),
-            correlation = cor(Cap_Fac,fleet_CF, method=corm),
-            Dispatched = sum(gen),
-            Revenue = sum(Revenue),
-            Capture_Price = Revenue/Dispatched,
-            Cap_Fac = mean(Cap_Fac),
-            #fleet_cap = mean(fleet_cap),
-            #fleet_gen = mean(fleet_gen),
-            #fleet_CF = mean(fleet_CF)
+#alberta_samp <- rbind(Pot_sites,alberta_samp) %>%
+#  group_by(time) %>%
+#  mutate(fleet_gen = sum(gen),
+#         fleet_cap = sum(Capacity),
+#         fleet_CF = fleet_gen/fleet_cap) %>%
+#  ungroup() %>%
+#  na.omit() %>%
+#group_by(ID) %>%
+#  summarize(Capacity = median(Capacity),
+#            Latitude = median(as.numeric(Latitude)),
+#            Longitude = median(as.numeric(Longitude)),
+#            correlation = cor(Cap_Fac,fleet_CF, method=corm),
+#            Dispatched = sum(gen),
+#            Revenue = sum(Revenue),
+#            Capture_Price = Revenue/Dispatched,
+#            Cap_Fac = mean(Cap_Fac),
+#            #fleet_cap = mean(fleet_cap),
+#            #fleet_gen = mean(fleet_gen),
+#            #fleet_CF = mean(fleet_CF)
             
-  ) %>%
-  ungroup() %>%
-  mutate(Installation=case_when(grepl("CRR2",ID)~"post2019",
-                                grepl("CYP",ID)~"post2019",
-                                #grepl("CYP2",ID)~"post2019",
-                                grepl("FMG1",ID)~"post2019",
-                                grepl("GRZ1",ID)~"post2019",
-                                grepl("HHW1",ID)~"post2019",
-                                grepl("HLD1",ID)~"post2019",
-                                grepl("JNR",ID)~"post2019",
-                                grepl("RIV1",ID)~"post2019",
-                                grepl("RTL1",ID)~"post2019",
-                                grepl("WHE1",ID)~"post2019",
-                                grepl("WHT",ID)~"post2019",
-                                grepl("WRW1",ID)~"post2019",
-                                grepl("Anzac",ID)~"Potential",
-                                grepl("BisonLake",ID)~"Potential",
-                                grepl("ChainLakes",ID)~"Potential",
-                                grepl("ClearPrairie",ID)~"Potential",
-                                grepl("Falher",ID)~"Potential",
-                                grepl("GrandeCache",ID)~"Potential",
-                                grepl("Hinton",ID)~"Potential",
-                                grepl("JohnDOr",ID)~"Potential",
-                                grepl("Kehewin",ID)~"Potential",
-                                grepl("LesserSlave",ID)~"Potential",
-                                grepl("PigeonLake",ID)~"Potential",
-                                grepl("SwanHills",ID)~"Potential",
-                                TRUE~"pre2019"
-                                ),
-         )
+#  ) %>%
+#  ungroup() %>%
+#  mutate(Installation=case_when(grepl("CRR2",ID)~"post2019",
+#                                grepl("CYP",ID)~"post2019",
+#                                #grepl("CYP2",ID)~"post2019",
+#                                grepl("FMG1",ID)~"post2019",
+#                                grepl("GRZ1",ID)~"post2019",
+#                                grepl("HHW1",ID)~"post2019",
+#                                grepl("HLD1",ID)~"post2019",
+#                                grepl("JNR",ID)~"post2019",
+#                                grepl("RIV1",ID)~"post2019",
+#                                grepl("RTL1",ID)~"post2019",
+#                                grepl("WHE1",ID)~"post2019",
+#                                grepl("WHT",ID)~"post2019",
+#                                grepl("WRW1",ID)~"post2019",
+#                                grepl("Anzac",ID)~"Potential",
+#                                grepl("BisonLake",ID)~"Potential",
+#                                grepl("ChainLakes",ID)~"Potential",
+#                                grepl("ClearPrairie",ID)~"Potential",
+#                                grepl("Falher",ID)~"Potential",
+#                                grepl("GrandeCache",ID)~"Potential",
+#                                grepl("Hinton",ID)~"Potential",
+#                                grepl("JohnDOr",ID)~"Potential",
+#                                grepl("Kehewin",ID)~"Potential",
+#                                grepl("LesserSlave",ID)~"Potential",
+#                                grepl("PigeonLake",ID)~"Potential",
+#                                grepl("SwanHills",ID)~"Potential",
+#                                TRUE~"pre2019"
+#                                ),
+#         )
 
-SiteProf <- readRDS("SitesProfiles.RData") %>%
-  mutate(time = ymd_h(paste0(year,"-",month,"-",day," ",hour)),
-         sim_gen = Capacity * Cap_Fac) %>%
-  subset(., select = c(time,ID,Latitude,Longitude,Capacity,sim_gen,Cap_Fac,Installation))
+#SiteProf <- readRDS("SitesProfiles.RData") %>%
+#  mutate(time = ymd_h(paste0(year,"-",month,"-",day," ",hour)),
+#         sim_gen = Capacity * Cap_Fac) %>%
+#  subset(., select = c(time,ID,Latitude,Longitude,Capacity,sim_gen,Cap_Fac,Installation))
 
-alberta_corr <- SiteProf %>%
-  group_by(time) %>%
-  mutate(fleet_gen = sum(sim_gen),
-         fleet_cap = sum(Capacity),
-         fleet_CF = fleet_gen/fleet_cap) %>%
-  ungroup() %>%
-  na.omit() %>%
-  group_by(ID) %>%
-  summarize(Capacity = median(Capacity),
-            Latitude = median(as.numeric(Latitude)),
-            Longitude = median(as.numeric(Longitude)),
-            correlation = cor(Cap_Fac,fleet_CF, method=corm),
+#alberta_corr <- SiteProf %>%
+#  group_by(time) %>%
+#  mutate(fleet_gen = sum(sim_gen),
+#         fleet_cap = sum(Capacity),
+#         fleet_CF = fleet_gen/fleet_cap) %>%
+#  ungroup() %>%
+#  na.omit() %>%
+#  group_by(ID) %>%
+#  summarize(Capacity = median(Capacity),
+#            Latitude = median(as.numeric(Latitude)),
+#            Longitude = median(as.numeric(Longitude)),
+#            correlation = cor(Cap_Fac,fleet_CF, method=corm),
             #Dispatched = sum(gen),
             #Revenue = sum(Revenue),
             #Capture_Price = Revenue/Dispatched,
@@ -384,38 +335,38 @@ alberta_corr <- SiteProf %>%
             #fleet_gen = mean(fleet_gen),
             #fleet_CF = mean(fleet_CF)
             
-  ) %>%
-  ungroup() %>%
-  mutate(Built=case_when(grepl("BUL",ID)~"post2015",
-                         grepl("CRR2",ID)~"post2015",
-                         grepl("CYP",ID)~"post2015",
-                         #grepl("CYP2",ID)~"post2015",
-                         grepl("FMG1",ID)~"post2015",
-                         grepl("GRZ1",ID)~"post2015",
-                         grepl("HHW1",ID)~"post2015",
-                         grepl("HLD1",ID)~"post2015",
-                         grepl("JNR",ID)~"post2015",
-                         grepl("RIV1",ID)~"post2015",
-                         grepl("RTL1",ID)~"post2015",
-                         grepl("WHE1",ID)~"post2015",
-                         grepl("WHT",ID)~"post2015",
-                         grepl("WRW1",ID)~"post2015",
-                         grepl("Anzac",ID)~"Potential",
-                         grepl("BisonLake",ID)~"Potential",
-                         grepl("ChainLakes",ID)~"Potential",
-                         grepl("ClearPrairie",ID)~"Potential",
-                         grepl("Falher",ID)~"Potential",
-                         grepl("FortSaskatchewan",ID)~"Potential",
-                         grepl("GrandeCache",ID)~"Potential",
-                         grepl("Hinton",ID)~"Potential",
-                         grepl("JohnDOr",ID)~"Potential",
-                         grepl("Kehewin",ID)~"Potential",
-                         grepl("LesserSlave",ID)~"Potential",
-                         grepl("PigeonLake",ID)~"Potential",
-                         grepl("SwanHills",ID)~"Potential",
-                         TRUE~"pre2015"
-  ),
-  )
+#  ) %>%
+#  ungroup() %>%
+#  mutate(Built=case_when(grepl("BUL",ID)~"post2015",
+#                         grepl("CRR2",ID)~"post2015",
+#                         grepl("CYP",ID)~"post2015",
+#                         #grepl("CYP2",ID)~"post2015",
+#                         grepl("FMG1",ID)~"post2015",
+#                         grepl("GRZ1",ID)~"post2015",
+#                         grepl("HHW1",ID)~"post2015",
+#                         grepl("HLD1",ID)~"post2015",
+#                         grepl("JNR",ID)~"post2015",
+#                         grepl("RIV1",ID)~"post2015",
+#                         grepl("RTL1",ID)~"post2015",
+#                         grepl("WHE1",ID)~"post2015",
+#                         grepl("WHT",ID)~"post2015",
+#                         grepl("WRW1",ID)~"post2015",
+#                         grepl("Anzac",ID)~"Potential",
+#                         grepl("BisonLake",ID)~"Potential",
+#                         grepl("ChainLakes",ID)~"Potential",
+#                         grepl("ClearPrairie",ID)~"Potential",
+#                         grepl("Falher",ID)~"Potential",
+#                         grepl("FortSaskatchewan",ID)~"Potential",
+#                         grepl("GrandeCache",ID)~"Potential",
+#                         grepl("Hinton",ID)~"Potential",
+#                         grepl("JohnDOr",ID)~"Potential",
+#                         grepl("Kehewin",ID)~"Potential",
+#                         grepl("LesserSlave",ID)~"Potential",
+#                         grepl("PigeonLake",ID)~"Potential",
+#                         grepl("SwanHills",ID)~"Potential",
+#                         TRUE~"pre2015"
+#  ),
+#  )
 
 AuroraProf <- readRDS("AuroraProfiles.RData") 
 
@@ -482,14 +433,15 @@ setwd("D:/Documents/GitHub/AuroraEval")
 ################################################################################
 
 AB <- ggplot() + 
-  geom_tile(data = wind_profile, 
+  geom_raster(data = wind_profile, 
             aes(x = Longitude, y = Latitude, fill = Wind)) +
   geom_polygon(data = alberta_ellipsoid1, 
                aes(x = long, y = lat, group = group), 
                fill = "transparent", colour = "black") +
   scale_fill_gradientn(colors = matlab.like2(100),
                        limits=c(3,10),oob=squish, 
-                       name = "Mean wind speed \nat 80m height \n(m/s)") +
+                       name = "Mean annual\nwind speed\nat 80m height \n(m/s)") +
+  coord_fixed(ratio=5/3) +
   theme(panel.background = element_rect(fill = "transparent"),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -502,9 +454,13 @@ AB <- ggplot() +
         legend.text = element_text(size = legText),
         legend.title = element_text(size = legTitle)) 
 
+#options(repr.plot.width = 2, repr.plot.height = 3)
+
 AB
 setwd("D:/Documents/GitHub/AuroraEval")
-ggsave(path = "images", filename = "WindSpeeds.png", bg = "transparent")
+ggsave(path = "images", filename = "WindSpeeds.png", bg = "transparent",
+       height = 25, width = 15, units = "cm"
+       )
 
 ################################################################################
 ################################################################################
@@ -558,17 +514,19 @@ AB2 <- ggplot() +
   #                       name = "Mean wind speed \nat 80m height \n(m/s)") +
   scale_fill_gradient2(low="deepskyblue", mid="forestgreen", high="yellow", midpoint=13,
                       limits=c(3.5,25), na.value="red",
-                      #                      oob=squish, 
-                      name = "Mean wind speed \nat 80m height (m/s)"
+                                            oob=squish, 
+                      name = "Mean annual\nwind speed \nat 80m height \n(m/s)"
   )+
   #  scale_fill_gradientn(colors = c("navy","turquoise1","green",
   #                                  "yellow","orangered","red4"),
   #                       values=c(3.5,5,6.5,7.5,8.5,10),oob=squish, 
   #                       name = "Mean wind speed \nat 80m height (m/s)") +
+  coord_fixed(ratio=5/3) +
   theme(panel.background = element_rect(fill = "transparent"),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         plot.background = element_rect(fill = "transparent", color = NA),
+        plot.margin=grid::unit(c(-1,0,-1,0), "cm"),
         axis.title = element_blank(),
         axis.text = element_blank(),
         axis.ticks = element_blank(),
@@ -577,13 +535,20 @@ AB2 <- ggplot() +
         legend.text = element_text(size = legText),
         legend.title = element_text(size = legTitle))  
 
+AB2
+setwd("D:/Documents/GitHub/AuroraEval")
+ggsave(path = "images", filename = "AvailableWind.png", bg = "transparent", 
+       dpi = 320,
+       height = 25, width = 15, units = "cm"
+)
+
 ################################################################################
 ################################################################################
 # Map of Alberta with active wind farms
 ################################################################################
 ################################################################################
 #ID_labels <- as.list(active$ID)
-labsa <- c("Built before 2015","Built after 2015")
+labsa <- c("Before 2015","After 2015")
 
 wind_active <- wind_Aurora %>%
   filter(Status == "Active") %>%
@@ -597,13 +562,13 @@ wind_active$Built <- factor(wind_active$Built,
 
 Act_wind <- ggplot(wind_active, aes(x= Longitude, y = Latitude, #label=ID_labels
                                )) + 
-  geom_tile(data = wind_profile, 
+  geom_raster(data = wind_profileAA, 
             aes(x = Longitude, y = Latitude, fill = Wind)) +
   geom_polygon(data = alberta_ellipsoid1, 
                aes(x = long, y = lat, group = group), 
                fill = "transparent", colour = "black") +
   scale_fill_gradientn(colors = matlab.like2(100),
-                       limits=c(3,10),oob=squish, name = "Mean wind speed \nat 80m height \n(m/s)") +
+                       limits=c(3,10),oob=squish, name = "Mean annual\nwind speed \nat 80m height \n(m/s)") +
   geom_point(data = wind_active,
                 aes(x= Longitude, y = Latitude, size = Capacity, color = Built), 
                 shape = 16) +#, color = "black") +
@@ -614,6 +579,7 @@ Act_wind <- ggplot(wind_active, aes(x= Longitude, y = Latitude, #label=ID_labels
                      labels = labsa) +
   guides(color = guide_legend(override.aes = list(size = 4), order = 1)) +
   guides(size = guide_legend(order = 2)) +
+  coord_fixed(ratio=5/3) +
 #  ggtitle("Active Wind Farms") +
   theme(panel.background = element_rect(fill = "transparent"),
         panel.grid.major = element_blank(),
@@ -635,7 +601,9 @@ Act_wind <- ggplot(wind_active, aes(x= Longitude, y = Latitude, #label=ID_labels
 
 Act_wind
 setwd("D:/Documents/GitHub/AuroraEval")
-ggsave(path = "images", filename = "windfarmactive.png", bg = "transparent")
+ggsave(path = "images", filename = "windfarmactive.png", bg = "transparent",
+       dpi = 320,
+       height = 25, width = 15, units = "cm")
 
 ################################################################################
 ################################################################################
@@ -665,6 +633,7 @@ AESO_wind <- AB + geom_point(data = wind_AESO,#wind_farm,
                      labels = labs1) +
   guides(shape = guide_legend(override.aes = list(size = 5))) +
 #  ggtitle("Active and Queued Wind Farms") +
+  coord_fixed(ratio=5/3) +
   theme(panel.background = element_rect(fill = "transparent"),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -684,6 +653,50 @@ AESO_wind <- AB + geom_point(data = wind_AESO,#wind_farm,
 ################################################################################
 
 AESO_wind
+setwd("D:/Documents/GitHub/AuroraEval")
+ggsave(path = "images", filename = "windfarmlocations.png", bg = "transparent",
+       dpi = 320,
+       height = 25, width = 15, units = "cm")
+
+################################################################################
+################################################################################
+# Map of Alberta with queued wind farms
+################################################################################
+################################################################################
+{
+  wind_Queue <- wind_Aurora %>%
+    filter(Status == "Queue") 
+  
+  Queue_wind <- AB + geom_point(data = wind_Queue,#wind_farm,
+                               aes(x= Longitude, y = Latitude, size = Capacity)) + 
+    geom_text(data = wind_Queue,
+                aes(x=Longitude, y = Latitude),
+                label=wind_Queue$ID,
+                size = 2,
+                nudge_y = 0.25,
+                ) +
+    
+    #guides(shape = guide_legend(override.aes = list(size = 5))) +
+    #  ggtitle("Active and Queued Wind Farms") +
+    theme(panel.background = element_rect(fill = "transparent"),
+          panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.title = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          plot.background = element_rect(fill = "transparent", color = NA),
+          plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
+          legend.text = element_text(size = legText),
+          legend.title = element_text(size = legTitle),
+          legend.background = element_rect(fill = "transparent"),
+          legend.key=element_rect(fill = "transparent"),
+          rect = element_rect(fill="transparent")) 
+}
+################################################################################
+# Save map as png
+################################################################################
+
+Queue_wind
 setwd("D:/Documents/GitHub/AuroraEval")
 ggsave(path = "images", filename = "windfarmlocations.png", bg = "transparent")
 
@@ -705,7 +718,8 @@ wind_Aurora1 <- wind_Aurora %>%
 #          desc(Built))
 
 Sim_wind <- AB + geom_point(data = wind_Aurora1,
-                             aes(x= Longitude, y = Latitude, size = Capacity, shape = Status, color = Status)) + 
+                             aes(x= Longitude, y = Latitude, size = Capacity, 
+                                 shape = Status, color = Status)) + 
     geom_text(data = wind_Aurora1,
               aes(x=Longitude, y = Latitude),
               label=wind_Aurora1$ID,
@@ -860,14 +874,15 @@ wind_corr1 <- AB + geom_point(data = alberta_corr,
         rect = element_rect(fill="transparent"))
 
 wind_corr1
+}
 
 setwd("D:/Documents/GitHub/AuroraEval")
 ggsave(path = "images", filename = "Correlation_map_potential.png", bg = "transparent")
-}
+
 ################################################################################
 # Map of Alberta with Aurora wind profile correlations
 ################################################################################
-labs6 <- c("Built before 2015","Built after 2015","Hypothetical Sites")
+{labs6 <- c("Built before 2015","Built after 2015","Hypothetical Sites")
 
 Aurora_corr <- Aurora_corr %>%
   arrange(match(Built, c("Potential","pre2015", "post2015")), 
@@ -911,7 +926,7 @@ wind_corr2 <- AB + geom_point(data = Aurora_corr,
         rect = element_rect(fill="transparent"))
 
 wind_corr2
-
+}
 setwd("D:/Documents/GitHub/AuroraEval")
 ggsave(path = "images", filename = "Aurora_correlation.png", bg = "transparent")
 

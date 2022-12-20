@@ -13,7 +13,7 @@ wind_profile41 <- readRDS("wind_profile41")
 wind_profile <- rbind(wind_profile,wind_profile41)
 
 ggplot() + 
-  geom_tile(data = wind_profile, 
+  geom_raster(data = wind_profile, 
             aes(x = Longitude, y = Latitude, fill = Wind)) +
   scale_fill_gradientn(colors = matlab.like2(100),
                        limits=c(3,10),oob=squish, 

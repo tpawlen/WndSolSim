@@ -89,6 +89,7 @@
 {
   library(tidyverse)
   library(ggplot2)
+  library(ggrepel)
   library(grid)
   library(gtable)
   library(gridExtra)
@@ -107,6 +108,7 @@
   library(rgeos)
   library(raster)
   library(colorRamps)
+  library(viridis)
 #  library(lmtest)
 }
 
@@ -120,76 +122,104 @@
   ################################################################################
   setwd("D:/Documents/Education/Masters Degree/Datasets/Market")
   
-  load("nrgstream_gen.RData") 
-  nrgstream_gen <- nrgstream_gen %>% rename(time=Time)
+  #load("nrgstream_gen.RData") 
+#  nrgstream_gen <- readRDS("nrgstream_gen_corrected.RData")
+#  nrgstream_gen <- nrgstream_gen %>% rename(time=Time)
   
-  nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$gen),] 
-  nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$time),] 
+#  nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$gen),] 
+#  nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$time),] 
 
-  corrected <- nrgstream_gen %>%
-    filter(is.na(Latitude)) %>%
-    mutate(Latitude=case_when(grepl("BRD1",ID) ~ 49.842735,
-                              grepl("BUR1",ID) ~ 49.814877,
-                              grepl("CLR",ID) ~ 50.032911,
-                              grepl("CLY",ID) ~ 49.840967,
-                              grepl("CHP1",ID) ~ 50.22189,
-                              grepl("COL1",ID) ~ 49.833218,
-                              grepl("CRD",ID) ~ 49.807,
-                              grepl("CRR2",ID) ~ 49.55891,
-                              grepl("FMG1",ID) ~ 49.66334,
-                              grepl("KKP",ID) ~ 53.469986,
-                              grepl("MON1",ID) ~ 49.833144,
-                              grepl("NMK1",ID) ~ 51.026118,
-                              grepl("RIV1",ID) ~ 49.53245,
-                              grepl("STR",ID) ~ 51.033273,
-                              grepl("TVS1",ID) ~ 50.27324,
-                              grepl("VCN1",ID) ~ 50.0975,
-                              grepl("VXH1",ID) ~ 50.095223,
-                              grepl("WEF1",ID) ~ 49.65405,
-                              grepl("WHT",ID) ~ 49.64029),
-           Longitude=case_when(grepl("BRD1",ID) ~ -111.537891,
-                               grepl("BUR1",ID) ~ -111.543323,
-                               grepl("CHP1",ID) ~ -110.437106,
-                               grepl("CLR",ID) ~ -113.484369,
-                               grepl("CLY",ID) ~ -110.356864,
-                               grepl("COL1",ID) ~ -112.97448,
-                               grepl("CRD",ID) ~ -112.578,
-                               grepl("CRR2",ID) ~ -113.983,
-                               grepl("FMG1",ID) ~ -111.122,
-                               grepl("KKP",ID) ~ -113.61337,
-                               grepl("MON1",ID) ~ -112.974231,
-                               grepl("NMK1",ID) ~ -113.163017,
-                               grepl("RIV1",ID) ~ -113.977,
-                               grepl("STR",ID) ~ -113.371296,
-                               grepl("TVS1",ID) ~ -112.73059,
-                               grepl("VCN1",ID) ~ -112.84841,
-                               grepl("VXH1",ID) ~ -112.149936,
-                               grepl("WEF1",ID) ~ -111.515812,
-                               grepl("WHT",ID) ~ -111.291))
+#  corrected <- nrgstream_gen %>%
+#    filter(is.na(Latitude)) %>%
+#    mutate(Latitude=case_when(grepl("BRD1",ID) ~ 49.842735,
+#                              grepl("BUR1",ID) ~ 49.814877,
+#                              grepl("CLR",ID) ~ 50.032911,
+#                              grepl("CLY",ID) ~ 49.840967,
+#                              grepl("CHP1",ID) ~ 50.22189,
+#                              grepl("COL1",ID) ~ 49.833218,
+#                              grepl("CRD",ID) ~ 49.807,
+#                              grepl("CRR2",ID) ~ 49.55891,
+#                              grepl("FMG1",ID) ~ 49.66334,
+#                              grepl("KKP",ID) ~ 53.469986,
+#                              grepl("MON1",ID) ~ 49.833144,
+#                              grepl("NMK1",ID) ~ 51.026118,
+#                              grepl("RIV1",ID) ~ 49.53245,
+#                              grepl("STR",ID) ~ 51.033273,
+#                              grepl("TVS1",ID) ~ 50.27324,
+#                              grepl("VCN1",ID) ~ 50.0975,
+#                              grepl("VXH1",ID) ~ 50.095223,
+#                              grepl("WEF1",ID) ~ 49.65405,
+#                              grepl("WHT",ID) ~ 49.64029),
+#           Longitude=case_when(grepl("BRD1",ID) ~ -111.537891,
+#                               grepl("BUR1",ID) ~ -111.543323,
+#                               grepl("CHP1",ID) ~ -110.437106,
+#                               grepl("CLR",ID) ~ -113.484369,
+#                               grepl("CLY",ID) ~ -110.356864,
+#                               grepl("COL1",ID) ~ -112.97448,
+#                               grepl("CRD",ID) ~ -112.578,
+#                               grepl("CRR2",ID) ~ -113.983,
+#                               grepl("FMG1",ID) ~ -111.122,
+#                               grepl("KKP",ID) ~ -113.61337,
+#                               grepl("MON1",ID) ~ -112.974231,
+#                               grepl("NMK1",ID) ~ -113.163017,
+#                               grepl("RIV1",ID) ~ -113.977,
+#                               grepl("STR",ID) ~ -113.371296,
+#                               grepl("TVS1",ID) ~ -112.73059,
+#                               grepl("VCN1",ID) ~ -112.84841,
+#                               grepl("VXH1",ID) ~ -112.149936,
+#                               grepl("WEF1",ID) ~ -111.515812,
+#                               grepl("WHT",ID) ~ -111.291),
+#           Installation_Year=case_when(grepl("CRR2",ID)~2019,
+#                                       grepl("CYP",ID)~2022,
+#                                       #grepl("CYP2",ID)~"post2019",
+#                                       grepl("FMG1",ID)~2022,
+#                                       grepl("GDP1",ID)~2022,
+#                                       grepl("GRZ1",ID)~2022,
+#                                       grepl("HHW1",ID)~2022,
+#                                       grepl("HLD1",ID)~2022,
+#                                       grepl("JNR",ID)~2022,
+#                                       grepl("RIV1",ID)~2019,
+#                                       grepl("RTL1",ID)~2021,
+#                                       grepl("WHE1",ID)~2022,
+#                                       grepl("WHT1",ID)~2019,
+#                                       grepl("WHT2",ID)~2021,
+#                                       grepl("WRW1",ID)~2021,),
+#           Installation_Year=case_when(is.na(Installation)~"pre2019",
+#                                         TRUE~"post2019"))
   
-  nocorrection <- nrgstream_gen %>%
-    filter(!is.na(Latitude))
+#  nocorrection <- nrgstream_gen %>%
+#    filter(!is.na(Latitude))
   
-  nrgstream_gen <- rbind(corrected,nocorrection)
+#  nrgstream_gen <- rbind(corrected,nocorrection)
   
-  rm(corrected,nocorrection)
+#  rm(corrected,nocorrection)
+#  saveRDS(nrgstream_gen, file = "nrgstream_gen_corrected.RData")
     
-  demand <- nrgstream_gen %>%
-    group_by(time) %>%
-    summarise(Demand = median(Demand), 
-              Price = median(Price),
-              AIL = median(AIL))
-  sub_samp<-filter(nrgstream_gen, time >= as.Date("2017-01-1"))
-  rm(nrgstream_gen)
+#  demand <- nrgstream_gen %>%
+#    group_by(time) %>%
+#    summarise(Demand = median(Demand), 
+#              Price = median(Price),
+#              AIL = median(AIL))
+  
+#  saveRDS(demand, file = "nrgstream_demand.RData")
+  demand <- readRDS("nrgstream_demand.RData")
+  
+#  sub_samp<-filter(nrgstream_gen, time >= as.Date("2017-01-1"))
+  
+#  saveRDS(sub_samp, file = "nrgstream_sub_samp.RData")
+  sub_samp <- readRDS("nrgstream_sub_samp.RData")
+  
+#  rm(nrgstream_gen)
   
   #    merit <- read_csv("student_data_2021_Jul_23_14_09.csv.gz")
   #    merit <- read_csv("student_data_2022_May_05_15_19.csv.gz")
   #    saveRDS(merit, file = "Leach_MeritData.RData")
-  merit <- readRDS("Leach_MeritData.RData")
-  #    load("Leach_MeritData.RData")
-  merit_filt <- filter(merit, 
-                       date >= as.Date("2017-01-1"))
-  rm(merit)
+#  merit <- readRDS("Leach_MeritData.RData")
+#  merit_filt <- filter(merit, 
+#                       date >= as.Date("2017-01-1"))
+#  saveRDS(merit_filt, file = "Leach_MeritData_filt.RData")
+  merit_filt <- readRDS("Leach_MeritData_filt.RData")
+#  rm(merit)
   load("forecast_data.RData")
   
   setwd("D:/Documents/GitHub/AuroraEval")
@@ -233,8 +263,8 @@
 # Connect to SQL
 ################################################################################
 
-{ 
-  DB <- "Nov_09_2022"
+{     
+  DB <- "Nov_30_2022"
 # Connect to SQLEXPRESS database
 ################################################################################
   con <- dbConnect(odbc(),
@@ -244,7 +274,7 @@
                    UID = "admin",
                    PWD = "Aurora2022!",
                    Port = 49172)
-  
+  {  
   # Connect to MSSQL database
   ################################################################################
 #  con <- dbConnect(odbc(),
@@ -255,7 +285,7 @@
 #                   PWD = "MSSQL704910",
 #                   Port = 1434)
   
-  {  
+  
   # Connect to MySQL database
   ################################################################################
 #    con <- dbConnect(RMariaDB::MariaDB(),
@@ -265,128 +295,54 @@
 #                     host='192.168.0.139',
 #                     dbname = DB,
 #                     port = 3306)
-
-
+}
+{
 ################################################################################
 # Load simulation Data
 ################################################################################
 
     # Write data to environment and set variables
     ################################################################################
-    Hr <- dbReadTable(con,'ResourceGroupHour1')
+    Hr <- dbGetQuery(con,"SELECT Run_ID,Name,ID,Capacity_Factor,Energy_Revenue,
+                             Time_Period,Output_MWH,Output,Report_Month,Report_Day,
+                             Report_Hour,Report_Year,Capacity FROM ResourceGroupHour1")
     Month <- dbReadTable(con,'ResourceGroupMonth1')
     Year  <- dbReadTable(con,'ResourceGroupYear1')
-    ZoneHour <- dbReadTable(con,'ZoneHour1')
+    ZoneHour <- dbGetQuery(con,"SELECT Run_ID,Name,Imports,Exports,Condition,
+                           Price,Demand,Marginal_Resource,  
+                           Time_Period,Report_Month,Report_Year FROM ZoneHour1")
+    Month <- dbReadTable(con,'ResourceGroupMonth1')
     ResourceYr <- dbReadTable(con,'ResourceYear1')
-    #ResourceHr <- dbReadTable(con,'ResourceHour1')
     ResourceHr <- dbGetQuery(con,"SELECT Run_ID,Name,Primary_Fuel,Capacity_Factor,
-                             Condition,Time_Period,Output_MWH,Capacity,Report_Year FROM ResourceHour1")
-     #StackHr <- dbReadTable(con,'ResourceStackHour1')
+                             Time_Period,Output_MWH,Capacity,ID,Condition,Revenue,
+                             Report_Year FROM ResourceHour1")
+    #StackHr <- dbReadTable(con,'ResourceStackHour1')
     StackYr <- dbReadTable(con,'ResourceStackYear1')
-    
-    #LTRes <- dbReadTable(con,'LTResValue1')
-    #LTMarg <- dbReadTable(con,'LTMargResLog1')
-    #LTCap <- dbReadTable(con,'LTCapacLog1')
-    Build <- dbReadTable(con,'LTBuildReport1') # Run this line if doing LTCE; otherwise skip
     #Study <- dbReadTable(con,'StudyLog1')
     #Link <- dbReadTable(con,'LinkYear1')
     #Fuel <- dbReadTable(con,'FuelYear1')
     
-    # Set location where the following codes are found
-    ################################################################################
-    setwd("D:/Documents/GitHub/AuroraEval")
+    #LTRes <- dbReadTable(con,'LTResValue1')
+    #LTMarg <- dbReadTable(con,'LTMargResLog1')
+    #LTCap <- dbReadTable(con,'LTCapacLog1')
+#    Build <- dbGetQuery(con,"SELECT Name,Run_ID,LT_Iteration,Time_Period,Fuel_Type,
+#                        Units_Built,Max_Limit_Slack,Capacity_Built
+#                        FROM LTBuildReport1")
+    #Value <- dbGetQuery(con,"SELECT * FROM LTResValue1", n=3)
+#    Value <- dbGetQuery(con,"SELECT Run_ID,LT_Iteration,Res_Name,Input_New_Res_ID,
+#                        Begin_Year,Fuel_Type,In_System,Capacity,NPV,RLV,
+#                        NPV_Energy,RLV_Energy FROM LTResValue1")
+    
+# Set location where the following codes are found
+################################################################################
+#    setwd("D:/Documents/GitHub/AuroraEval")
     #write.csv(Study, file=paste0("StudyLog_",DB,".csv"))
     
-    source("aeso_sim_comp.R")
-    source("sim_eval.R")
-    source("aeso_eval.R")
+#    source("aeso_sim_comp.R")
+#    source("sim_eval.R")
+#    source("aeso_eval.R")
     
     {
-      Yr4Sp <- list(2022,2023,2024,2025)
-      Yr2Sp <- list(2020,2021)
-      
-      # Abbreviations for Case Studies
-      BC <- "Base Case"
-      MS  <- "Minimum Solar Constraint"
-      LCT <- "Low Carbon Tax"
-      HS <- "Hypothetical Sites"
-      IR <- "Incr Heat Rate"
-      HREB <- "Heat Rate and Extreme Bid Factors"
-      
-      # Set limits for plots to be consistent
-      ylimit <- max(Hr$Output_MWH) + max(ZoneHour$Imports)
-      
-      # Set legend variables
-      ################################################################################
-      colours = c("darkslateblue", "grey", "darkslategrey", "coral4", "goldenrod4", 
-                  "dodgerblue", "forestgreen", "gold", "darkolivegreen1", "cyan")
-      colours1 = c("darkslateblue", "black", "grey", "darkslategrey", "coral4", 
-                   "goldenrod4", "darkcyan", "dodgerblue", "forestgreen", "gold", 
-                   "cyan") #11 colours
-      colours2 = c("black", "grey", "darkslategrey", "coral4", "goldenrod4", 
-                   "dodgerblue", "darkcyan", "forestgreen", "gold", "cyan") #10 colours
-      colours3 = c("forestgreen", "gold", "darkslategrey", "goldenrod4", "cyan", 
-                   "dodgerblue")
-      colours4 = c("forestgreen","gold","cyan","dodgerblue","darkorange1","goldenrod4",
-                   "darkslategrey","darkslategrey") #8 colours
-      colours4a = c("forestgreen","gold","cyan","dodgerblue","goldenrod4",
-                   "darkslategrey","darkslategrey") #7 colours
-      colours5 = c("darkslateblue", "black", "grey", "darkslategrey", "coral4", 
-                   "goldenrod4", "darkorange1", "darkcyan", "dodgerblue", 
-                   "forestgreen", "gold", "cyan") #12 colours
-      colours5a = c("black", "grey", "darkslategrey", "coral4", 
-                   "goldenrod4", "darkorange1", "darkcyan", "dodgerblue", 
-                   "forestgreen", "gold", "cyan") #11 colours
-      colours5b = c("black", "grey", "darkslategrey", "coral4", 
-                    "goldenrod4", "darkcyan", "dodgerblue", 
-                    "forestgreen", "gold", "cyan") #10 colours
-      colours5c = c("darkslateblue", "black", "grey", "darkslategrey", "coral4", 
-                   "goldenrod4", "darkorange1","lightsalmon", "darkcyan", "dodgerblue", 
-                   "forestgreen", "gold", "cyan","blue") #13 colours
-      colours5d = c("black", "grey", "darkslategrey", "coral4", 
-                    "goldenrod4", "darkorange1","lightsalmon", "darkcyan", "dodgerblue", 
-                    "forestgreen", "gold", "cyan","blue") #12 colours
-      colours6 = c("black", "grey", "darkslategrey", "coral4", 
-                   "goldenrod4", "darkorange1","lightsalmon", "darkcyan", "dodgerblue", 
-                   "forestgreen", "gold", "cyan") #12 colours
-      colours6a = c("black", "grey", "darkslategrey", "coral4", 
-                   "goldenrod4", "darkcyan", "dodgerblue", 
-                   "forestgreen", "gold", "cyan") #10 colours
-      
-      # Custom scale fills to tie colours to specific resources
-      ################################################################################
-      scale_fill_output <- function(...){
-        ggplot2:::manual_scale(
-          'fill', 
-          values = setNames(c("darkslateblue","black", "grey", "darkslategrey", 
-                              "coral4","goldenrod4","darkorange1", "lightsalmon", 
-                              "firebrick1", "darkcyan", "dodgerblue", 
-                              "chartreuse","forestgreen", "gold", "cyan"), 
-                            c("IMPORT","COAL","NGCONV","NGCC","COGEN","SCGT",
-                              "CC_BLEND","SC_BLEND","H2",
-                              "HYDRO","OTHER","UR","WIND","SOLAR","STORAGE")), 
-          ...
-        )
-      }
-      
-      scale_fill_built <- function(...){
-        ggplot2:::manual_scale(
-          'fill', 
-          values = setNames(c("black", 
-                              "darkslategrey", "darkslategrey", 
-                              "coral4","goldenrod4", "goldenrod3",
-                              "darkorange1", "lightsalmon", "firebrick1", 
-                              "darkcyan", "dodgerblue", 
-                              "chartreuse","forestgreen", "gold", "cyan"), 
-                            c("COAL", 
-                              "Gas", "Gas1", 
-                              "Gas0","Gas2","Gas3",
-                              "GasB_CC","GasB_SC","H2",
-                              "WAT","OT","UR","WND","SUN","PS")), 
-          ...
-        )
-      }
-
     # Converts the date and time and identifies the week when applicable
     ################################################################################
     {
@@ -409,9 +365,9 @@
       ZH <- ZoneHour %>%
         filter(Name == "WECC_Alberta") %>%
         filter(Condition == "Average") %>%
-        subset(., select = c(date, Price, Baseline_Demand, Demand, Demand_Total,
-                             Net_Load, Net_Load_Total, Marginal_Resource, 
-                             Smp_Max_Date_Time, Smp_Max_Demand, Smp_Max_Capacity, 
+        subset(., select = c(date, Price, Demand, Marginal_Resource,
+                             #Net_Load, Baseline_Demand, Net_Load_Total, Demand_Total, 
+                             #Smp_Max_Date_Time, Smp_Max_Demand, Smp_Max_Capacity, 
                              Run_ID, Imports, Exports))
       
       ZoneH <- ZoneHour %>%
@@ -447,6 +403,35 @@
     }
 }
 
+
+setwd("D:/Documents/GitHub/AuroraEval")
+
+# Save simulation results to Rdata
+################################################################################
+
+# Use this if Standard Zonal
+save(ResourceHr,ResourceYr,Hour,Month,Year,ZoneHour,StackYr,Hr,ZoneHour,
+     ZoneH,ZH,Export,Import, file = paste0(DB,".RData"))
+
+# Use this if LTCE
+save(ResourceHr,ResourceYr,Hour,Month,Year,ZoneHour,Value,StackYr,Hr,ZoneHour,
+     ZoneH,ZH,Export,Import,Build, file = paste0(DB,".RData"))
+
+# Load the simulation you want to analyze
+load("Dec_08_2022.RData") # LTCE with hypothetical sites, 2nd Week
+  DB <- "Dec_08_2022"
+load("Dec_12_2022.RData") # LTCE without hypothetical sites, 2nd Week
+  DB <- "Dec_12_2022"
+load("Dec_13_2022.RData") # LTCE without offsets, with hypothetical sites, 2nd Week
+  DB <- "Dec_13_2022"
+load("Dec_06_2022.RData") # Standard Zonal without hypothetical sites, everyday
+  DB <- "Dec_06_2022"
+
+source("aeso_sim_comp.R")
+source("sim_eval.R")
+source("aeso_eval.R")
+source("supporting_Aurora.R")
+
 # Specific functions I use most often to evaluate a simulation
 ################################################################################
 year_price(2021,BC)
@@ -465,15 +450,15 @@ Sample_output(2021,06,01,BC)
 
 Fossil_line(2021,06,01,BC)
 
-seas_price(2020,2021,BC)
+seas_price(2020,2022,BC)
 
 Weekly_line(2021,06,01,BC)
 
-tot_gen(2020,2021,BC)
+tot_gen(2020,2022,BC)
 
-comp_dur(2018,2021,BC)
+comp_dur(2019,2022,BC)
 
-load_dur(2018,2021,BC)
+load_dur(2019,2022,BC)
 
 cap_fac_difference(2020,2021,"WIND",BC)
 
@@ -487,6 +472,8 @@ capacity_factor(2021,"WIND",BC)
 
 capturePrice(2021,"WIND",BC)
 
+Revenue("Wind",BC)
+
 # Functions specific to LTCE
 ################################################################################
 
@@ -496,5 +483,115 @@ EvalPerc(Year,BC)
 
 Eval_diffcap(Year,BC)
 
-
+BuildUnits2(BC,"WND")
  
+CapBuild2(BC,"WND")
+CapBuild2(BC,"SUN")
+CapBuild2(BC,"PS")
+CapBuild2(BC,"Gas0")
+CapBuild2(BC,"Gas1","Gas2")
+CapBuild2(BC,"Gas3")
+CapBuild2(BC,"GasB_SC")
+CapBuild2(BC,"GasB_CC")
+CapBuild2(BC,"H2")
+
+# Used in thesis
+################################################################################
+
+# Chapter 3
+correlation(2021,2021)
+  imsave("Correlation")
+correlation_hypoth(2021,2021)[2]
+  imsave("Correlation_hypothetical")
+correlation_hypoth(2021,2021)[4]
+  imsave("IOD_hy_map")
+  
+# Chapter 4
+# Using Dec_06_2022
+load_dur(2017,2021,BC)
+  imsave("BC_load_duration")
+tot_cap(2020,2021,BC)
+  imsave("BC_Capacity")
+tech_cap(2020,2021,BC)
+  imsave("BC_CF")
+market_share(2020,2021,BC)
+  imsave("BC_marketshare")
+tot_gen(2020,2021,BC)
+  imsave("BC_total_generation")
+
+comp_dur(2020,2021,BC)
+  imsave("BC_price_duration")
+price_interval(2020,2021,BC)
+  imsave("BC_poolprice")
+
+# Save tables from simulations to compare
+################################################################################
+  setwd("D:/Documents/GitHub/AuroraEval")
+
+# Standard Zonal without hypothetical sites, everyday (Dec_06_2022)
+load("Dec_06_2022.RData") # Standard Zonal without hypothetical sites, everyday
+
+CF_AllR(BC)
+  
+# LTCE and hypothetical sites (Dec_08_2022)
+load("Dec_08_2022.RData")
+  HS_ZH <- ZoneH # ZoneH from Dec_08_2022
+  HS_ResourceHr <- ResourceHr
+  HS_Build <- Build
+  
+  ZoneH <- HS_ZH
+  ResourceHr <- HS_ResourceHr
+  Build <- HS_Build
+  
+CapPot2(BC)
+  imsave("Hypo_Build") 
+CF_NR("Wind","Wind",BC) # Need "ResourceHr
+  imsave("HS_CF")
+Revenue2.0(BC) # Need "ResourceHr"
+  imsave("HS_Revenue")
+monthly_price(BC)
+  imsave("HS_poolprice")
+Sim_corr(2035,BC)
+  imsave("HS_corr")
+Build_Map(BC) # Need "Build"
+  mapsave("HS_map")
+
+# LTCE and no hypothetical sites (Dec_12_2022)
+load("Dec_12_2022.RData")
+  NoHS_ZH <- ZoneH # ZoneH from Dec_12_2022
+  NoHS_ResourceHr <- ResourceHr
+  NoHS_Build <- Build
+  
+  ZoneH <- NoHS_ZH
+  ResourceHr <- NoHS_ResourceHr
+  Build <- NoHS_Build
+  
+simcomp_monthly_price(BC)
+  imsave("NoHS_poolprice")
+Revenue2.0(BC) # Need "ResourceHr"
+  imsave("NoHS_Revenue")
+Build_Map(BC)
+  mapsave("NoHS_map")
+
+# LTCE and no offsets, with hypothetical sites (Dec_13_2022)
+load("Dec_13_2022.RData")
+  NoOffset_ZH <- ZoneH # ZoneH from Dec_13_2022
+  NoOffset_ResourceHr <- ResourceHr
+  NoOffset_Build <- Build
+  
+  ZoneH <- NoOffset_ZH
+  ResourceHr <- NoOffset_ResourceHr
+  Build <- NoOffset_Build
+    
+simcomp_monthly_price2(BC)
+  imsave("NoOff_poolprice")
+Revenue2.0(BC) # Need "ResourceHr"
+  imsave("NoOffset_Revenue")
+CapPot2(BC) # Need "Build"
+  imsave("NoOffset_Build") 
+Eval_diffcap(Year,BC) +
+  theme(plot.title = element_blank())
+  imsave("NoOffset_Buildshare")
+Build_Map(BC)
+  mapsave("NoOffset_map")
+  
