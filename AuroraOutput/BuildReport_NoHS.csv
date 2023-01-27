@@ -1,0 +1,57 @@
+,,,,,
+New Resource ID,New Resource Name,Year Capacity Built,"Number 
+of Units 
+Built",Number of Available Units Left Unbuilt,"Capacity 
+Built 
+(MW)"
+NewWind_P1853,Buffalo Atlee Cluster,2023,1,0,49
+NewWind_P2247,Buffalo Plains MPC Wind,2023,1,0,466
+NewWind_P2342,Bull Trail Wind,2024,0.6,1.4,158
+NewWind_P2342,Bull Trail Wind,2025,1.2,0.8,306
+NewWind_P2342,Bull Trail Wind,2027,2,0,500
+NewWind_P2342,Bull Trail Wind,2028,1.5,0.5,383
+NewWind_P2353,Castle Meridian Wind,2024,3.1,0.9,70
+NewWind_P2353,Castle Meridian Wind,2025,4,0,90
+NewWind_P2353,Castle Meridian Wind,2026,4,0,90
+NewWind_P2353,Castle Meridian Wind,2027,0.1,3.9,2
+NewWind_P2353,Castle Meridian Wind,2039,3.6,0.4,80
+NewWind_P2353,Castle Meridian Wind,2040,0.2,3.8,5
+NewWind_P1567,EDPR Sharp Hills Wind Farm,2023,1,0,297
+NewWind_P1567,EDPR Sharp Hills Wind Farm,2024,0.8,2.2,228
+NewWind_P1567,EDPR Sharp Hills Wind Farm,2025,0.8,2.2,236
+NewWind_P1567,EDPR Sharp Hills Wind Farm,2026,1,2,297
+NewWind_P1567,EDPR Sharp Hills Wind Farm,2027,1.7,1.3,516
+NewWind_P1567,EDPR Sharp Hills Wind Farm,2028,1,2,297
+NewWind_P1567,EDPR Sharp Hills Wind Farm,2029,0.7,2.3,211
+NewWind_P1567,EDPR Sharp Hills Wind Farm,2034,1,2,297
+NewWind_P1567,EDPR Sharp Hills Wind Farm,2035,0.1,2.9,39
+NewWind_P2137,Enerfin Winnifred MPC Wind,2025,1,2,128
+NewWind_P2137,Enerfin Winnifred MPC Wind,2028,1,2,128
+NewWind_P2237,Forty Mile Wind,2023,1,0,266
+NewWind_P2237,Forty Mile Wind,2029,1,2,266
+NewWind_P2398,Invenergy Schuler Wind,2025,0.7,2.3,112
+NewWind_P2398,Invenergy Schuler Wind,2026,1,2,150
+NewWind_P2398,Invenergy Schuler Wind,2027,2,1,300
+NewWind_P2398,Invenergy Schuler Wind,2028,0,3,4
+NewWind_P2398,Invenergy Schuler Wind,2038,1,2,150
+NewWind_P1885,Joss Wind Northern Lights WAGF,2024,1.6,0.4,634
+NewWind_P1885,Joss Wind Northern Lights WAGF,2025,0.8,1.2,317
+NewWind_P1885,Joss Wind Northern Lights WAGF,2026,1.5,0.5,614
+NewWind_P1885,Joss Wind Northern Lights WAGF,2027,0.1,1.9,34
+NewWind_P1885,Joss Wind Northern Lights WAGF,2028,1.2,0.8,489
+NewWind_P1885,Joss Wind Northern Lights WAGF,2031,0.7,1.3,260
+NewWind_P1885,Joss Wind Northern Lights WAGF,2034,0.2,1.8,71
+NewWind_P1885,Joss Wind Northern Lights WAGF,2035,0.1,1.9,38
+NewWind_P1885,Joss Wind Northern Lights WAGF,2036,0,2,2
+NewWind_P1885,Joss Wind Northern Lights WAGF,2039,0.6,1.4,246
+NewWind_P1885,Joss Wind Northern Lights WAGF,2040,0.1,1.9,49
+NewWind_P2356,Oyen MPC Wind,2024,2,0,500
+NewWind_P2356,Oyen MPC Wind,2025,2,0,500
+NewWind_P2356,Oyen MPC Wind,2026,1.3,0.7,332
+NewWind_P2356,Oyen MPC Wind,2027,1.8,0.2,462
+NewWind_P2356,Oyen MPC Wind,2029,0.5,1.5,120
+NewWind_P2356,Oyen MPC Wind,2039,0.7,1.3,168
+NewWind_P1704,Paintearth Wind Power,2023,1,0,150
+NewWind_P1704,Paintearth Wind Power,2029,1,2,150
+NewWind_P2481,Riplinger MPC Wind,2030,0.5,1.5,149
+NewWind_P1719,Stirling WAGF Project,2023,1,0,113
