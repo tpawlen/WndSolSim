@@ -109,6 +109,7 @@
   library(raster)
   library(colorRamps)
   library(viridis)
+  library("readxl")
 #  library(lmtest)
 }
 
@@ -122,7 +123,7 @@
   ################################################################################
   setwd("D:/Documents/Education/Masters Degree/Datasets/Market")
   
-  #load("nrgstream_gen.RData") 
+#  load("nrgstream_gen.RData") 
 #  nrgstream_gen <- readRDS("nrgstream_gen_corrected.RData")
 #  nrgstream_gen <- nrgstream_gen %>% rename(time=Time)
   
@@ -184,8 +185,9 @@
 #                                       grepl("WHT1",ID)~2019,
 #                                       grepl("WHT2",ID)~2021,
 #                                       grepl("WRW1",ID)~2021,),
-#           Installation_Year=case_when(is.na(Installation)~"pre2019",
-#                                         TRUE~"post2019"))
+#           Installation_Year=case_when(is.na(Installation_Year)~"pre2019",
+#                                         TRUE~"post2019")
+#           )
   
 #  nocorrection <- nrgstream_gen %>%
 #    filter(!is.na(Latitude))
@@ -213,7 +215,8 @@
   
   #    merit <- read_csv("student_data_2021_Jul_23_14_09.csv.gz")
   #    merit <- read_csv("student_data_2022_May_05_15_19.csv.gz")
-  #    saveRDS(merit, file = "Leach_MeritData.RData")
+#  merit <- read_csv("student_data_2022_Dec_21_12_36.csv.gz")
+#      saveRDS(merit, file = "Leach_MeritData.RData")
 #  merit <- readRDS("Leach_MeritData.RData")
 #  merit_filt <- filter(merit, 
 #                       date >= as.Date("2017-01-1"))
@@ -264,7 +267,7 @@
 ################################################################################
 
 {     
-  DB <- "Nov_30_2022"
+  DB <- "Dec_12_2022"
 # Connect to SQLEXPRESS database
 ################################################################################
   con <- dbConnect(odbc(),
@@ -306,18 +309,18 @@
     Hr <- dbGetQuery(con,"SELECT Run_ID,Name,ID,Capacity_Factor,Energy_Revenue,
                              Time_Period,Output_MWH,Output,Report_Month,Report_Day,
                              Report_Hour,Report_Year,Capacity FROM ResourceGroupHour1")
-    Month <- dbReadTable(con,'ResourceGroupMonth1')
-    Year  <- dbReadTable(con,'ResourceGroupYear1')
-    ZoneHour <- dbGetQuery(con,"SELECT Run_ID,Name,Imports,Exports,Condition,
-                           Price,Demand,Marginal_Resource,  
-                           Time_Period,Report_Month,Report_Year FROM ZoneHour1")
-    Month <- dbReadTable(con,'ResourceGroupMonth1')
+#    Month <- dbReadTable(con,'ResourceGroupMonth1')
+#    Year  <- dbReadTable(con,'ResourceGroupYear1')
+#    ZoneHour <- dbGetQuery(con,"SELECT Run_ID,Name,Imports,Exports,Condition,
+#                           Price,Demand,Marginal_Resource,  
+#                           Time_Period,Report_Month,Report_Year FROM ZoneHour1")
+#    Month <- dbReadTable(con,'ResourceGroupMonth1')
     ResourceYr <- dbReadTable(con,'ResourceYear1')
     ResourceHr <- dbGetQuery(con,"SELECT Run_ID,Name,Primary_Fuel,Capacity_Factor,
                              Time_Period,Output_MWH,Capacity,ID,Condition,Revenue,
                              Report_Year FROM ResourceHour1")
     #StackHr <- dbReadTable(con,'ResourceStackHour1')
-    StackYr <- dbReadTable(con,'ResourceStackYear1')
+#    StackYr <- dbReadTable(con,'ResourceStackYear1')
     #Study <- dbReadTable(con,'StudyLog1')
     #Link <- dbReadTable(con,'LinkYear1')
     #Fuel <- dbReadTable(con,'FuelYear1')
@@ -325,10 +328,11 @@
     #LTRes <- dbReadTable(con,'LTResValue1')
     #LTMarg <- dbReadTable(con,'LTMargResLog1')
     #LTCap <- dbReadTable(con,'LTCapacLog1')
+#    Build <- dbGetQuery(con,"SELECT * FROM LTBuildReport1")
 #    Build <- dbGetQuery(con,"SELECT Name,Run_ID,LT_Iteration,Time_Period,Fuel_Type,
 #                        Units_Built,Max_Limit_Slack,Capacity_Built
 #                        FROM LTBuildReport1")
-    #Value <- dbGetQuery(con,"SELECT * FROM LTResValue1", n=3)
+#    Value <- dbGetQuery(con,"SELECT * FROM LTResValue1")
 #    Value <- dbGetQuery(con,"SELECT Run_ID,LT_Iteration,Res_Name,Input_New_Res_ID,
 #                        Begin_Year,Fuel_Type,In_System,Capacity,NPV,RLV,
 #                        NPV_Energy,RLV_Energy FROM LTResValue1")
@@ -505,11 +509,17 @@ correlation_hypoth(2021,2021)[2]
   imsave("Correlation_hypothetical")
 correlation_hypoth(2021,2021)[4]
   imsave("IOD_hy_map")
+HypoIRR(2021)
   
 # Chapter 4
-# Using Dec_06_2022
-load_dur(2017,2021,BC)
+load_duration(2019,2021)
+  imsave("historicdemand")
+  
+  # Using Dec_06_2022
+load_dur(2019,2021,BC)
   imsave("BC_load_duration")
+comp_dur(2019,2021,BC)
+  imsave("BC_price_duration")
 tot_cap(2020,2021,BC)
   imsave("BC_Capacity")
 tech_cap(2020,2021,BC)
@@ -521,7 +531,7 @@ tot_gen(2020,2021,BC)
 
 comp_dur(2020,2021,BC)
   imsave("BC_price_duration")
-price_interval(2020,2021,BC)
+price_interval(2020,2022,BC)
   imsave("BC_poolprice")
 
 # Save tables from simulations to compare
@@ -538,12 +548,15 @@ load("Dec_08_2022.RData")
   HS_ZH <- ZoneH # ZoneH from Dec_08_2022
   HS_ResourceHr <- ResourceHr
   HS_Build <- Build
+  HS_Hour <- Hour
   
   ZoneH <- HS_ZH
   ResourceHr <- HS_ResourceHr
   Build <- HS_Build
   
 CapPot2(BC)
+  imsave("Hypo_Build") 
+CapPot3(BC)
   imsave("Hypo_Build") 
 CF_NR("Wind","Wind",BC) # Need "ResourceHr
   imsave("HS_CF")
@@ -561,6 +574,7 @@ load("Dec_12_2022.RData")
   NoHS_ZH <- ZoneH # ZoneH from Dec_12_2022
   NoHS_ResourceHr <- ResourceHr
   NoHS_Build <- Build
+  NoHS_Hour <- Hour
   
   ZoneH <- NoHS_ZH
   ResourceHr <- NoHS_ResourceHr
@@ -568,6 +582,8 @@ load("Dec_12_2022.RData")
   
 simcomp_monthly_price(BC)
   imsave("NoHS_poolprice")
+simcomp_monthly_price3(BC)
+  imsave("WorWoutHS_poolprice")
 Revenue2.0(BC) # Need "ResourceHr"
   imsave("NoHS_Revenue")
 Build_Map(BC)
@@ -578,6 +594,7 @@ load("Dec_13_2022.RData")
   NoOffset_ZH <- ZoneH # ZoneH from Dec_13_2022
   NoOffset_ResourceHr <- ResourceHr
   NoOffset_Build <- Build
+  NoOff_Hour <- Hour
   
   ZoneH <- NoOffset_ZH
   ResourceHr <- NoOffset_ResourceHr
@@ -585,13 +602,143 @@ load("Dec_13_2022.RData")
     
 simcomp_monthly_price2(BC)
   imsave("NoOff_poolprice")
+simcomp_monthly_price3(BC)
+  imsave("WorWoutOff_poolprice")
 Revenue2.0(BC) # Need "ResourceHr"
   imsave("NoOffset_Revenue")
 CapPot2(BC) # Need "Build"
   imsave("NoOffset_Build") 
+CapPot3(BC) # Need "Build"
+  imsave("NoOffset_Build")
 Eval_diffcap(Year,BC) +
   theme(plot.title = element_blank())
   imsave("NoOffset_Buildshare")
 Build_Map(BC)
   mapsave("NoOffset_map")
+  
+# Presentation
+################################################################################
+  # LTCE and no hypothetical sites (Dec_12_2022)
+  load("Dec_12_2022.RData")
+  NoHS_ZH <- ZoneH # ZoneH from Dec_12_2022
+  NoHS_ResourceHr <- ResourceHr
+  NoHS_Build <- Build
+  
+  ZoneH <- NoHS_ZH
+  ResourceHr <- NoHS_ResourceHr
+  Build <- NoHS_Build
+  
+NoHS_Build <- Eval_diffcap(Year,BC) + 
+  theme(plot.title = element_blank(),
+                              axis.text = element_text(size=15),
+                              axis.text.x = element_blank(),
+                              axis.title = element_text(size=15),
+                              axis.title.x = element_blank(),
+                              axis.ticks.x = element_blank(),
+                              legend.text = element_text(size = 12),
+                              legend.title = element_blank(),
+        plot.margin = unit(c(t = 0.5,  # Top margin
+                             r = 0,  # Right margin
+                             b = 0,  # Bottom margin
+                             l = 0.3),'cm')) +
+  scale_y_continuous(expand=c(0,0),
+                     limits = c((-3000),(6000)))
+
+  imsave("NoHS_Build")
+
+  
+  # LTCE and hypothetical sites (Dec_08_2022)
+  load("Dec_08_2022.RData")
+  HS_ZH <- ZoneH # ZoneH from Dec_08_2022
+  HS_ResourceHr <- ResourceHr
+  HS_Build <- Build
+  
+  ZoneH <- HS_ZH
+  ResourceHr <- HS_ResourceHr
+  Build <- HS_Build
+  
+HS_Build <- Eval_diffcap(Year,BC) + 
+  theme(plot.title = element_blank(),
+                                axis.text = element_text(size=15),
+                                axis.title = element_text(size=15),
+                                axis.title.x = element_blank(),
+                                legend.text = element_text(size = 12),
+                                legend.title = element_blank(),
+        plot.margin = unit(c(t = 0,  # Top margin
+                             r = 0,  # Right margin
+                             b = 0,  # Bottom margin
+                             l = 0.3),'cm')) +
+  scale_y_continuous(expand=c(0,0),
+                     limits = c((-3000),(6000)))
+  imsave("HS_Build")
+  
+  g_legend<-function(a.gplot){
+    tmp <- ggplot_gtable(ggplot_build(a.gplot))
+    leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+    legend <- tmp$grobs[[leg]]
+    return(legend)}
+  
+  my_legend <- g_legend(HS_Build)
+  
+fig <- grid.arrange(arrangeGrob(NoHS_Build + rremove("ylab") + theme(legend.position="none"),
+               HS_Build + rremove("ylab") + theme(legend.position="none"),
+               heights = c(1,1.1)), 
+               my_legend, 
+               #nrow=2, 
+               widths=c(7,1))
+  
+#fig <- ggarrange(NoHS_Build + rremove("ylab"),
+#                 HS_Build + rremove("ylab"), 
+#            labels = NULL, align = "hv",
+#            ncol = 1, heights = c(1,1),common.legend = TRUE, legend = "right")
+
+annotate_figure(fig, left = textGrob("Yearly change in capacity (MW)", rot = 90, vjust = 1, 
+                                     gp = gpar(cex = 1.3)))
+
+imsave("Comb_Build")  
+
+# LTCE and no offsets, with hypothetical sites (Dec_13_2022)
+  load("Dec_13_2022.RData")
+  NoOffset_ZH <- ZoneH # ZoneH from Dec_13_2022
+  NoOffset_ResourceHr <- ResourceHr
+  NoOffset_Build <- Build
+  
+  ZoneH <- NoOffset_ZH
+  ResourceHr <- NoOffset_ResourceHr
+  Build <- NoOffset_Build
+  
+NoOff_Build <- Eval_diffcap(Year,BC) + 
+    theme(plot.title = element_blank(),
+          axis.text = element_text(size=15),
+          axis.title = element_text(size=15),
+          axis.title.x = element_blank(),
+          legend.text = element_text(size = 12),
+          legend.title = element_blank(),
+          plot.margin = unit(c(t = 0,  # Top margin
+                               r = 0,  # Right margin
+                               b = 0,  # Bottom margin
+                               l = 0.3),'cm')) +
+    scale_y_continuous(expand=c(0,0),
+                       limits = c((-3000),(6000)))
+
+fig1 <- grid.arrange(arrangeGrob(HS_Build + theme(axis.ticks.x = element_blank(),
+                                                  axis.text.x = element_blank(),
+                                                  plot.margin = unit(c(t = 0.5,  # Top margin
+                                                                       r = 0,  # Right margin
+                                                                       b = 0,  # Bottom margin
+                                                                       l = 0.3),'cm')) + 
+                                   rremove("ylab") + theme(legend.position="none"),
+                                NoOff_Build + rremove("ylab") + theme(legend.position="none"),
+                                heights = c(1,1.1)), 
+                    my_legend, 
+                    #nrow=2, 
+                    widths=c(7,1))
+
+annotate_figure(fig1, left = textGrob("Yearly change in capacity (MW)", rot = 90, vjust = 1, 
+                                     gp = gpar(cex = 1.3)))
+
+  imsave("NoOff_Build")
+  
+  wind_prod()
+  imsave("wind_prod")
   

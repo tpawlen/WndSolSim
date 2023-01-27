@@ -215,6 +215,8 @@ price_interval <- function(year1, year2, case) {
               actual_posted_pool_price = median(actual_posted_pool_price))%>%
     ungroup()
   
+  test <- bind_rows(forecast_data,dataAct)
+  
   dataSim <- ZH %>%
     mutate(year = year(date),
            time = date) %>%
@@ -251,7 +253,7 @@ price_interval <- function(year1, year2, case) {
     mutate(date=ymd(paste(year,month,1,sep="-")),
            sit = paste0("Simulation ",DB))
   
-  peak_data_Act<-forecast_data %>%
+  peak_data_Act<-test %>% #forecast_data %>%
     mutate(year = year(time))%>%
     filter(!is.na(actual_posted_pool_price),!is.na(actual_ail),
            year >= year1 & year <= year2)%>%
@@ -2018,6 +2020,8 @@ cap_fac_difference <- function(year1, year2, plant_type, case) {
 
 AESO_colours <- c("goldenrod1", "gray60", "yellowgreen", "cornflowerblue",
                   "#001933")
+                  
+AESO_colours1 <- c("firebrick","goldenrod1","forestgreen")
 
 year_pool <- function(year1, year2,case) {
   # A function to plot the Monthly average pool price 
@@ -2256,7 +2260,7 @@ comp_dur <- function(year1, year2, case) {
     # Calculate the percentage of time
     # Create column 'sit' to indicate Simulation
   totSim <- ZoneH %>%
-    filter(Report_Year >= (year1-2) & 
+    filter(Report_Year >= (year1) & 
              Report_Year <= year2,
            Run_ID == case, 
            Condition != "Average") %>%
@@ -2265,7 +2269,9 @@ comp_dur <- function(year1, year2, case) {
     subset(., select=c(Condition, Report_Year, Price, perc)) %>%
     rename(Year = Report_Year) %>%
     ungroup() %>%
-    mutate(sit = "Simulated")
+    mutate(sit = "Simulated",
+           Condition = case_when(grepl("Off",Condition)~"Off-Peak",
+                                 grepl("On",Condition)~"On-Peak"))
   
   # Load and filter AESO data, 
     # Calculate the percentage of time
@@ -2275,10 +2281,10 @@ comp_dur <- function(year1, year2, case) {
   Actual$Hour <- format(as.POSIXct(Actual$time, format = "%Y/%m/%d %H:%M:%S"), "%H")
   
   totAct <- Actual %>%
-    filter(Year >= (year1-3), 
+    filter(Year >= (year1), 
            Year <= year2,) %>%
     mutate(Condition = if_else(between(Hour, 08, 23), 
-                               "On-Peak WECC", "Off-Peak WECC")) %>%
+                               "On-Peak", "Off-Peak")) %>%
     group_by(Year, Condition) %>%
     mutate(perc = 1-ecdf(Price)(Price)) %>%
     subset(., select=c(Condition, Year, Price, perc)) %>%
@@ -2303,6 +2309,7 @@ comp_dur <- function(year1, year2, case) {
           
           # For transparent background
           panel.grid = element_blank(),
+          panel.spacing.x = unit(1.1,"cm"),
           legend.title = element_blank(),
           panel.background = element_rect(fill = "transparent"),
           panel.grid.major.x = element_blank(),
@@ -2318,10 +2325,9 @@ comp_dur <- function(year1, year2, case) {
          #title = "AESO Data vs Simulation",
          #subtitle = DB
          ) +
-    scale_color_manual(values = c("gray60", "forestgreen", "cornflowerblue",
-                                  "goldenrod1", "firebrick","orange")) +
+    scale_color_manual(values = AESO_colours1) +
     scale_x_continuous(expand=c(0,0), 
-                       limits = c(0,1.1),
+                       limits = c(0,1),
                        labels = percent) +
     scale_y_continuous(expand=c(0,0)
     ) +
@@ -2345,7 +2351,9 @@ load_dur <- function(year1, year2, case) {
     dplyr::select(Condition, Report_Year, Demand, perc) %>%
     rename(Year = Report_Year) %>%
     ungroup() %>%
-    mutate(sit = "Simulated")
+    mutate(sit = "Simulated",
+           Condition = case_when(grepl("Off",Condition)~"Off-Peak",
+                                 grepl("On",Condition)~"On-Peak"))
   
   # Load and filter AESO data, 
     # Calculate the percentage of time
@@ -2359,7 +2367,7 @@ load_dur <- function(year1, year2, case) {
     filter(Year >= year1, 
            Year <= year2,) %>%
     mutate(Condition = if_else(between(Hour, 08, 23), 
-                               "On-Peak WECC", "Off-Peak WECC")) %>%
+                               "On-Peak", "Off-Peak")) %>%
     group_by(Year, Condition) %>%
     mutate(perc = 1-ecdf(AIL)(AIL)) %>%
     dplyr::select(Condition, Year, AIL, perc) %>%
@@ -2384,26 +2392,26 @@ load_dur <- function(year1, year2, case) {
           legend.text = element_text(size = sz),
           panel.grid = element_blank(),
           legend.title = element_blank(),
+          strip.text = element_text(size = sz),
           
           # For transparent background
           panel.background = element_rect(fill = "transparent"),
           panel.grid.major.x = element_blank(),
           panel.grid.minor.x = element_blank(),
-          panel.spacing = unit(1.5, "lines"),
+          panel.spacing = unit(1.1, "cm"),
           plot.background = element_rect(fill = "transparent", color = NA),
           legend.key = element_rect(colour = "transparent", fill = "transparent"),
           legend.background = element_rect(fill='transparent'),
           legend.box.background = element_rect(fill='transparent', colour = "transparent"),
     ) +
-    labs(y = "Hourly Alberta Internal Load (MW)", 
+    labs(y = "Hourly Alberta \nInternal Load (MW)", 
          x = "Percentage of Time", 
          #title = "AESO Data vs Simulation",
          #subtitle = DB
          ) +
-    scale_color_manual(values = c("gray60", "forestgreen", "cornflowerblue",
-                                  "goldenrod1", "firebrick")) +
+    scale_color_manual(values = AESO_colours1) +
     scale_x_continuous(expand=c(0,0), 
-                       limits = c(0,1.1),
+                       limits = c(0,1),
                        labels = percent) +
     scale_y_continuous(expand=c(0,0)
     ) +
@@ -2450,7 +2458,7 @@ tot_cap <- function(year1, year2, case) {
     group_by(Report_Year, ID) %>%
     subset(., select=c(Report_Year, ID, Capacity)) %>%
     #    summarise(Cap = mean(Capacity_Factor)) %>%
-    mutate(sit = "Simulation")
+    mutate(sit = "Simulated")
   
   colnames(Sim) <- c("Year", "Plant_Type", "Cap", "sit")
   
@@ -2479,6 +2487,7 @@ tot_cap <- function(year1, year2, case) {
           legend.text = element_text(size = sz),
           panel.grid = element_blank(),
           legend.title = element_blank(),
+          strip.text = element_text(size = sz),
           
           # For transparent background
           panel.background = element_rect(fill = "transparent"),
@@ -2490,7 +2499,7 @@ tot_cap <- function(year1, year2, case) {
           legend.background = element_rect(fill='transparent'),
           legend.box.background = element_rect(fill='transparent', colour = "transparent"),
     ) +
-    labs(y = "Installed Generation Capacity (MW)", 
+    labs(y = "Installed Generation \nCapacity (MW)", 
          #title = "Year-end generation capacity AESO Data vs Simulation",
          #subtitle = DB
          ) +
