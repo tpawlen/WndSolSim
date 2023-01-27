@@ -48,7 +48,7 @@ nrgstream_gen<-nrgstream_gen[!is.na(nrgstream_gen$time),]
 # Filter data for desired categories
 ################################################################################
   
-sub_samp<-filter(nrgstream_gen, time >= as.Date("2004-01-1"))
+sub_samp1<-filter(nrgstream_gen, time >= as.Date("2004-01-1"))
 
 demand <- nrgstream_gen %>%
   group_by(time) %>%
@@ -60,7 +60,7 @@ trade_excl<-c("AB - WECC Imp Hr Avg MW",
               "AB - WECC Exp Hr Avg MW",
               "AB - WECC Imp/Exp Hr Avg MW")  
 
-df1 <- sub_samp %>% 
+df1 <- sub_samp1 %>% 
   filter(! NRG_Stream %in% trade_excl)%>% 
   group_by(Plant_Type,time) %>% 
   summarise(meancap = mean(Cap_Fac),
@@ -80,7 +80,8 @@ gen_set<-c("COAL","COGEN","HYDRO","NGCC", "OTHER", "SCGT","SOLAR","IMPORT","EXPO
 ################################################################################
 {
 df1a <- df1 %>%
-  filter(Plant_Type %in% gen_set,year(time)<2022)
+  filter(Plant_Type %in% gen_set,
+         year(time)<2022)
 
 df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "OTHER",after=Inf)
 df1a$Plant_Type<-fct_relevel(df1a$Plant_Type, "HYDRO",after=Inf)
@@ -109,6 +110,27 @@ df2$Plant_Type<-fct_relevel(df2$Plant_Type, "SOLAR",after=Inf)
 df2$Plant_Type<-fct_relevel(df2$Plant_Type, "IMPORT",after=Inf)
 df2$Plant_Type<-fct_relevel(df2$Plant_Type, "EXPORT",after=Inf)
 }
+
+{
+  df2a <- df1 %>% 
+    filter(Plant_Type %in% gen_set,
+           #year(time)<2022
+           ) %>%
+    mutate(Month = format(time, "%Y-%m")) %>%
+    group_by(Plant_Type,Month) %>% 
+    summarise(capture = sum(total_rev)/sum(total_gen),
+              avg_rev = sum(total_rev)/sum(total_gen),
+              p_mean=mean(p_mean, na.rm = TRUE))
+  
+  df2a$Plant_Type<-fct_relevel(df2a$Plant_Type, "OTHER",after=Inf)
+  df2a$Plant_Type<-fct_relevel(df2a$Plant_Type, "HYDRO",after=Inf)
+  df2a$Plant_Type<-fct_relevel(df2a$Plant_Type, "WIND",after=Inf)
+  df2a$Plant_Type<-fct_relevel(df2a$Plant_Type, "SOLAR",after=Inf)
+  #df2$Plant_Type<-fct_relevel(df2$Plant_Type, "TRADE",after=Inf)
+  df2a$Plant_Type<-fct_relevel(df2a$Plant_Type, "IMPORT",after=Inf)
+  df2a$Plant_Type<-fct_relevel(df2a$Plant_Type, "EXPORT",after=Inf)
+}
+
 }
 
 # Establish image theme
@@ -120,7 +142,7 @@ slide_theme<-function(){
                 axis.line.x = element_line(color = "gray"),
                 axis.line.y = element_line(color = "gray"),
                 axis.text = element_text(size = 16),
-                axis.text.x = element_text(margin = margin(t = 10)),
+                #axis.text.x = element_text(margin = margin(t = 10)),
                 axis.title = element_text(size = 16),
                 #axis.label.x = element_text(size=20,vjust=+5),
                 plot.subtitle = element_text(size = 12,hjust=0.5),
@@ -165,7 +187,7 @@ plot_b <- ggplot(df6,
   scale_color_manual("",values=my_palette1)+
   scale_fill_manual("",values=my_palette1)+
   
-  slide_theme()+
+  #slide_theme()+
   labs(x="",y="Revenue Relative to \nMean Price ($/MWh)")+#,
 #       title="Energy Price Capture Differential ($/MWh, 2014-2021)")+#,
 #       caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
@@ -176,15 +198,36 @@ plot_b <- ggplot(df6,
 
 
 df3 <- df1 %>% filter(Plant_Type %in% gen_set,year(time)<2022) %>%
-  group_by(Year) %>% summarise(capture = sum(total_rev)/sum(total_gen),avg_rev = sum(total_rev)/sum(total_gen),p_mean=mean(p_mean))%>%
+  group_by(Year) %>% 
+  summarise(capture = sum(total_rev)/sum(total_gen),
+            avg_rev = sum(total_rev)/sum(total_gen),
+            p_mean=mean(p_mean))%>%
+  mutate(Plant_Type="MARKET",Plant_Type=as_factor(Plant_Type))
+
+df3a <- df1 %>% filter(Plant_Type %in% gen_set,
+                       #year(time)<2022
+                       ) %>%
+  mutate(Month = format(time,"%Y-%m")) %>%
+  group_by(Month) %>% 
+  summarise(capture = sum(total_rev)/sum(total_gen),
+            avg_rev = sum(total_rev)/sum(total_gen),
+            p_mean=mean(p_mean))%>%
   mutate(Plant_Type="MARKET",Plant_Type=as_factor(Plant_Type))
 
 df2<-df2 %>% bind_rows(df3)
+df2a<-df2a %>% bind_rows(df3a)
 df2$Plant_Type<-fct_relevel(df2$Plant_Type, "MARKET",after=0)
+df2a$Plant_Type<-fct_relevel(df2a$Plant_Type, "MARKET",after=0)
 
 
 df4<-tibble(Year=seq(2010,2016),Plant_Type="SOLAR",capture=0)%>%
   mutate(Year=as_factor(Year),Plant_Type=as_factor(Plant_Type))
+
+df4a<-tibble(Year=seq(2010,2016),
+             Plant_Type="SOLAR",
+             capture=0)%>%
+  mutate(Year=as_factor(Year),
+         Plant_Type=as_factor(Plant_Type))
 
 df2<-df2 %>% bind_rows(df4)
 
@@ -208,7 +251,7 @@ plot_a <- ggplot(df5,
   geom_line(data= mark, group=1, aes(Year,capture)) +
   scale_color_manual("",values=my_palette)+
   scale_fill_manual("",values=my_palette)+
-  slide_theme()+
+ # slide_theme()+
   labs(x="",y="Average Revenue \n($/MWh)")+#,
 #       title="Energy Price Capture ($/MWh, 2014-2021)")+#,
   #     caption="Source: AESO Data, accessed via NRGStream\nGraph by @andrew_leach") +
@@ -243,47 +286,60 @@ cp_plot
 
 ggsave(path = "images", filename = "captureprice.png", bg = "transparent")
 
+df2a <- df2a %>%
+  mutate(Year = substr(Month,1,4))
 
-mrk <- df2 %>%
+mrk <- df2a %>%
   filter(Plant_Type == "MARKET") %>%
-  filter(as.character(Year) >= 2010)
+  filter(as.character(Year) >= 2010) %>%
+  mutate(date = as.Date(paste0(Month,"-01")))
 
-wind <- df2 %>%
+wind <- df2a %>%
   filter(Plant_Type == "WIND") %>%
-  filter(as.character(Year) >= 2010)
+  filter(as.character(Year) >= 2010) %>%
+  mutate(date = as.Date(paste0(Month,"-01")))
 
-wndVSmrk <- rbind(mrk,wind) 
+wndVSmrk <- rbind(mrk,wind)
 
 MRK <- mrk %>%
   mutate(Market = capture) %>%
-  subset(., select = c(Year,Market))
+  subset(., select = c(Month,Market))
 
 WND <- wind %>%
   mutate(Wind = capture) %>%
-  subset(., select = c(Year,Wind))
+  subset(., select = c(Month,Wind))
 
-discount <- merge(MRK,WND,by="Year") %>%
+discount <- merge(MRK,WND,by="Month") %>%
   mutate(diff = (1-Wind/Market)*100)
 
 plot_c <- ggplot(wndVSmrk,
-                 aes(Year,capture,colour=Plant_Type),alpha=1)+
-  geom_line(data= mrk, group=1, aes(Year,capture), lwd = 1.5) +
-  geom_line(data=wind, group =1, aes(Year,capture), lwd = 1.5) +
-  scale_color_manual("",values=c("black", "forestgreen"))+
-  slide_theme()+
-  labs(x="",y="Average Revenue \n($/MWh)",
+                 aes(date,capture,colour=Plant_Type),alpha=1)+
+  geom_line(data= mrk, group=1, aes(date,capture), lwd = 1.5) +
+  geom_line(data=wind, group =1, aes(date,capture), lwd = 1.5) +
+  scale_color_manual("",values=c("grey25", "forestgreen"),
+                     labels=c("MARKET"="Market","WIND"="Wind"))+
+  scale_x_date(breaks=pretty_breaks(),
+               expand=c(0,0)) +
+  labs(x="",y="Average Energy Revenue \n($/MWh)",
 #         title="Energy Price Capture ($/MWh, 2010-2021)",
        caption="Source: AESO Data, accessed via NRGStream") +
   theme(panel.background = element_rect(fill = "transparent"),
         plot.background = element_rect(fill = "transparent", color = NA),
+        panel.grid = element_blank(),
+        axis.line.y = element_line(color = "black"),
+        axis.text = element_text(size = 15),
+        axis.title = element_text(size = 15),
+        panel.border = element_rect(colour = "black", fill = "transparent"),
+        plot.caption = element_text(hjust=0, face = "italic"),
+        legend.key = element_rect(color = "transparent", fill = "transparent"),
         legend.position = "right",
         legend.background = element_rect(fill = "transparent"),
         legend.box.background = element_rect(fill = "transparent", color = "transparent"),
-        text = element_text(size= 15))
+        legend.text = element_text(size= 15))
 
 plot_c
 
-ggsave(path = "images", filename = "wind_vs_market.png", bg = "transparent")
+ggsave(path = "thesis_images", filename = "wind_vs_market.png", bg = "transparent")
 
 
 

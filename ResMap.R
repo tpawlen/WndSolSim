@@ -438,10 +438,12 @@ AB <- ggplot() +
   geom_polygon(data = alberta_ellipsoid1, 
                aes(x = long, y = lat, group = group), 
                fill = "transparent", colour = "black") +
-  scale_fill_gradientn(colors = matlab.like2(100),
-                       limits=c(3,10),oob=squish, 
+  scale_fill_gradientn(colors = matlab.like(100),
+                       limits=c(2.5,10.5),oob=squish, 
+                       #breaks=seq(3,10,by=1),
                        name = "Mean annual\nwind speed\nat 80m height \n(m/s)") +
   coord_fixed(ratio=5/3) +
+  
   theme(panel.background = element_rect(fill = "transparent"),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -450,6 +452,7 @@ AB <- ggplot() +
         axis.text = element_blank(),
         axis.ticks = element_blank(),
         legend.background = element_rect(fill = "transparent"),
+        #legend.key.height = unit(2,'cm'),
         legend.box.background = element_rect(fill = "transparent", color = "transparent"),
         legend.text = element_text(size = legText),
         legend.title = element_text(size = legTitle)) 
@@ -509,14 +512,14 @@ AB2 <- ggplot() +
   geom_polygon(data = alberta_ellipsoid1, 
                aes(x = long, y = lat, group = group), 
                fill = "transparent", colour = "black") +
-  #  scale_fill_gradientn(colors = matlab.like2(100),
-  #                       limits=c(3.5,25), na.value="white",#oob=squish, 
-  #                       name = "Mean wind speed \nat 80m height \n(m/s)") +
-  scale_fill_gradient2(low="deepskyblue", mid="forestgreen", high="yellow", midpoint=13,
-                      limits=c(3.5,25), na.value="red",
-                                            oob=squish, 
-                      name = "Mean annual\nwind speed \nat 80m height \n(m/s)"
-  )+
+    scale_fill_gradientn(colors = matlab.like2(100),
+                         limits=c(3.5,25), na.value="white",#oob=squish, 
+                         name = "Mean annual\nwind speed \nat 80m height \n(m/s)") +
+  #scale_fill_gradient2(low="deepskyblue", mid="forestgreen", high="yellow", midpoint=13,
+  #                    limits=c(3.5,25), na.value="red",
+  #                                          oob=squish, 
+  #                    name = "Mean annual\nwind speed \nat 80m height \n(m/s)"
+  #)+
   #  scale_fill_gradientn(colors = c("navy","turquoise1","green",
   #                                  "yellow","orangered","red4"),
   #                       values=c(3.5,5,6.5,7.5,8.5,10),oob=squish, 
@@ -562,23 +565,32 @@ wind_active$Built <- factor(wind_active$Built,
 
 Act_wind <- ggplot(wind_active, aes(x= Longitude, y = Latitude, #label=ID_labels
                                )) + 
-  geom_raster(data = wind_profileAA, 
+  geom_raster(data = wind_profile, 
             aes(x = Longitude, y = Latitude, fill = Wind)) +
   geom_polygon(data = alberta_ellipsoid1, 
                aes(x = long, y = lat, group = group), 
                fill = "transparent", colour = "black") +
-  scale_fill_gradientn(colors = matlab.like2(100),
-                       limits=c(3,10),oob=squish, name = "Mean annual\nwind speed \nat 80m height \n(m/s)") +
+  scale_fill_gradientn(colors = matlab.like(100),
+                       limits=c(2.5,10.5),oob=squish, 
+                       #breaks=seq(3,10,by=1),
+                       name = "Mean annual\nwind speed \nat 80m height \n(m/s)",
+                       #guide = guide_legend(keyheight = unit(0.5,'cm'),
+                      #                      reverse = TRUE)
+                       ) +
   geom_point(data = wind_active,
                 aes(x= Longitude, y = Latitude, size = Capacity, color = Built), 
                 shape = 16) +#, color = "black") +
   geom_point(data = wind_active,
              aes(x= Longitude, y = Latitude, size = Capacity),colour="black",
              shape=1) + 
-  scale_color_manual(values = c("grey39", "black"), 
+  scale_color_manual("Installation Date",
+                     values = c("grey39", "black"), 
                      labels = labsa) +
-  guides(color = guide_legend(override.aes = list(size = 4), order = 1)) +
-  guides(size = guide_legend(order = 2)) +
+  guides(color = guide_legend(override.aes = list(size = 5), order = 1),
+         size = guide_legend(order = 2),
+         #fill = guide_legend(keyheight = unit(0.5,'cm'),
+         #                    reverse = TRUE)
+         ) +
   coord_fixed(ratio=5/3) +
 #  ggtitle("Active Wind Farms") +
   theme(panel.background = element_rect(fill = "transparent"),
@@ -589,6 +601,7 @@ Act_wind <- ggplot(wind_active, aes(x= Longitude, y = Latitude, #label=ID_labels
         axis.ticks = element_blank(),
         plot.background = element_rect(fill = "transparent", color = NA),
         plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
+        #legend.key.height = (unit(2,'cm')),
         legend.text = element_text(size = legText),
         legend.title = element_text(size = legTitle),
         legend.background = element_rect(fill = "transparent"),
@@ -620,7 +633,21 @@ wind_AESO <- wind_Aurora %>%
   arrange(match(Built, c("pre2015", "post2015")), 
           desc(Built))
 
-AESO_wind <- AB + geom_point(data = wind_AESO,#wind_farm,
+AESO_wind <- ggplot(wind_AESO, aes(x= Longitude, y = Latitude, #label=ID_labels
+)) + 
+  geom_raster(data = wind_profile, 
+              aes(x = Longitude, y = Latitude, fill = Wind)) +
+  geom_polygon(data = alberta_ellipsoid1, 
+               aes(x = long, y = lat, group = group), 
+               fill = "transparent", colour = "black") +
+  scale_fill_gradientn(colors = matlab.like(100),
+                       limits=c(2.5,10.5),oob=squish, 
+                       #breaks=seq(3,10,by=2),
+                       name = "Mean annual\nwind speed \nat 80m height \n(m/s)",
+                       #guide = guide_legend(keyheight = unit(0.5,'cm'),
+                       #                      reverse = TRUE)
+  ) + 
+  geom_point(data = wind_AESO,#wind_farm,
                 aes(x= Longitude, y = Latitude, size = Capacity, shape = Status, color = Status)) + 
 #  geom_text(data = wind_AESO,
 #            aes(x=Longitude, y = Latitude),
@@ -631,7 +658,9 @@ AESO_wind <- AB + geom_point(data = wind_AESO,#wind_farm,
   scale_shape_manual(values = c(16,18), labels = labs1) +
   scale_color_manual(values = c("black", "forestgreen"), 
                      labels = labs1) +
-  guides(shape = guide_legend(override.aes = list(size = 5))) +
+  guides(color = guide_legend(override.aes = list(size = 5), order = 1),
+         size = guide_legend(order = 2),
+         shape = guide_legend(override.aes = list(size = 5), order = 1)) +
 #  ggtitle("Active and Queued Wind Farms") +
   coord_fixed(ratio=5/3) +
   theme(panel.background = element_rect(fill = "transparent"),
@@ -882,7 +911,8 @@ ggsave(path = "images", filename = "Correlation_map_potential.png", bg = "transp
 ################################################################################
 # Map of Alberta with Aurora wind profile correlations
 ################################################################################
-{labs6 <- c("Built before 2015","Built after 2015","Hypothetical Sites")
+{
+  labs6 <- c("Built before 2015","Built after 2015","Hypothetical Sites")
 
 Aurora_corr <- Aurora_corr %>%
   arrange(match(Built, c("Potential","pre2015", "post2015")), 
@@ -895,7 +925,7 @@ wind_corr2 <- AB + geom_point(data = Aurora_corr,
                               aes(x= Longitude, y = Latitude, size = correlation, 
                                   color = Built),shape=16
 ) + 
-  geom_point(data = alberta_corr,
+ geom_point(data = Aurora_corr,
              aes(x= Longitude, y = Latitude, size = correlation),colour="black",
              shape=1) + 
   #  geom_text(data = alberta_corr,
@@ -908,10 +938,11 @@ wind_corr2 <- AB + geom_point(data = Aurora_corr,
   scale_color_manual(values = c("gray", "black", "red4"), 
                      labels = labs6) +
   scale_size("Wind profile \ncorrelation",trans='reverse',range=c(0.5,7)) +
-  guides(color = guide_legend(override.aes = list(size = 4), order = 1)) +
+  guides(color = guide_legend(override.aes = list(size = 4), 
+                              order = 1)) +
   guides(size = guide_legend(order = 2)) +
   #  ggtitle("Correlation between \nwind sites' profiles in Aurora") +
-  theme(plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
+  theme(#plot.title = element_text(size=18, hjust = 0.5, vjust=-5),
         legend.text = element_text(size = legText),
         legend.title = element_text(size = legTitle),
         panel.background = element_rect(fill = "transparent"),

@@ -930,22 +930,31 @@
       mutate(date=ymd(paste(year,month,1,sep="-")),
              sit = "Off")
     
-    total <- rbind(peak_data_HS,peak_data_no,peak_data_Off)
+    total <- rbind(peak_data_HS,
+                   peak_data_no,
+                   #peak_data_Off
+                   )
     
-    shades <- c("HS"="mediumblue","No"="black","Off"="orangered")
+    shades <- c("HS"="mediumblue","No"="black"#,"Off"="orangered"
+                  )
     
     top_panel<-ggplot(total%>%arrange(desc(sit))) +
       geom_line(aes(date,mean_price,linetype="A",color=sit),size=.75)+
       geom_line(aes(date,mean_off_peak_price,linetype="B",color=sit),size=.75)+
-      geom_ribbon(aes(date,ymax=q75_price,ymin=q25_price,fill=sit),
-                  alpha=.3)+
+      #geom_ribbon(aes(date,ymax=q75_price,ymin=q25_price,fill=sit),
+      #            alpha=.3)+
       geom_hline(yintercept=0) +
-      scale_color_manual("",values = shades)+
-      scale_fill_manual("",values = shades,
-                        labels=c("HS"="With hypothetical sites",
-                                 "No"="Without hypothetical sites",
-                                 "Off"="No Offsets")
-      )+
+      scale_color_manual("",values = shades,
+                         labels=c("HS"="With hypothetical sites",
+                                  "No"="Without hypothetical sites"#,
+                                  #"Off"="No Offsets"
+                                  ) 
+                         )+
+     # scale_fill_manual("",values = shades,
+    #                    labels=c("HS"="With hypothetical sites",
+    #                             "No"="Without hypothetical sites",
+    #                             "Off"="No Offsets")
+     # )+
       scale_linetype_manual("",values = c("solid","11"),
                             labels=c("Peak \nperiod average",
                                      "Off-peak \nperiod average")
@@ -955,7 +964,8 @@
       scale_y_continuous(expand=c(0,0))+
       expand_limits(y=0)+ #make sure you get the zero line
       guides(linetype = guide_legend(override.aes = list(color = c("black","blue"))),
-             color="none")+
+             color= guide_legend(override.aes = list(color = c("black","blue")))
+             )+
       theme_bw() +
       theme(legend.position="top",
             axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
@@ -978,6 +988,112 @@
            NULL) + 
       guides(fill=guide_legend(nrow=2,byrow=TRUE))
     top_panel
+  }
+  
+  simcomp_monthly_price3 <- function(case) {
+    # Filters for the desired case study
+    
+    source("DrLeach_Code.R")
+    
+    dataNo <- NoHS_ZH %>%
+      mutate(year = year(date),
+             time = date) %>%
+      filter(Run_ID == case,
+             year >= 2020 & year <= 2035,
+             Condition == "Average") %>%
+      subset(.,select=-c(Marginal_Resource,date,Run_ID,Name)) %>%
+      group_by(Report_Year,Report_Month) %>%
+      summarise(mean_price = mean(Price)) %>%
+      mutate(date=ymd(paste(Report_Year,Report_Month,1,sep="-")),
+             sit = "No")
+    
+    dataHS <- HS_ZH %>%
+      mutate(year = year(date),
+             time = date) %>%
+      filter(Run_ID == case,
+             year >= 2020 & year <= 2035,
+             Condition == "Average") %>%
+      subset(.,select=-c(Marginal_Resource,date,Run_ID,Name)) %>% 
+      group_by(Report_Year,Report_Month) %>%
+      summarise(mean_price = mean(Price)) %>%
+      mutate(date=ymd(paste(Report_Year,Report_Month,1,sep="-")),
+             sit = "HS")
+    
+    dataOff <- NoOffset_ZH %>%
+      mutate(year = year(date),
+             time = date) %>%
+      filter(Run_ID == case,
+             year >= 2020 & year <= 2035,
+             Condition == "Average") %>%
+      subset(.,select=-c(Marginal_Resource,date,Run_ID,Name)) %>%  
+      group_by(Report_Year,Report_Month) %>%
+      summarise(mean_price = mean(Price)) %>%
+      mutate(date=ymd(paste(Report_Year,Report_Month,1,sep="-")),
+             sit = "Off")
+    
+    total <- rbind(dataHS,
+                   dataNo,
+                   #dataOff
+                   ) %>% 
+      group_by(date) %>%
+      mutate(ymin = min(mean_price),
+             ymax = max(mean_price))
+    
+    shades <- c("HS"="mediumblue",
+                "No"="black"#,
+                #"Off"="red4"
+    )
+    
+    ggplot(total%>%arrange(desc(sit))) +
+      geom_ribbon(aes(date,ymax=ymax,ymin=ymin),
+                  alpha=.5)+
+      geom_line(aes(date,mean_price,color=sit),size=1)+
+#      geom_line(aes(date,mean_price,linetype=sit,color=sit),size=1)+
+
+      geom_hline(yintercept=0) +
+      scale_color_manual("",values = shades,
+                         labels=c("HS"="With hypothetical sites",
+                                  "No"="Without hypothetical sites"#,
+                                  #"Off"="Without renewable energy credits"
+                         ) 
+      )+
+      # scale_fill_manual("",values = shades,
+      #                    labels=c("HS"="With hypothetical sites",
+      #                             "No"="Without hypothetical sites",
+      #                             "Off"="No Offsets")
+      # )+
+#      scale_linetype_manual("",values = c("solid","11"),
+#                            labels=c("HS"="With hypothetical sites",
+#                                     "No"="Without hypothetical sites"#,
+#                                     #"Off"="Without Offsets"
+#                            ) 
+#      )+
+      scale_x_date(expand=c(0,0),breaks="1 year",
+                   labels = date_format("%Y",tz="America/Denver"))+
+      scale_y_continuous(expand=c(0,0))+
+      expand_limits(y=0)+ #make sure you get the zero line
+#      guides(color= guide_legend(override.aes = list(color = c("black","blue")))
+#      )+
+      theme_bw() +
+      theme(legend.position="top",
+            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+            panel.background = element_rect(fill = "transparent"),
+            panel.grid.major.x = element_blank(),
+            panel.grid.minor.x = element_blank(),
+            panel.grid = element_blank(),
+            plot.background = element_rect(fill = "transparent", color = NA),
+            legend.key = element_rect(colour = "transparent", fill = "transparent"),
+            legend.background = element_rect(fill='transparent'),
+            legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+            text = element_text(size= 15)
+            #legend.margin=margin(c(0,0,0,0),unit="cm")
+            #legend.text = element_text(colour="black", size = 12, face = "bold")
+            #axis.title.y = element_text(margin = margin(t = 0, r = 5, b = 0, l = 0, unit = "pt")
+      )+
+      labs(y="Pool Prices ($/MWh)",x="",
+           #title=paste("Alberta Hourly Wholesale Power Prices and Alberta Internal Load",sep=""),
+           #subtitle=paste(month.name[month(period_start)],", ",year(period_start)," to ",month.name[month(end_date)],", ",year(end_date),sep="")
+           NULL)
   }
   
   ################################################################################
@@ -1164,7 +1280,7 @@
     data %>%
       ggplot() +
       aes(Time_Period, (diff), fill = ID) +
-      geom_col(alpha=0.6, size=.5, colour="black") +
+      geom_col(alpha=0.6, linewidth=.5, colour="black") +
       #    facet_wrap(~ Condition, nrow = 1) +
       theme_bw() +
       theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
@@ -1479,95 +1595,13 @@
       summarise(Capacity = sum(Capacity))
      # subset(., select=c(Name,Capacity,Latitude,Longitude,Status))
     
-#    Active <- ResourceYr %>%
-#      filter(Run_ID == case,
-#             Primary_Fuel == "Wind",
-#             Capacity > 0,
-#             !grepl('New Resource',Name)) %>%
-#      group_by(Name) %>%
-#      summarise(Capacity = mean(Capacity)
-#                ) %>%
-#      mutate(Latitude=case_when(grepl("AKE1",Name) ~ 49.60344,
-#                                grepl("ARD1",Name) ~ 49.55403,
-#                                grepl("BSR1",Name) ~ 50.13716,
-#                                grepl("BTR1",Name) ~ 49.6537,
-#                                grepl("BUL",Name) ~ 52.50809,
-#                                grepl("CR1",Name) ~ 49.50669,
-#                                grepl("CRE3",Name) ~ 49.56245,
-#                                grepl("CRR1",Name) ~ 49.55893,
-#                                grepl("CRR2",Name) ~ 49.55891,
-#                                grepl("CYP",Name) ~ 49.84097,
-#                                grepl("FMG1",Name) ~ 49.66334,
-#                                grepl("Garden Plain",Name) ~ 51.97348,
-#                                grepl("GRZ1",Name) ~ 53.21519,
-#                                grepl("GWW1",Name) ~ 49.51095,
-#                                grepl("HAL1",Name) ~ 52.27372,
-#                                grepl("HHW1",Name) ~ 51.5661,
-#                                grepl("HLD1",Name) ~ 50.55398,
-#                                grepl("IEW",Name) ~ 49.60701,
-#                                grepl("JNR1",Name) ~ 50.83577,
-#                                grepl("JNR2",Name) ~ 50.82,
-#                                grepl("JNR3",Name) ~ 50.77712,
-#                                grepl("KHW1",Name) ~ 49.51343,
-#                                grepl("Lanfine",Name) ~ 51.32123,
-#                                grepl("NEP1",Name) ~ 51.89861,
-#                                grepl("OWF1",Name) ~ 49.57529,
-#                                grepl("RIV1",Name) ~ 49.53245,
-#                                grepl("RTL1",Name) ~ 49.91059,
-#                                grepl("SCR2",Name) ~ 49.38739,
-#                                grepl("SCR3",Name) ~ 49.68462,
-#                                grepl("SCR4",Name) ~ 51.2111,
-#                                grepl("TAB1",Name) ~ 49.71317,
-#                                grepl("WHE1",Name) ~ 51.2375,
-#                                grepl("WHT",Name) ~ 49.64029,
-#                                grepl("WRW1",Name) ~ 49.47014
-#                                ),
-#             Longitude=case_when(grepl("AKE1",Name) ~ -113.485,
-#                                 grepl("ARD1",Name) ~ -113.432,
-#                                 grepl("BSR1",Name) ~ -112.891,
-#                                 grepl("BTR1",Name) ~ -113.467,
-#                                 grepl("BUL",Name) ~ -110.06,
-#                                 grepl("CR1",Name) ~ -114.042,
-#                                 grepl("CRE3",Name) ~ -114.108,
-#                                 grepl("CRR1",Name) ~ -113.969,
-#                                 grepl("CRR2",Name) ~ -113.983,
-#                                 grepl("CYP",Name) ~ -110.357,
-#                                 grepl("FMG1",Name) ~ -111.122,
-#                                 grepl("Garden Plain",Name) ~ -111.833,
-#                                 grepl("GRZ1",Name) ~ -111.095,
-#                                 grepl("GWW1",Name) ~ -113.506,
-#                                 grepl("HAL1",Name) ~ -112.063,
-#                                 grepl("HHW1",Name) ~ -112.254,
-#                                 grepl("HLD1",Name) ~ -110.124,
-#                                 grepl("IEW",Name) ~ -113.777,
-#                                 grepl("JNR1",Name) ~ -111.104,
-#                                 grepl("JNR2",Name) ~ -111.07,
-#                                 grepl("JNR3",Name) ~ -111.046,
-#                                 grepl("KHW1",Name) ~ -113.816,
-#                                 grepl("Lanfine",Name) ~ -110.567,
-#                                 grepl("NEP1",Name) ~ -113.365,
-#                                 grepl("OWF1",Name) ~ -113.853,
-#                                 grepl("RIV1",Name) ~ -113.977,
-#                                 grepl("RTL1",Name) ~ -111.06,
-#                                 grepl("SCR2",Name) ~ -112.955,
-#                                 grepl("SCR3",Name) ~ -112.324,
-#                                 grepl("SCR4",Name) ~ -112.558,
-#                                 grepl("TAB1",Name) ~ -111.933,
-#                                 grepl("WHE1",Name) ~ -112.426,
-#                                 grepl("WHT",Name) ~ -111.291,
-#                                 grepl("WRW1",Name) ~ -113.983),
-#      Status = "Active")
-    
-#    comb_sites <- rbind(Active,Built) #%>%
-    #  arrange(match(Status, c("Active","Queue","Potential")),
-    #          desc(Status))
-      
-    
     setwd("D:/Documents/GitHub/AuroraEval")
     
-    labs <- c("Queue"="AESO Queue","Simulated"="Hypothetical")#"Active"="Existing",
+    labs <- c("Queue"="AESO Queue Sites","Simulated"="Hypothetical Sites")#"Active"="Existing",
     Simcolor <- c("Queue"="grey39","Simulated"="red4")#"Active"="black",
     Simshape <- c("Queue"=18,"Simulated"=17)#"Active"=16,
+    legTitle <- 15
+    legText <- 12
     
     wind_profileAA <- readRDS("WindAtlas_Data00_0.05")
     colnames(wind_profileAA) <- c('Latitude', 'Longitude', 'Wind')
@@ -1580,7 +1614,7 @@
                    fill = "transparent", colour = "black") +
       geom_point(data = Built, aes(x=Longitude, y=Latitude, size=Capacity,
                                   color=Status, shape=Status)) +
-      scale_fill_gradientn(colors = matlab.like2(100),
+      scale_fill_gradientn(colors = matlab.like(100),
                            limits=c(3,10),oob=squish, 
                            name = "Mean wind speed \nat 80m height \n(m/s)") +
       scale_shape_manual(values = Simshape, labels = labs) + 
@@ -1610,8 +1644,8 @@
             legend.background = element_rect(fill = "transparent"),
             legend.box.background = element_rect(fill = "transparent", color = "transparent"),
             legend.key=element_rect(fill = "transparent"),
-            #legend.text = element_text(size = legText),
-            #legend.title = element_text(size = legTitle),
+            legend.text = element_text(size = legText),
+            legend.title = element_text(size = legTitle),
             rect = element_rect(fill="transparent")
             )
   }
@@ -1861,6 +1895,76 @@
             panel.border = element_rect(colour = "black", fill = "transparent")) 
   }
   
+  CapPot3 <- function(case) {
+    # Test to verify both Fuels were provided
+    data <- Build %>%
+      filter(Run_ID == case,
+             LT_Iteration == 0,
+             Capacity_Built !=0,
+             Time_Period <= 2035,
+             Fuel_Type == "WND") %>%
+      mutate(Potential = ifelse(grepl("Potential", Name, fixed = TRUE), 
+                                "Hypothetical", "AESO Queue"),
+             Name = gsub("\\s*\\([^\\)]+\\)", "",Name),
+             #Name = case_when(str_detect(Name,"John D")~"John DOr",
+            #                  TRUE~Name),
+             Year = as.numeric(Time_Period)) %>%
+      filter(Potential == "Hypothetical") %>%
+      group_by(Name) %>%
+      arrange(.,by=Year) %>%
+      complete(Year = full_seq(2020:2035,1)) %>%
+      mutate(Capacity_Built = case_when(is.na(Capacity_Built)~0,
+                                        TRUE~Capacity_Built),
+             Total = sum(Capacity_Built),
+             date = as.Date(paste0(Year,"-01-01")),
+             Installed = cumsum(Capacity_Built))
+    
+    
+    sz <- 15
+    
+    ggplot(data) +
+      #aes(fct_reorder(Name,-Total), Capacity_Built, fill=Time_Period) + 
+      geom_line(aes(date, Installed, color = Name),size=2) +
+      labs(x = "", y = "Capacity Built (MW)") +
+      scale_y_continuous(expand = c(0,0),
+                         limits = c(0,1000),
+                         #breaks = seq(0,1050, by=100)
+      ) +
+      scale_x_date(expand=c(0,0),
+                   date_breaks = "1 years",
+                   date_labels = "%Y") +
+      scale_color_manual("Hypothetical Site",
+                         values = c("Anzac"="steelblue","Bison Lake"="seagreen",
+                                    "Hinton"="tan",
+                                    "John D\'Or Prairie"="saddlebrown",
+                                    "Kehewin"="khaki",
+                                    "Lesser Slave Lake"="firebrick",
+                                    "Pigeon Lake"="goldenrod"
+                                    ),
+                         #labels = c("Anzac"='Anzac',"Bison Lake"='Bison Lake',
+                        #            "Hinton"='Hinton',"John D"='John D\'Or Prairie',
+                        #            "Kehewin"='Kehewin',
+                        #            "Lesser Slave Lake"='Lesser Slave Lake',
+                        #            "Pigeon Lake"='Pigeon Lake')
+                                               ) +
+      #scale_fill_viridis(discrete=TRUE,
+      #) +
+      guides(color = guide_legend(override.aes = list(size = 3)),
+      ) +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+            axis.text = element_text(size = sz),
+            axis.title = element_text(size = sz),
+            panel.background = element_rect(fill = "transparent"),
+            panel.grid = element_blank(),
+            plot.background = element_rect(fill = "transparent", color = NA),
+            legend.title = element_text(size = sz-1),
+            legend.text = element_text(size = sz-2),
+            legend.key = element_rect(colour = "transparent", fill = "transparent"),
+            legend.background = element_rect(fill='transparent'),
+            legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+            panel.border = element_rect(colour = "black", fill = "transparent")) 
+  }
+  
   ################################################################################
   # Unit specific bar chart showing availability not built with potential sites 
   # highlighted
@@ -1960,6 +2064,106 @@
             panel.border = element_rect(colour = "black", fill = "transparent"))
   }
   
+  AESO_colours <- c("goldenrod1", "gray60", "yellowgreen", "cornflowerblue",
+                                "#001933")
+  
+  wind_prod <- function() {
+    HSSim <- HS_Hour %>%
+      filter(Report_Year >= 2020 & 
+               Report_Year <= 2035,
+             Run_ID == "Base Case",
+             ID == "LTO_Wind") %>%
+ #     group_by(Report_Year) %>%
+      mutate(perc = 1-ecdf(Capacity_Factor)(Capacity_Factor)) %>%
+      mutate(Cap_Fac = Capacity_Factor,
+             sit = "HS",
+             #Year = as.factor(Report_Year)
+             ) %>%
+      #subset(., select=c(Year, Cap_Fac, perc, sit)) %>%
+     # rename(Year = Report_Year) %>%
+      ungroup() 
+    
+    No_HSSim <- NoHS_Hour %>%
+      filter(Report_Year >= 2020 & 
+               Report_Year <= 2035,
+             Run_ID == "Base Case",
+             ID == "LTO_Wind") %>%
+      #     group_by(Report_Year) %>%
+      mutate(perc = 1-ecdf(Capacity_Factor)(Capacity_Factor)) %>%
+      mutate(Cap_Fac = Capacity_Factor,
+             sit = "No_HS",
+             #Year = as.factor(Report_Year)
+      ) %>%
+     # subset(., select=c(Year, Cap_Fac, perc, sit)) %>%
+      # rename(Year = Report_Year) %>%
+      ungroup() 
+    
+    No_OffSim <- NoOff_Hour %>%
+      filter(Report_Year >= 2020 & 
+               Report_Year <= 2035,
+             Run_ID == "Base Case",
+             ID == "LTO_Wind") %>%
+      #     group_by(Report_Year) %>%
+      mutate(perc = 1-ecdf(Capacity_Factor)(Capacity_Factor)) %>%
+      mutate(Cap_Fac = Capacity_Factor,
+             sit = "No_Off",
+             #Year = as.factor(Report_Year)
+      ) %>%
+      # subset(., select=c(Year, Cap_Fac, perc, sit)) %>%
+      # rename(Year = Report_Year) %>%
+      ungroup() 
+    
+    Sim <- rbind(No_HSSim,HSSim)#,No_OffSim)
+    
+    Sim$sit <- factor(Sim$sit, levels = c("No_HS","HS"))#,"No_Off"))
+    
+    # Set font size for plot
+    sz <- 15
+    
+    ggplot() +
+      geom_line(data = Sim, 
+                aes(x = perc, y = Cap_Fac, colour = sit),#, linetype = sit), 
+                size = 1.5) +
+      #    facet_grid(cols = vars(Condition)) +
+      theme_bw() +
+      theme(axis.text = element_text(size = sz),
+            axis.title = element_text(size = sz),
+            plot.title = element_text(size = sz+2),
+            legend.text = element_text(size = sz),
+            
+            # For transparent background
+            panel.grid = element_blank(),
+            legend.title = element_blank(),
+            panel.background = element_rect(fill = "transparent"),
+            panel.grid.major.x = element_blank(),
+            panel.grid.minor.x = element_blank(),
+            panel.spacing = unit(1.5, "lines"),
+            plot.background = element_rect(fill = "transparent", color = NA),
+            plot.margin = unit(c(0,1,0,0),"cm"),
+            legend.key = element_rect(colour = "transparent", fill = "transparent"),
+            legend.background = element_rect(fill='transparent'),
+            legend.position = "top",
+            legend.box.background = element_rect(fill='transparent', colour = "transparent"),
+      ) +
+      labs(y = "Wind Capacity Factor", 
+           x = "Percentage of Time", 
+           #title = "AESO Data vs Simulation",
+           #subtitle = DB
+           ) +
+      scale_color_manual(values = c("black","forestgreen","dodgerblue"),
+                         labels = c("Without hypothetical sites",
+                                    "With hypothetical sites")
+                         ) +
+      #scale_linetype_manual(values = c("solid","dashed"),
+      #                      labels = c("With hypothetical sites","Without hypothetical sites")) +
+      scale_x_continuous(expand=c(0,0), 
+                         limits = c(0,1.0),
+                         labels = percent) +
+      scale_y_continuous(expand=c(0,0)
+      ) +
+      guides(color = guide_legend(override.aes = list(size = 5)))
+  }
+  
   ################################################################################
   # Simulation duration curve. 
   # The price duration curve represents the percentage of hours in which pool price 
@@ -2009,6 +2213,7 @@
              ) %>%
       mutate(Name = gsub("^.*?from ","",Name),
              Name = gsub("^.*? ","",Name),
+             Year = as.numeric(Report_Year)
              #Name = case_when(str_detect(Name,"Pot")~paste("Hypothetical:",Name),
             #                  TRUE~Name),
              #Name = gsub("\\s*\\([^\\)]+\\)", "",Name)
@@ -2020,8 +2225,9 @@
                         #Percent_Marginal,Capacity,Capability,ID,Primary_Fuel,
                         Capacity_Factor,
                         #Beg_Date,End_Date,
-                        Report_Year)) %>%
-      group_by(Report_Year,Name) %>%
+                        Year)) %>%
+      complete(Year = full_seq(2020:2035,1)) %>%
+      group_by(Year,Name) %>%
       summarise(Capacity = sum(Capacity),
                 Output_MWH = sum(Output_MWH),
                 Cap_Fac = Output_MWH/Capacity,
@@ -2032,17 +2238,21 @@
                              TRUE~"AESO"),
              Name = gsub("\\s*\\([^\\)]+\\)", "",Name),
              Name = case_when(str_detect(Name,"John D")~"John DOr",
-                              TRUE~Name))
+                              TRUE~Name),
+             date = as.Date(paste0(Year,"-01-01")))
     
     ggplot() +
       geom_line(data = data, 
-                aes(x = Report_Year, y = Cap_Fac,colour=Name,linetype=sit,
+                aes(x = date, y = Cap_Fac,colour=Name,linetype=sit,
                     size = sit), 
                 ) +
       theme(panel.background = element_rect(fill = "transparent"),
             panel.grid = element_blank(),
+            panel.border = element_rect(colour = "black", fill = "transparent"),
             plot.background = element_rect(fill = "transparent", color = NA),
             #axix.title.x = element_blank(),
+            axis.text = element_text(size = 15),
+            axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
             axis.line.x = element_line(color = "black"),
             axis.line.y = element_line(color = "black"),
             text = element_text(size= 15),
@@ -2051,7 +2261,9 @@
             legend.box.background = element_rect(fill='transparent', colour = "transparent"),
       ) +
       labs(x = "", y = "Capacity Factor (%)", fill = "Potential New Resource") +
-      scale_x_continuous(expand=c(0,0)) +
+      scale_x_date(expand=c(0,0),
+                   date_breaks = "1 years",
+                   date_labels = "%Y") +
       scale_color_manual("Hypothetical Site",
                          values = c("steelblue","seagreen","tan",
                                     "saddlebrown","khaki","firebrick",
@@ -2060,11 +2272,11 @@
                                      'Kehewin',
                                      'Lesser Slave Lake','Pigeon Lake')) +
       scale_linetype_manual("",values = c("AESO"="dotdash","Hypo"="solid"),
-                            labels=c("Wind farm from AESO queue",
-                                     "Wind farm at hypothetical site")) +
+                            labels=c("AESO queue site",
+                                     "Hypothetical site")) +
       scale_size_manual("",values = c(0.5,2),
-                        labels=c("Wind farm from AESO queue",
-                                 "Wind farm at hypothetical site")) +
+                        labels=c("AESO queue site",
+                                 "Hypothetical site")) +
       guides(color = guide_legend(override.aes = list(size = 3)),
       )
   }
@@ -2341,181 +2553,49 @@
     
     data2 <- rbind(dataA,dataB)
     
-    sz <- 12
+    sz <- 15
     CF_color<-"grey40"
       AR_color<-"black"
-        
-      #    revmin <- min(floor(data1$AveRev),0)
-      #    CFmax <- max(data1$Cap_Fac)
-      #    revmax <- max(ceiling(data1$AveRev))
-      #    multifact <- CFmax/revmax
-      
-#      Rev <- ggplot(data1,
-#             aes(x=fct_reorder(Name,AveRev)))+
-        #geom_col(aes(y=IOD/0.013,colour=sit,fill=sit),#fill=CF_color,
-        #         width=0.7,color=CF_color,alpha = 0.6,#color="black"
-        #) +
-#        geom_col(aes(y=AveRev,fill=sit),
-#                 width=0.75, alpha=1, color="black" #position = position_dodge(width = .85),width = .6
-                   #fill=AR_color
-#        )+
-        
-#        geom_hline(yintercept=0) +
-#        scale_color_manual("",values=c("Active"="grey","Hypo"="forestgreen"),
-#                           labels = c("Active"="AESO Queue",
-#                                      "Hypo"="Hypothetical Site"))+
-#        scale_fill_manual("",values=c("Active"="grey","Hypo"="forestgreen"),
-#                          labels = c("Active"="AESO Queue",
-#                                     "Hypo"="Hypothetical Site"))+
-        #    facet_grid(~Year) +
-#        scale_y_continuous(expand=c(0,0),
-#                           limits = c(-16.5,40),
-#                           breaks = seq(-15,40, by = 10),
-                           #sec.axis = sec_axis(trans=~.*(0.013*100), 
-                          #                     name ="Average Annual Capacity Factor (%)",
-                          #                     breaks = seq(0,60,5))
-#        ) +
-#        labs(x="",y="Energy Revenue \n($/MWh)") +
-#        theme(axis.text = element_text(size = sz),
-#              axis.text.x = element_blank(),
-              #axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-#              axis.ticks.x = element_blank(),
-#              axis.text.y.right = element_text(color = CF_color),
-#              axis.title.y = element_text(size = sz,color = AR_color,face="bold"),
-#              axis.line.y = element_line(color="black"),
-              
-              # For transparent background
-#              panel.background = element_rect(fill = "transparent"),
-#              panel.grid = element_blank(),
-#              panel.spacing = unit(1.5, "lines"),
-#              panel.border = element_rect(colour = "transparent", fill = "transparent"),
-#              plot.background = element_rect(fill = "transparent", color = NA),
-#              legend.position = "none",# "top",
-              #legend.key = element_rect(colour = "transparent", fill = "transparent"),
-              #legend.background = element_rect(fill='transparent'),
-              #legend.box.background = element_rect(fill='transparent', colour = "transparent"),
-#        ) 
-      
-#      iod <- ggplot(data1,
-#                    aes(x=fct_reorder(Name,AveRev),
-#                        y=IOD))+
-#        geom_point(aes(color=sit),
-                 #width=0.75, 
-#                 alpha=1, #color="black" #position = position_dodge(width = .85),width = .6
-                   #fill=AR_color
-#        )+
-#        scale_color_manual("",values=c("Active"="grey","Hypo"="forestgreen"),
-#                           labels = c("Active"="AESO Queue",
-#                                      "Hypo"="Hypothetical Site"))+
-#        scale_fill_manual("",values=c("Active"="grey","Hypo"="forestgreen"),
-#                          labels = c("Active"="AESO Queue",
-#                                     "Hypo"="Hypothetical Site"))+
-#        scale_y_continuous(expand=c(0,0),
-#                           limits = c(0.45,0.57),
-#                           breaks = seq(0.45,0.55, by = 0.05),
-#        ) +
-#        labs(x="",y="Index of \nDeviation") +
-#        theme(axis.text = element_text(size = sz),
-#              axis.text.x = element_blank(),#element_text(angle = 90, vjust = 0.5, hjust = 1),
-#              axis.ticks.x = element_blank(),
-#              axis.text.y.right = element_text(color = CF_color),
-#              axis.title.y = element_text(size = sz,color = AR_color,face="bold"),
-#              axis.line.y = element_line(color="black"),
-              
-              # For transparent background
-#              panel.background = element_rect(fill = "transparent"),
-#              panel.grid = element_blank(),
-#              panel.spacing = unit(1.5, "lines"),
-#              panel.border = element_rect(colour = "transparent", fill = "transparent"),
-#              plot.background = element_rect(fill = "transparent", color = NA),
-#              legend.position = "top",
-#              legend.key = element_rect(colour = "transparent", fill = "transparent"),
-#              legend.background = element_rect(fill='transparent'),
-#              legend.box.background = element_rect(fill='transparent', colour = "transparent"),
-#        ) 
-      
-#      Cap_Fac <- ggplot(data1,
-#                    aes(x=fct_reorder(Name,AveRev),
-#                        y=Cap_Fac))+
-#        geom_point(aes(color=sit),
-                 #width=0.75, 
-#                 alpha=1,# color="black" #position = position_dodge(width = .85),width = .6
-                   #fill=AR_color
-#        )+
-        #geom_smooth(data=data1,method='lm') +
-#        scale_color_manual("",values=c("Active"="grey","Hypo"="forestgreen"),
-#                           labels = c("Active"="AESO Queue",
-#                                      "Hypo"="Hypothetical Site"))+
-#        scale_fill_manual("",values=c("Active"="grey","Hypo"="forestgreen"),
-#                          labels = c("Active"="AESO Queue",
-#                                     "Hypo"="Hypothetical Site"))+
-#        scale_y_continuous(expand=c(0,0),
-#                           limits = c(0.27,0.55),
-#                           breaks = seq(0.3,0.5, by = 0.1),
-#        ) +
-#        labs(x="",y="Capacity \nFactor (%)") +
-#        theme(axis.text = element_text(size = sz),
-              #axis.text.x = element_blank(),#element_text(angle = 90, vjust = 0.5, hjust = 1),
-#              axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-#              axis.text.y.right = element_text(color = CF_color),
-#              axis.title.y = element_text(size = sz,color = AR_color,face="bold"),
-#              axis.line = element_line(color = "black"),
-              
-              # For transparent background
-#              panel.background = element_rect(fill = "transparent"),
-#              panel.grid = element_blank(),
-#              panel.spacing = unit(1.5, "lines"),
-#              panel.border = element_rect(colour = "transparent", fill = "transparent"),
-#              plot.background = element_rect(fill = "transparent", color = NA),
-#              legend.position = "none",# "top",
-              #legend.key = element_rect(colour = "transparent", fill = "transparent"),
-              #legend.background = element_rect(fill='transparent'),
-              #legend.box.background = element_rect(fill='transparent', colour = "transparent"),
-#        ) 
-      
-#      plot_grid(iod + theme(plot.margin = unit(c(0,0.25,-0.25,0),"cm")), 
-                #Cap_Fac,
-#                Rev + theme(plot.margin = unit(c(0,0.25,-0.25,0),"cm")),
-#                Cap_Fac + theme(plot.margin = unit(c(0,0.25,0,0),"cm")),
-#                ncol = 1, align="v", axis = "l",rel_heights = c(0.75,1.5,1.5))
       
       ggplot(data1,
              aes(x=fct_reorder(Name,AveRev)))+
         geom_col(aes(y=AveRev,fill=sit),
                  width=0.75, alpha=0.8, color="black" 
         )+
-        geom_point(data=data2,aes(x=fct_reorder(Name,AveRev),
-                                  y=value/0.013, fill=sit,shape=metric),size=4) +
+        geom_point(data=data2%>%filter(metric=="IOD"),aes(x=fct_reorder(Name,AveRev),
+                                  y=value/0.013, color=sit),#shape=metric),
+                   size=4)+#,shape=21) +
         #geom_point(aes(y=Cap_Fac/0.013, color=sit),shape=16,size=4) +
         
         geom_hline(yintercept=0) +
-        scale_shape_manual("",values=c("CF"=21,"IOD"=23),
-                           labels = c("CF"="Average Annual \nCapacity Factor",
-                                      "IOD"="Capacity Factor \nIndex of Deviation")) +
-       # scale_color_manual("",values=c("Active"="grey","Hypo"="forestgreen"),
-      #                     labels = c("Active"="AESO Queue",
-      #                                "Hypo"="Hypothetical Site"))+
+     #   scale_shape_manual("",values=c("CF"=21,"IOD"=23),
+    #                       labels = c("CF"="Average Annual \nCapacity Factor",
+    #                                  "IOD"="Generation \nIndex of Deviation")) +
+        scale_color_manual("",values=c("Active"="grey59","Hypo"="green4"),
+                           labels = c("Active"="AESO Queue Site IoD",
+                                      "Hypo"="Hypothetical Site IoD"))+
         scale_fill_manual("",values=c("Active"="grey","Hypo"="forestgreen"),
-                          labels = c("Active"="AESO Queue",
-                                     "Hypo"="Hypothetical Site"))+
+                          labels = c("Active"="AESO Queue Site ER",
+                                     "Hypo"="Hypothetical Site ER"))+
         #    facet_grid(~Year) +
         scale_y_continuous(expand=c(0,0),
                            limits = c(-20,45),
                            breaks = seq(-15,45, by = 10),
                            sec.axis = sec_axis(trans=~.*(0.013), 
-                                               name ="",
+                                               name ="Generation Index of Deviation",
                                                breaks = seq(0,.60,.05))
         ) +
         labs(x="",y="Average Annual Energy Revenue ($/MWh)") +
-        guides(shape=guide_legend(nrow=2,byrow=TRUE),
+        guides(color=guide_legend(nrow=2,byrow=TRUE),
                fill=guide_legend(nrow=2,byrow=TRUE)) +
         theme(axis.text = element_text(size = sz),
-              axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-              axis.text.y.right = element_text(color = CF_color),
-              axis.title.y = element_text(size = sz,color = AR_color,face="bold"),
-              axis.title.y.right = element_text(size = sz,color = CF_color,
+              axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1,color = "black"),
+              axis.text.y.right = element_text(color = "black"),
+              axis.title.y = element_text(size = sz,color = "black",face="bold"),
+              axis.title.y.right = element_text(size = sz,color = "black",
                                                 face="bold",
-                                                margin=unit(c(0,0,1,0.3), "cm")
+                                                margin=unit(c(0,0,1,0.3), "cm"),
+                                                hjust = 0
               ),
               
               # For transparent background
@@ -2525,6 +2605,7 @@
               panel.border = element_rect(colour = "black", fill = "transparent"),
               plot.background = element_rect(fill = "transparent", color = NA),
               legend.position = "top",
+              legend.text = element_text(size=15),
               legend.key = element_rect(colour = "transparent", fill = "transparent"),
               legend.background = element_rect(fill='transparent'),
               legend.box.background = element_rect(fill='transparent', colour = "transparent"),
@@ -2672,6 +2753,63 @@
       )
     
     return(list(equ,ch))
+  }
+  
+  IRR <- function(case) {
+    data1 <- ResourceYr %>%
+      filter(Run_ID == case,
+             grepl('New Resource',Name),
+             #grepl("Pot",Name),
+             Primary_Fuel == "Wind",
+             !is.na(Capacity_Factor),
+             #Report_Year >= 2024,
+             Report_Year <= 2035
+      ) %>%
+      mutate(#Year = (Report_Year),
+        Year = as.factor(Report_Year),
+        Status = case_when(grepl('New Resource',Name)~'New',
+                           TRUE~'Old'),
+        Name = gsub("\\s*\\([^\\)]+\\)", "",Name),
+        Name = gsub("^.*?P","",Name),
+        Name = gsub("[0-9] *","",Name),
+        Name = gsub("^.*?_","",Name),
+        Name = gsub("Joss Wind","",Name)
+      ) %>%
+      subset(.,select=-c(Condition,Zone,Full_Load_Cost,Full_Load_Heat_Rate,
+                         Nameplate_Capacity,Build_Cost,Fuel_Cost,Fuel_Limit,
+                         Fuel_Usage,Fuel_Start_Costs,Net_Cost,Net_Heat_Rate,
+                         Incr_Heat_Rate,Minimum_Capacity,Primary_Fuel,Primary_Fuel_Usage,
+                         Secondary_Fuel_Limit,Output_MWH_Secondary,Percent_Marginal,
+                         Percent_Committed,Startup_Cost,Startups,Start_Fuel_Usage,
+                         Total_Fuel_Cost,Used_For_Op_Reserve,Variable_OM_Cost,
+                         Variable_OM_Cost_Aux1,Variable_OM_Cost_Base,Variable_OM_Cost_Aux2,
+                         Maint_Outage,Loss_Factor,Non_Commit_Penalty,Stored_MWh,
+                         Storage_Inflow_Loss,Storage_Contents,Storage_Charging_Cost,
+                         Storage_Contents_Cost,In_System,Sec_Fuel,Run_ID,Study_Info,
+                         Constraint_Shadow,Active_Constraints,nSegment,Dispatch_Segment))
+    
+    data2 <- Value %>%
+      filter(Run_ID == case,
+             grepl('New Resource',Res_Name),
+             grepl('Wind',Res_Name),
+             LT_Iteration ==0,
+             
+             #grepl("Pot",Name),
+             #!is.na(Capacity_Factor),
+             #Report_Year >= 2024,
+             #Report_Year <= 2035
+      ) %>%
+      mutate(#Year = (Report_Year),
+        Year = as.factor(Report_Year),
+        Status = case_when(grepl('New Resource',Name)~'New',
+                           TRUE~'Old'),
+        Name = gsub("\\s*\\([^\\)]+\\)", "",Name),
+        Name = gsub("^.*?P","",Name),
+        Name = gsub("[0-9] *","",Name),
+        Name = gsub("^.*?_","",Name),
+        Name = gsub("Joss Wind","",Name)
+      )
+    
   }
   
   ################################################################################
